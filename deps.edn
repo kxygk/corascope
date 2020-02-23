@@ -1,0 +1,9 @@
+{:deps
+ {eye-boof {:mvn/version "2.2.1-SNAPSHOT"} ;; image processing
+  org.boofcv/boofcv-all {:mvn/version "0.35"} ;; ???????
+  cljfx {:mvn/version "1.6.3"} ;; gui
+  org.openjfx/javafx-swing {:mvn/version "13"}
+  org.clojure/data.csv {:mvn/version "0.1.4"} ;; data injestion
+  thi.ng/geom {:mvn/version "1.0.0-RC4"} ;; plotting
+  com.github.afester.javafx/FranzXaver {:mvn/version "0.1"} ;; SVG to JFX friendly stuff...
+  }}
