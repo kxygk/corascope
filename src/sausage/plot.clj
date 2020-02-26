@@ -16,7 +16,7 @@
    max-count]
   {:x-axis (viz/linear-axis
             {:domain [0 max-position]
-             :range  [width 0.0]
+             :range  [0.0 width]
              :pos    0.0
              :visible true
              :label-dist  (- height 10)
@@ -25,7 +25,7 @@
              })
              
    :y-axis (viz/linear-axis
-            {:domain      [1 max-count] 
+            {:domain      [0 max-count]
              :range       [height 0]
              ;; puts the axis out of view (can't show the grid with no axis)
              :pos         0 ;; major-size default
@@ -73,9 +73,9 @@
    max-position
    max-count
    crop-right]
-  (let [crop-distance (* crop-right
+  (let [crop-distance (* (- 1 crop-right)
                          max-position)
-        crop-points (filter #(< (first %)
+        crop-points (filter #(> (first %)
                                 crop-distance)
                             points)]
   (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
