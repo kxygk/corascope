@@ -28,7 +28,6 @@
   (atom {:working-directory ""
          :width 400
          :height 400
-         :options-width 100
          :display-width 300
          :optical-image nil ;; BoofCV image
          :display-image nil ;; JFX image
@@ -94,8 +93,7 @@
 (defmethod event-handler ::width-changed
   [event]
   (swap! *state assoc :width (:fx/event event))
-  (swap! *state assoc :display-width (- (:fx/event event)
-                                        (:options-width @*state))))
+  (swap! *state assoc :display-width (:fx/event event)))
 (defmethod event-handler ::height-changed
   [event]
   (swap! *state assoc :height (:fx/event event)))
@@ -302,13 +300,12 @@
 
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
-  [{:keys [options-width
-           working-directory]}]
+  [{:keys [working-directory]}]
   {:fx/type :h-box
    ;; :width width
    :children [{:fx/type :button
-               :pref-width options-width
-               :min-width options-width
+               :pref-width 100 ;;options-width
+               :min-width 100 ;;options-width
                :pref-height 40
                :on-action {:event/type ::set-working-directory}
                :text "Set"}
@@ -322,53 +319,47 @@
 (defn optical-image-display
   "display and options for the optical image"
   [{:keys [display-width
-           options-width
            display-image
            crop-right
            scan-line-pixel-offset-from-center
            load-event]}]
   {:fx/type :h-box
-   :children (filter identity
-                     [{:fx/type :v-box
-                       :children [{:fx/type :button
-                                   :on-action {:event/type load-event}
-                                   :pref-width options-width
-                                   :min-width options-width
-                                   :text "Load image"}]}
-                      (if display-image
-                        (let [image-height (.getHeight display-image)]
-                          {:fx/type :group
-                           :children [{:fx/type :image-view
-                                       :fit-width display-width
-                                       :image display-image}
-                                      {:fx/type :line
-                                       :start-x 0
-                                       :start-y (/ image-height
-                                                   2.0)
-                                       :end-x display-width
-                                       :end-y (/ image-height
-                                                 2.0)
-                                       :stroke-dash-array [10 10]
-                                       :stroke "white"}
-                                      {:fx/type :rectangle
-                                       :x ( - display-width
-                                           (* crop-right
-                                              display-width))
-                                       :y 0
-                                       :height image-height
-                                       :width (* crop-right
-                                                 display-width)
-                                       :opacity 0.15
-                                       :fill "red"}
-                                      ]}))])})
+   :children (if display-image
+               (let [image-height (.getHeight display-image)]
+                 [{:fx/type :group
+                  :children [{:fx/type :image-view
+                              :fit-width display-width
+                              :image display-image}
+                             {:fx/type :line
+                              :start-x 0
+                              :start-y (/ image-height
+                                          2.0)
+                              :end-x display-width
+                              :end-y (/ image-height
+                                        2.0)
+                              :stroke-dash-array [10 10]
+                              :stroke "white"}
+                             {:fx/type :rectangle
+                              :x ( - display-width
+                                  (* crop-right
+                                     display-width))
+                              :y 0
+                              :height image-height
+                              :width (* crop-right
+                                        display-width)
+                              :opacity 0.15
+                              :fill "red"}]}])
+               [{:fx/type :v-box
+                 :children [{:fx/type :button
+                             :on-action {:event/type load-event}
+                             :text "Load image"}]}])})
 
 
 (defn xrf-columns-list
   "List of Elements (and other stuff)"
   [{:keys [items
            selection
-           selection-mode
-           options-width]}]
+           selection-mode]}]
   {:fx/type fx.ext.list-view/with-selection-props
    :props (case selection-mode
             :single (cond-> {:selection-mode :single
@@ -394,7 +385,6 @@
 (defn xrf-scan-display
   "display and options for XRF scan data"
   [{:keys [display-width
-           options-width
            height
            xrf-scan
            selection
@@ -402,56 +392,38 @@
            load-event
            max-element-count]}]
   {:fx/type :h-box
-   :children (filter identity
-                     [{:fx/type :v-box
-                       :children [{:fx/type :button
-                                   :on-action {:event/type load-event}
-                                   :pref-width options-width
-                                   :min-width options-width
-                                   :text "Load XRF Scan"}
-                                  #_{:fx/type xrf-columns-list
-                                     :items (map name (:columns (:xrf-scan @*state)))
-                                     :selection-mode :single
-                                     :selection selection
-                                     :pref-width options-width
-                                     :min-width options-width}]}
-                      (if xrf-scan
-                        {:fx/type fx/ext-instance-factory
-                         :create #(sausage.plot/plot-points display-width
-                                                            (- height 50)
-                                                            (element-counts xrf-scan (keyword selection))
-                                                            (end-position (:data xrf-scan))
-                                                            max-element-count ;;(apply max (map second (element-counts xrf-scan (keyword selection))))
-                                                            crop-right
-                                                            )})])})
+   :children [{:fx/type :v-box
+               :children (if xrf-scan
+                           [{:fx/type fx/ext-instance-factory
+                             :create #(sausage.plot/plot-points display-width
+                                                                (- height 50)
+                                                                (element-counts xrf-scan (keyword selection))
+                                                                (end-position (:data xrf-scan))
+                                                                max-element-count
+                                                                crop-right
+                                                                )}]
+                           [{:fx/type :button
+                             :on-action {:event/type load-event}
+                             :text "Load XRF Scan"}])}]})
 
 
 (defn crop-slider
   ""
   [{:keys [display-width
-           options-width
            crop-right]}]
   (let [slider-height 10]
     {:fx/type :h-box
-     :children (filter identity
-                       [{:fx/type :v-box
-                         :children [{:fx/type :button
-                                     :pref-height slider-height
-                                     :on-action {:event/type ::auto-crop}
-                                     :pref-width options-width
-                                     :min-width options-width
-                                     :text "Auto"}]}
-                        {:fx/type :slider
-                         :max 1.0
-                         :min 0.0
-                         :show-tick-labels false
-                         :show-tick-marks false
-                         :pref-height slider-height
-                         :pref-width display-width
-                         :min-width display-width
-                         :value (- 1 crop-right)
-                         :on-value-changed {:event/type ::adjust-crop}}
-                        ])}))
+     :children [{:fx/type :slider
+                 :max 1.0
+                 :min 0.0
+                 :show-tick-labels false
+                 :show-tick-marks false
+                 :pref-height slider-height
+                 :pref-width display-width
+                 :min-width display-width
+                 :value (- 1 crop-right)
+                 :on-value-changed {:event/type ::adjust-crop}}]}))
+
 (defmethod event-handler ::auto-crop
   [event]
   (println "Magic not implemented yet")
@@ -468,7 +440,6 @@
   ""
   [{:keys [width
            display-width
-           options-width
            height
            directory
            display-image
@@ -480,14 +451,12 @@
   {:fx/type :v-box
    :children [
               {:fx/type optical-image-display
-               :options-width options-width
                :display-width display-width
                :display-image display-image
                :crop-right crop-right
                :scan-line-pixel-offset-from-center scan-line-pixel-offset-from-center
                :load-event ::load-primary-optical-image}
               {:fx/type crop-slider
-               :options-width options-width
                :display-width display-width
                :crop-right crop-right}
               {:fx/type xrf-scan-display
@@ -497,7 +466,6 @@
                             100 ;; workspace setting fixed size
                             )
                          height)
-               :options-width options-width
                :display-width display-width
                :xrf-scan xrf-scan
                :selection selection
@@ -510,7 +478,6 @@
   ""
   [{:keys [width
            display-width
-           options-width
            height
            directory
            display-image
@@ -522,14 +489,12 @@
   {:fx/type :v-box
    :children [
               {:fx/type optical-image-display
-               :options-width options-width
                :display-width display-width
                :display-image display-image
                :crop-right crop-right
                :scan-line-pixel-offset-from-center scan-line-pixel-offset-from-center
                :load-event ::load-merge-optical-image}
               {:fx/type crop-slider
-               :options-width options-width
                :display-width display-width
                :crop-right crop-right}
               {:fx/type xrf-scan-display
@@ -539,7 +504,6 @@
                             100 ;; workspace setting fixed size
                             )
                          height)
-               :options-width options-width
                :display-width display-width
                :xrf-scan xrf-scan
                :selection selection
@@ -551,7 +515,6 @@
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [width
            display-width
-           options-width
            height
            working-directory
            display-image
@@ -570,13 +533,11 @@
    :scene {:fx/type :scene
            :root {:fx/type :v-box
                   :children[{:fx/type workspace-settings-display
-                             :options-width options-width
                              :working-directory working-directory}
                             {:fx/type :h-box
                              :children [{:fx/type primary-display
                                          :width width
                                          :display-width (/ display-width 2.0)
-                                         :options-width options-width
                                          :height height
                                          :display-image display-image
                                          :xrf-scan xrf-scan
@@ -587,7 +548,6 @@
                                         {:fx/type secondary-merge-display
                                          :width width
                                          :display-width (/ display-width 2.0)
-                                         :options-width options-width
                                          :height height
                                          :display-image merge-display-image
                                          :xrf-scan merge-xrf-scan
@@ -601,9 +561,7 @@
                              :items (map name (:columns xrf-scan))
                              :selection-mode :single
                              :selection selection
-                             :heigth 20
-                             :pref-width options-width
-                             :min-width options-width}
+                             :heigth 20}
                             ]}}})
 
 
