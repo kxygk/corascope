@@ -18,7 +18,7 @@
             {:domain [0 max-position]
              :range  [0.0 width]
              :pos    0.0
-             :visible true
+             :visible false
              :label-dist  (- height 10)
              :major-size 0
              :major 100
@@ -30,7 +30,7 @@
              ;; puts the axis out of view (can't show the grid with no axis)
              :pos         0 ;; major-size default
              :visible true
-             :major (Math/pow 10 (- (Math/floor (Math/log10 max-count)) 1))
+             :major (/ (Math/pow 10 (Math/floor (Math/log10 max-count))) 2)
              :label-dist -5
              :label-y 10
              :major-size 0
@@ -55,10 +55,15 @@
     (assoc spec
             :data
             (filter identity [(if (not (empty? crop-points))
-                                {:values  crop-points
+                                #_{:values  crop-points
                                  :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
                                  ;; :shape   (viz/svg-square 5)
-                                 :layout  viz/svg-scatter-plot})
+                                 :layout  viz/svg-scatter-plot}
+                                {:values  crop-points
+                                 :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
+                                 :bar-width 100
+                                 :interleave 1
+                                 :layout  viz/svg-bar-plot})
                               {:values  points
                                :attribs {:fill "none" :stroke "black" :stroke-width 2.25}
                                ;; :shape   (viz/svg-triangle-down 6)

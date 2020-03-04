@@ -34,15 +34,8 @@
                   :display-image nil ;; JFX image
                   :scan-line-pixel-offset-from-center 0
                   :xrf-scan nil
-                  :crop-right 0.2 ;; what fraction off the "right" isn't part of the core
-                  :crop-left 0.0}
-                 {:optical-image nil ;; BoofCV image
-                  :display-image nil ;; JFX image
-                  :scan-line-pixel-offset-from-center 0
-                  :xrf-scan nil
-                  :crop-right 0.2 ;; what fraction off the "right" isn't part of the core
-                  :crop-left 0.0}
-                 ]
+                  :crop-right 0.0 ;; what fraction off the "right" isn't part of the core
+                  :crop-left 0.0}]
          :selections [{:element "Mn"
                        :max-count 1000}]
          }))
@@ -343,58 +336,64 @@
    :pref-height height
    :children (if display-image
                  [{:fx/type :group
-                  :children [{:fx/type :image-view
-                              :fit-width width
-                              :fit-height height
-                              :image display-image}
-                             ;; Center Line
-                             {:fx/type :line
-                              :start-x 0
-                              :start-y (/ height
-                                          2.0)
-                              :end-x width
-                              :end-y (/ height
-                                        2.0)
-                              :stroke-dash-array [10 10]
-                              :stroke "white"}
-                             ;; Right Crop
-                             {:fx/type :line
-                              :start-x ( - width
-                                        (* crop-right
-                                           width))
-                              :start-y 0
-                              :end-x ( - width
-                                      (* crop-right
-                                         width))
-                              :end-y height
-                              :stroke "red"}
-                             {:fx/type :rectangle
-                              :x ( - width
-                                  (* crop-right
-                                     width))
-                              :y 0
-                              :height height
-                              :width (* crop-right
-                                        width)
-                              :opacity 0.05
-                              :fill "red"}
-                             ;; Left Crop
-                             {:fx/type :line
-                              :start-x (* crop-left
-                                          width)
-                              :start-y 0
-                              :end-x (* crop-left
-                                        width)
-                              :end-y height
-                              :stroke "red"}
-                             {:fx/type :rectangle
-                              :x 0
-                              :y 0
-                              :height height
-                              :width (* crop-left
-                                        width)
-                              :opacity 0.05
-                              :fill "red"}]}]
+                   :children (filter identity ;; TODO Find way to do conditional GUI elements without filter
+                                     [{:fx/type :image-view
+                                       :fit-width width
+                                       :fit-height height
+                                       :image display-image}
+                                      ;; Center Line
+                                      {:fx/type :line
+                                       :start-x 0
+                                       :start-y (/ height
+                                                   2.0)
+                                       :end-x width
+                                       :end-y (/ height
+                                                 2.0)
+                                       :stroke-dash-array [10 10]
+                                       :stroke "white"}
+                                      ;; Right Crop
+                                      (if (not (zero? crop-right))
+                                        {:fx/type :line
+                                         :start-x ( - width
+                                                   (* crop-right
+                                                      width))
+                                         :start-y 0
+                                         :end-x ( - width
+                                                 (* crop-right
+                                                    width))
+                                         :end-y height
+                                         :stroke "red"})
+                                      (if (not (zero? crop-right)) ;; TODO: Find clean way to make one if statement
+                                        {:fx/type :rectangle
+                                         :x ( - width
+                                             (* crop-right
+                                                width))
+                                         :y 0
+                                         :height height
+                                         :width (* crop-right
+                                                   width)
+                                         :opacity 0.05
+                                         :fill "red"})
+                                      ;; Left Crop
+                                      (if (not (zero? crop-left))
+                                        {:fx/type :line
+                                         :start-x (* crop-left
+                                                     width)
+                                         :start-y 0
+                                         :end-x (* crop-left
+                                                   width)
+                                         :end-y height
+                                         :stroke "red"})
+                                      (if (not (zero? crop-left))
+                                        {:fx/type :rectangle
+                                         :x 0
+                                         :y 0
+                                         :height height
+                                         :width (* crop-left
+                                                   width)
+                                         :opacity 0.05
+                                         :fill "red"})
+                             ])}]
                  [{:fx/type :v-box
                    :children [{:fx/type :button
                                :pref-width width
