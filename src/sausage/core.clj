@@ -29,18 +29,22 @@
          :width 400
          :height 400
          :display-width 300
-         :optical-image nil ;; BoofCV image
-         :display-image nil ;; JFX image
-         :scan-line-pixel-offset-from-center 0
-         :xrf-scan nil
-         :crop-right 0.2 ;; what fraction off the "right" isn't part of the core
-         :crop-left 0.0
-         :selection "Mn"
-         :max-element-count 0
-
-         :merge-optical-image nil
-         :merge-display-image nil
-         :merge-xrf-scan nil
+         :cores [
+                 {:optical-image nil ;; BoofCV image
+                  :display-image nil ;; JFX image
+                  :scan-line-pixel-offset-from-center 0
+                  :xrf-scan nil
+                  :crop-right 0.2 ;; what fraction off the "right" isn't part of the core
+                  :crop-left 0.0}
+                 {:optical-image nil ;; BoofCV image
+                  :display-image nil ;; JFX image
+                  :scan-line-pixel-offset-from-center 0
+                  :xrf-scan nil
+                  :crop-right 0.2 ;; what fraction off the "right" isn't part of the core
+                  :crop-left 0.0}
+                 ]
+         :selections [{:element "Mn"
+                       :max-count 1000}]
          }))
 
 (defmulti event-handler
@@ -174,8 +178,11 @@
                                         (ImageType/pl 3
                                                       GrayU8))))
 
-(defmethod event-handler ::update-primary-display-image [_]
-  (let [optical (-> @*state
+(defmethod event-handler ::update-display-image [event]
+  (let [core-number (:core-number event)
+        optical (-> @*state
+                    :cores
+                    (get core-number)
                     :optical-image)]
     (-> optical
         (.getBand 0)
@@ -186,61 +193,35 @@
     (-> optical
         (.getBand 2)
         ImageMiscOps/flipHorizontal)
-    (swap! *state assoc :display-image (-> @*state
-                                           :optical-image
-                                           to-fx-image))))
-
-
-(defmethod event-handler ::update-merge-display-image [_]
-  (let [optical (-> @*state
-                    :merge-optical-image)]
-    (-> optical
-        (.getBand 0)
-        ImageMiscOps/flipHorizontal)
-    (-> optical
-        (.getBand 1)
-        ImageMiscOps/flipHorizontal)
-    (-> optical
-        (.getBand 2)
-        ImageMiscOps/flipHorizontal)
-    (swap! *state assoc :merge-display-image (-> @*state
-                                                 :merge-optical-image
-                                                 to-fx-image))))
-
+    (swap! *state assoc-in [:cores
+                            core-number
+                            :display-image]
+           (to-fx-image optical))))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
 ;;
 ;; User has opted to load a new project. Use FileChooser so they can select the file.
 ;; Then trigger the central project loading event, passing in the selected file.
-(defmethod event-handler ::load-primary-optical-image [_]
+(defmethod event-handler ::load-optical-image [event]
   ;;  @(fx/on-fx-thread
   (let [file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))
-        optical-image (load-image file)]
-    (swap! *state assoc-in [:optical-image] optical-image)
-    (event-handler {:event/type ::update-primary-display-image})
-    (event-handler {:event/type ::update-max-element-count})))
+        optical-image (load-image file)
+        core-number (:core-number event)]
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :optical-image]
+           optical-image)
+    (event-handler {:event/type ::update-display-image
+                    :core-number core-number})))
 
-(defmethod event-handler ::load-merge-optical-image [_]
-  ;;  @(fx/on-fx-thread
-  (let [file (-> (doto (FileChooser.)
-                   (.setTitle "Open a project")
-                   #_(.setInitialDirectory (File. "/home/")))
-                 ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))
-        optical-image (load-image file)]
-    (swap! *state assoc-in [:merge-optical-image] optical-image)
-    (event-handler {:event/type ::update-merge-display-image})))
-
-
-(defn load-xrf-scan
+(defn load-xrf-scan-file
   [csv-file]  
-  ;; (def table (clojure.data.csv/read-csv (clojure.java.io/reader (str (:directory @*state) "BatchAO96-12-0-134cm-Mo.txt")) :separator \tab))
-
   (let [full-csv-table (-> csv-file
                            (.getCanonicalPath)
                            (clojure.java.io/reader)
@@ -257,8 +238,6 @@
      :columns columns
      :data data}))
 
-:max-element-count 0
-
 (defn element-counts
   [xrf-scan
    element]
@@ -266,250 +245,356 @@
                 (read-string (element %)))
        (:data xrf-scan)))
 
-(defmethod event-handler ::update-max-element-count [_]
+(defmethod event-handler ::update-max-element-count [event]
   ;;  @(fx/on-fx-thread
   (println "updating max element")
-  (swap! *state assoc :max-element-count (apply max (map second (element-counts (-> @*state
-                                                                                    :xrf-scan)
-                                                                                (keyword (-> @*state
-                                                                                             :selection)))))))
+  (swap! *state
+         assoc-in [:selections
+                   (:selection-number event)
+                   :max-count]
+         (apply max (map second (element-counts (-> @*state
+                                                    :cores
+                                                    (get 0)
+                                                    :xrf-scan)
+                                                (keyword (-> @*state
+                                                             :selections
+                                                             (get 0)
+                                                             :element)))))))
 
-
-(defmethod event-handler ::load-primary-xrf-scan [_]
+(defmethod event-handler ::load-xrf-scan [event]
   ;;  @(fx/on-fx-thread
   (let [file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))]
-    (swap! *state assoc :xrf-scan (load-xrf-scan file))))
-
-(defmethod event-handler ::load-merge-xrf-scan [_]
-  ;;  @(fx/on-fx-thread
-  (let [file (-> (doto (FileChooser.)
-                   (.setTitle "Open a project")
-                   #_(.setInitialDirectory (File. "/home/")))
-                 ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))]
-    (swap! *state assoc :merge-xrf-scan (load-xrf-scan file))))
-
+    (swap! *state
+           assoc-in [:cores
+                     (:core-number event)
+                     :xrf-scan]
+           (load-xrf-scan-file file))
+    ))
 
 (defn end-position
   [data-table]
   (read-string (:position (last data-table))))
 
+(defmethod event-handler ::add-core [event]
+  (let [num-cores (-> @*state
+                      :cores
+                      count)]
+    (swap! *state assoc-in [:cores
+                            num-cores]
+           {:optical-image nil ;; BoofCV image
+                  :display-image nil ;; JFX image
+                  :scan-line-pixel-offset-from-center 0
+                  :xrf-scan nil
+                  :crop-right 0.0
+                  :crop-left 0.0})))
+
+(defmethod event-handler ::remove-core [event]
+    (swap! *state assoc :cores
+           (pop (:cores @*state)))
+  (if (empty? (:cores @*state))
+    (event-handler {:event/type ::add-core})))
+
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
-  [{:keys [working-directory]}]
+  [{:keys [working-directory
+           fixed-left-margin-width
+           height]}]
   {:fx/type :h-box
    ;; :width width
    :children [{:fx/type :button
-               :pref-width 100 ;;options-width
-               :min-width 100 ;;options-width
-               :pref-height 40
+               :pref-width fixed-left-margin-width
+               :min-width fixed-left-margin-width
+               :pref-height height
                :on-action {:event/type ::set-working-directory}
                :text "Set"}
               {:fx/type :text-field
                :editable false
-               :pref-height 40
+               :pref-height height
                :prompt-text "Select a working directory.."
-               :pref-column-count 100
-               :text working-directory}]})
+               :pref-column-count 999
+               :text working-directory}
+              {:fx/type :button
+               :pref-height height
+               :pref-width height ;; make square button
+               :min-width height
+               :on-action {:event/type ::remove-core}
+               :text "-"}
+              {:fx/type :button
+               :pref-height height
+               :pref-width height ;; make square button
+               :min-width height
+               :on-action {:event/type ::add-core}
+               :text "+"}]})
 
 (defn optical-image-display
   "display and options for the optical image"
-  [{:keys [display-width
+  [{:keys [core-number
+           width
+           height
            display-image
            crop-right
-           scan-line-pixel-offset-from-center
-           load-event]}]
+           crop-left
+           scan-line-pixel-offset-from-center]}]
   {:fx/type :h-box
+   :pref-height height
    :children (if display-image
-               (let [image-height (.getHeight display-image)]
                  [{:fx/type :group
                   :children [{:fx/type :image-view
-                              :fit-width display-width
+                              :fit-width width
+                              :fit-height height
                               :image display-image}
+                             ;; Center Line
                              {:fx/type :line
                               :start-x 0
-                              :start-y (/ image-height
+                              :start-y (/ height
                                           2.0)
-                              :end-x display-width
-                              :end-y (/ image-height
+                              :end-x width
+                              :end-y (/ height
                                         2.0)
                               :stroke-dash-array [10 10]
                               :stroke "white"}
+                             ;; Right Crop
+                             {:fx/type :line
+                              :start-x ( - width
+                                        (* crop-right
+                                           width))
+                              :start-y 0
+                              :end-x ( - width
+                                      (* crop-right
+                                         width))
+                              :end-y height
+                              :stroke "red"}
                              {:fx/type :rectangle
-                              :x ( - display-width
+                              :x ( - width
                                   (* crop-right
-                                     display-width))
+                                     width))
                               :y 0
-                              :height image-height
+                              :height height
                               :width (* crop-right
-                                        display-width)
-                              :opacity 0.15
-                              :fill "red"}]}])
-               [{:fx/type :v-box
-                 :children [{:fx/type :button
-                             :on-action {:event/type load-event}
-                             :text "Load image"}]}])})
+                                        width)
+                              :opacity 0.05
+                              :fill "red"}
+                             ;; Left Crop
+                             {:fx/type :line
+                              :start-x (* crop-left
+                                          width)
+                              :start-y 0
+                              :end-x (* crop-left
+                                        width)
+                              :end-y height
+                              :stroke "red"}
+                             {:fx/type :rectangle
+                              :x 0
+                              :y 0
+                              :height height
+                              :width (* crop-left
+                                        width)
+                              :opacity 0.05
+                              :fill "red"}]}]
+                 [{:fx/type :v-box
+                   :children [{:fx/type :button
+                               :pref-width width
+                               :pref-height height
+                               :on-action {:event/type ::load-optical-image
+                                           :core-number core-number}
+                               :text "Load image"}]}])})
 
 
 (defn xrf-columns-list
   "List of Elements (and other stuff)"
   [{:keys [items
            selection
-           selection-mode]}]
+           selection-mode
+           selection-number
+           height]}]
   {:fx/type fx.ext.list-view/with-selection-props
    :props (case selection-mode
             :single (cond-> {:selection-mode :single
-                             :on-selected-item-changed {:event/type ::select-single}}
+                             :on-selected-item-changed {:event/type ::select-single
+                                                        :selection-number selection-number}}
                       (seq selection)
                       (assoc :selected-item (-> selection sort first))))
    :desc {:fx/type :list-view
           :cell-factory (fn [path]
                           {:text path})
+          :pref-height height
           :max-width 99999
           :items items
-          :orientation :horizontal}})
+          :orientation :vertical}})
 (defmethod event-handler ::select-multiple
   [event]
   "multi select not implemented")
 
 (defmethod event-handler ::select-single
   [event]
-  (swap! *state assoc :selection (:fx/event event))
-  (event-handler {:event/type ::update-max-element-count}))
+  (swap! *state assoc-in [:selections 0 :element] (:fx/event event))
+  (event-handler {:event/type ::update-max-element-count
+                  :selection-number (:selection-number event)}))
 
 
 (defn xrf-scan-display
   "display and options for XRF scan data"
-  [{:keys [display-width
+  [{:keys [core-number
+           width
            height
            xrf-scan
            selection
            crop-right
+           crop-left
            load-event
            max-element-count]}]
   {:fx/type :h-box
    :children [{:fx/type :v-box
                :children (if xrf-scan
                            [{:fx/type fx/ext-instance-factory
-                             :create #(sausage.plot/plot-points display-width
-                                                                (- height 50)
+                             :create #(sausage.plot/plot-points width
+                                                                height
                                                                 (element-counts xrf-scan (keyword selection))
                                                                 (end-position (:data xrf-scan))
-                                                                max-element-count
+                                                                (* max-element-count
+                                                                   1.3)
                                                                 crop-right
+                                                                crop-left
                                                                 )}]
                            [{:fx/type :button
-                             :on-action {:event/type load-event}
+                             :pref-width width
+                             :pref-height height
+                             :on-action {:event/type ::load-xrf-scan
+                                         :core-number core-number}
                              :text "Load XRF Scan"}])}]})
 
 
+(defmethod event-handler ::adjust-right-crop
+  [event]
+  (swap! *state assoc-in [:cores
+                          (:core-number event)
+                          :crop-right]
+                          (- 1 (:fx/event event))))
+
+(defmethod event-handler ::adjust-left-crop
+  [event]
+  (swap! *state assoc-in [:cores
+                          (:core-number event)
+                          :crop-left]
+                          (:fx/event event)))
+
 (defn crop-slider
   ""
-  [{:keys [display-width
-           crop-right]}]
-  (let [slider-height 10]
-    {:fx/type :h-box
-     :children [{:fx/type :slider
-                 :max 1.0
-                 :min 0.0
-                 :show-tick-labels false
-                 :show-tick-marks false
-                 :pref-height slider-height
-                 :pref-width display-width
-                 :min-width display-width
-                 :value (- 1 crop-right)
-                 :on-value-changed {:event/type ::adjust-crop}}]}))
+  [{:keys [core-number
+           width
+           height
+           crop-right
+           crop-left]}]
+  {:fx/type :h-box
+   :children [{:fx/type :slider
+               :max 0.45
+               :min 0.0
+               :show-tick-labels false
+               :show-tick-marks false
+               :pref-width (* 0.45
+                              width)
+               :min-width (* 0.45
+                             width)
+               :pref-height height
+               :min-height height
+               :value crop-left
+               :on-value-changed {:event/type ::adjust-left-crop
+                                  :core-number core-number}}
+              {:fx/type :button
+               :pref-width (* 0.10
+                              width)
+               :pref-height height
+               :on-action {:event/type ::load-xrf-scan
+                           :core-number core-number}
+               :text "Crop"}
+              {:fx/type :slider
+               :max 1.0
+               :min 0.55
+               :show-tick-labels false
+               :show-tick-marks false
+               :pref-width (* 0.45 width) ;;width
+               :min-width (* 0.45 width) ;;width
+               :pref-height height
+               :min-height height
+               :value (- 1 crop-right)
+               :on-value-changed {:event/type ::adjust-right-crop
+                                  :core-number core-number}}]})
 
-(defmethod event-handler ::auto-crop
-  [event]
-  (println "Magic not implemented yet")
-  (swap! *state assoc :crop-right 0))
-
-(defmethod event-handler ::adjust-crop
-  [event]
-  (swap! *state assoc :crop-right (- 1 (:fx/event event))))
-
-
-
-
-(defn primary-display
+(defn core-display
   ""
   [{:keys [width
-           display-width
+           height
+           fixed-optical-scan-height
+           fixed-slider-height
+           core-number
            height
            directory
-           display-image
-           xrf-scan
-           selection
-           crop-right
-           scan-line-pixel-offset-from-center
-           max-element-count]}]
+           core
+           selections]}]
   {:fx/type :v-box
    :children [
               {:fx/type optical-image-display
-               :display-width display-width
-               :display-image display-image
-               :crop-right crop-right
-               :scan-line-pixel-offset-from-center scan-line-pixel-offset-from-center
-               :load-event ::load-primary-optical-image}
+               :core-number core-number
+               :width width
+               :height fixed-optical-scan-height
+               :display-image (:display-image core)
+               :crop-right (:crop-right core)
+               :crop-left (:crop-left core)
+               :scan-line-pixel-offset-from-center (:scan-line-pixel-offset-from-center core)}
               {:fx/type crop-slider
-               :display-width display-width
-               :crop-right crop-right}
+               :core-number core-number
+               :width width
+               :height fixed-slider-height
+               :crop-right (:crop-right core)
+               :crop-left (:crop-left core)}
               {:fx/type xrf-scan-display
-               :height (if display-image
-                         (- height
-                            (.getHeight display-image)
-                            100 ;; workspace setting fixed size
-                            )
-                         height)
-               :display-width display-width
-               :xrf-scan xrf-scan
-               :selection selection
-               :crop-right crop-right
+               :core-number core-number
+               :height (- height
+                          fixed-optical-scan-height
+                          fixed-slider-height)
+               :width width
+               :xrf-scan (:xrf-scan core)
+               :selection (:element (get selections 0))
+               :crop-right (:crop-right core)
+               :crop-left (:crop-left core)
                :load-event ::load-primary-xrf-scan
-               :max-element-count max-element-count}
+               :max-element-count (:max-count (get selections 0))}
               ]})
 
-(defn secondary-merge-display
+(defn left-margin
   ""
   [{:keys [width
-           display-width
            height
-           directory
-           display-image
-           xrf-scan
+           fixed-optical-scan-height
+           fixed-slider-height
+           elements
            selection
-           crop-right
-           scan-line-pixel-offset-from-center
-           max-element-count]}]
+           ]}]
   {:fx/type :v-box
-   :children [
-              {:fx/type optical-image-display
-               :display-width display-width
-               :display-image display-image
-               :crop-right crop-right
-               :scan-line-pixel-offset-from-center scan-line-pixel-offset-from-center
-               :load-event ::load-merge-optical-image}
-              {:fx/type crop-slider
-               :display-width display-width
-               :crop-right crop-right}
-              {:fx/type xrf-scan-display
-               :height (if display-image
-                         (- height
-                            (.getHeight display-image)
-                            100 ;; workspace setting fixed size
-                            )
-                         height)
-               :display-width display-width
-               :xrf-scan xrf-scan
+   :pref-width width
+   :pref-height fixed-optical-scan-height
+   :children [{:fx/type :h-box
+               :alignment :center
+               :pref-height fixed-optical-scan-height
+               :children [{:fx/type :text
+                          :text "Optical"}]}
+              {:fx/type :h-box
+               :alignment :center
+               :pref-height fixed-slider-height
+               :children [{:fx/type :text
+                           :text "-"}]}
+              {:fx/type xrf-columns-list
+               :items elements
+               :selection-mode :single
                :selection selection
-               :crop-right crop-right
-               :load-event ::load-merge-xrf-scan
-               :max-element-count max-element-count}]})
+               :selection-number 0
+               :height (- height
+                          fixed-optical-scan-height
+                          fixed-slider-height)}]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
@@ -517,53 +602,49 @@
            display-width
            height
            working-directory
-           display-image
-           xrf-scan
-           selection
-           crop-right
-           scan-line-pixel-offset-from-center
-           merge-optical-image
-           merge-display-image
-           merge-xrf-scan
-           max-element-count]}]
-  {:fx/type :stage
-   :showing true
-   :on-width-changed {:event/type ::width-changed}
-   :on-height-changed {:event/type ::height-changed}
-   :scene {:fx/type :scene
-           :root {:fx/type :v-box
-                  :children[{:fx/type workspace-settings-display
-                             :working-directory working-directory}
-                            {:fx/type :h-box
-                             :children [{:fx/type primary-display
-                                         :width width
-                                         :display-width (/ display-width 2.0)
-                                         :height height
-                                         :display-image display-image
-                                         :xrf-scan xrf-scan
-                                         :selection selection
-                                         :crop-right crop-right
-                                         :scan-line-pixel-offset-from-center scan-line-pixel-offset-from-center
-                                         :max-element-count max-element-count}
-                                        {:fx/type secondary-merge-display
-                                         :width width
-                                         :display-width (/ display-width 2.0)
-                                         :height height
-                                         :display-image merge-display-image
-                                         :xrf-scan merge-xrf-scan
-                                         :selection selection
-                                         :crop-right crop-right
-                                         :scan-line-pixel-offset-from-center scan-line-pixel-offset-from-center
-                                         :max-element-count max-element-count}
-                                        ]}
-
-                            {:fx/type xrf-columns-list
-                             :items (map name (:columns xrf-scan))
-                             :selection-mode :single
-                             :selection selection
-                             :heigth 20}
-                            ]}}})
-
+           cores
+           selections]}]
+  (let [fixed-workspace-settings-height 50
+        fixed-left-margin-width 150
+        fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
+        fixed-slider-height 50
+        fixed-element-selector-width 50
+        core-display-width (/ (- width
+                                 fixed-left-margin-width)
+                              (count cores))
+        core-display-height (- height
+                               fixed-workspace-settings-height)]
+    {:fx/type :stage
+      :showing true
+      :on-width-changed {:event/type ::width-changed}
+      :on-height-changed {:event/type ::height-changed}
+      :scene {:fx/type :scene
+              :root {:fx/type :v-box
+                     :children[{:fx/type workspace-settings-display
+                                :working-directory working-directory
+                                :fixed-left-margin-width fixed-left-margin-width
+                                :height fixed-workspace-settings-height}
+                               {:fx/type :h-box
+                                :children (into []
+                                                (concat [{:fx/type left-margin
+                                                          :width fixed-left-margin-width
+                                                          :height core-display-height
+                                                          :fixed-optical-scan-height fixed-optical-scan-height
+                                                          :fixed-slider-height fixed-slider-height
+                                                          :elements (map name
+                                                                         (:columns (:xrf-scan (get cores 0))))
+                                                          :selection (:element (get selections 0))}]
+                                                         (map-indexed (fn [index core]
+                                                                        {:fx/type core-display
+                                                                         :core-number index
+                                                                         :width core-display-width
+                                                                         :height (- height
+                                                                                    fixed-workspace-settings-height)
+                                                                         :fixed-optical-scan-height fixed-optical-scan-height
+                                                                         :fixed-slider-height fixed-slider-height
+                                                                         :core core
+                                                                         :selections selections})
+                                                                      (:cores @*state))))}]}}}))
 
 (def renderer
   (fx/create-renderer
@@ -573,8 +654,3 @@
 (fx/mount-renderer
  *state
  renderer)
-
-;; Technically shouldn't be necessary
-;; But I get weird artifacts unless i rereun this here
-(renderer)
-

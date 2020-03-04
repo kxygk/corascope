@@ -72,12 +72,20 @@
    points
    max-position
    max-count
-   crop-right]
-  (let [crop-distance (* (- 1 crop-right)
-                         max-position)
-        crop-points (filter #(> (first %)
-                                crop-distance)
-                            points)]
+   crop-right
+   crop-left]
+  (let [right-crop-distance (* (- 1 crop-right)
+                               max-position)
+        right-crop-points (filter #(> (first %)
+                                      right-crop-distance)
+                                  points)
+        left-crop-distance (* crop-left
+                              max-position)
+        left-crop-points (filter #(< (first %)
+                                     left-crop-distance)
+                                 points)
+        crop-points (concat right-crop-points
+                           left-crop-points)]
   (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
                                                       height
                                                       max-position
