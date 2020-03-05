@@ -1,27 +1,13 @@
 (ns sausage.core
   (:require
    [sausage.plot]
+   [sausage.optical]
+   [sausage.xrf]
    [cljfx.api :as fx]
-   [cljfx.ext.list-view :as fx.ext.list-view]
-   [clojure.data.csv]
-   [clojure.java.io])
-  (:import [javafx.scene.input KeyCode KeyEvent]
-           boofcv.io.image.ConvertBufferedImage
-           boofcv.io.image.UtilImageIO
-           boofcv.struct.image.ImageType
-           boofcv.core.image.ConvertImage
-           boofcv.struct.image.GrayU8
-           boofcv.alg.misc.ImageMiscOps
-           javafx.embed.swing.SwingFXUtils
-           ;;           javafx.scene.paint Color
-           javafx.stage.DirectoryChooser
+   [cljfx.ext.list-view :as fx.ext.list-view])
+  (:import javafx.stage.DirectoryChooser
            javafx.stage.FileChooser
-           java.io.File
-           java.io.FileWriter
-           javafx.stage.Stage
-           javax.imageio.ImageIO
-
-           ))
+           javafx.stage.Stage))
 
 (def *state
   ""
@@ -106,70 +92,21 @@
       (.mkdirs file) ;; maybe should be moved to the save-workspace method
       (swap! *state assoc :working-directory path))))
 
-(defn save-image
-  ""
-  [directory
-   fx-image
-   name]
-  (ImageIO/write (SwingFXUtils/fromFXImage fx-image
-                                           nil)
-                 "tiff"
-                 (File. (str directory
-                             "/" name))))
-(defn build-csv-row
-  "take one measurement data and shove it into a vector or string - for CSV exports"
-  [columns
-   measurement-data]
-  (into [] (map #(% measurement-data) columns)))
-
-(defn save-xrf-scan
-  ""
-  [directory
-   xrf-scan
-   file-name]
-  (let [header (:header xrf-scan)
-        columns (:columns xrf-scan)
-        data (:data xrf-scan)]
-
-    (clojure.data.csv/write-csv (clojure.java.io/writer (str directory "/" file-name))
-                                (into (merge header (into [] (map name columns)))
-                                      (into [] (map #(build-csv-row columns %) data)))
-                                :separator \tab)))
-
-(defn save-to-working-directory
-  "Saves the current 'state' to the working directory (optical image, data table etc.)"
-  []
-  (let [working-directory (-> @*state
-                              :working-directory)
-        optical-image (->  @*state
-                           :optical-image)
-        xrf-scan (-> @*state
-                     :xrf-scan )]
-    (if optical-image (save-image working-directory
-                                  optical-image
-                                  "optical.tiff"))
-    (if xrf-scan (save-xrf-scan working-directory
-                                xrf-scan
-                                "xrf-scan.txt"))))
-
-
-(defn to-fx-image
-  [boofcv-image]
-  (-> boofcv-image
-      (ConvertBufferedImage/convertTo nil true)
-      (SwingFXUtils/toFXImage nil)))
-
-(defn load-image
-  [file]
-  (println "loading image")
-  (println file)
-  (-> file
-      (.getCanonicalPath)
-      (boofcv.io.image.UtilImageIO/loadImage)
-      ;;      (ImageMiscOps/flipHorizontal)
-      (ConvertBufferedImage/convertFrom true
-                                        (ImageType/pl 3
-                                                      GrayU8))))
+;; (defn save-to-working-directory
+;;   "Saves the current 'state' to the working directory (optical image, data table etc.)"
+;;   []
+;;   (let [working-directory (-> @*state
+;;                               :working-directory)
+;;         optical-image (->  @*state
+;;                            :optical-image)
+;;         xrf-scan (-> @*state
+;;                      :xrf-scan )]
+;;     (if optical-image (save-image working-directory
+;;                                   optical-image
+;;                                   "optical.tiff"))
+;;     (if xrf-scan (save-xrf-scan working-directory
+;;                                 xrf-scan
+;;                                 "xrf-scan.txt"))))
 
 (defmethod event-handler ::update-display-image [event]
   (let [core-number (:core-number event)
@@ -177,19 +114,12 @@
                     :cores
                     (get core-number)
                     :optical-image)]
-    (-> optical
-        (.getBand 0)
-        ImageMiscOps/flipHorizontal)
-    (-> optical
-        (.getBand 1)
-        ImageMiscOps/flipHorizontal)
-    (-> optical
-        (.getBand 2)
-        ImageMiscOps/flipHorizontal)
     (swap! *state assoc-in [:cores
                             core-number
                             :display-image]
-           (to-fx-image optical))))
+           (-> optical
+               sausage.optical/flip-image
+               sausage.optical/to-fx-image))))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -203,7 +133,7 @@
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))
-        optical-image (load-image file)
+        optical-image (sausage.optical/load-image file)
         core-number (:core-number event)]
     (swap! *state
            assoc-in [:cores
@@ -212,24 +142,6 @@
            optical-image)
     (event-handler {:event/type ::update-display-image
                     :core-number core-number})))
-
-(defn load-xrf-scan-file
-  [csv-file]  
-  (let [full-csv-table (-> csv-file
-                           (.getCanonicalPath)
-                           (clojure.java.io/reader)
-                           (clojure.data.csv/read-csv :separator \tab))
-        header (into [] (take 2 full-csv-table))
-        columns (map #(-> %
-                          (clojure.string/split #" ")
-                          (first)
-                          keyword)
-                     (first (drop 2 full-csv-table)))
-        count-table (drop 3 full-csv-table)
-        data (map #(zipmap columns %) count-table)]
-    {:header header
-     :columns columns
-     :data data}))
 
 (defn element-counts
   [xrf-scan
@@ -265,12 +177,9 @@
            assoc-in [:cores
                      (:core-number event)
                      :xrf-scan]
-           (load-xrf-scan-file file))
+           (sausage.xrf/load-xrf-scan-file file))
     ))
 
-(defn end-position
-  [data-table]
-  (read-string (:position (last data-table))))
 
 (defmethod event-handler ::add-core [event]
   (let [num-cores (-> @*state
@@ -279,11 +188,11 @@
     (swap! *state assoc-in [:cores
                             num-cores]
            {:optical-image nil ;; BoofCV image
-                  :display-image nil ;; JFX image
-                  :scan-line-pixel-offset-from-center 0
-                  :xrf-scan nil
-                  :crop-right 0.0
-                  :crop-left 0.0})))
+            :display-image nil ;; JFX image
+            :scan-line-pixel-offset-from-center 0
+            :xrf-scan nil
+            :crop-right 0.0
+            :crop-left 0.0})))
 
 (defmethod event-handler ::remove-core [event]
     (swap! *state assoc :cores
@@ -403,7 +312,7 @@
                                :text "Load image"}]}])})
 
 
-(defn xrf-columns-list
+(defn xrf-columns-list ;; TODO: Figure out how the hell this works!
   "List of Elements (and other stuff)"
   [{:keys [items
            selection
@@ -424,6 +333,7 @@
           :max-width 99999
           :items items
           :orientation :vertical}})
+
 (defmethod event-handler ::select-multiple
   [event]
   "multi select not implemented")
@@ -453,7 +363,7 @@
                              :create #(sausage.plot/plot-points width
                                                                 height
                                                                 (element-counts xrf-scan (keyword selection))
-                                                                (end-position (:data xrf-scan))
+                                                                (sausage.xrf/end-position xrf-scan)
                                                                 (* max-element-count
                                                                    1.3)
                                                                 crop-right
