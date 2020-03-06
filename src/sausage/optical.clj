@@ -45,13 +45,14 @@
 
 (defn flip-image
   [boofcv-image]
-  (-> boofcv-image;;optical
-      (.getBand 0)
-      ImageMiscOps/flipHorizontal)
-  (-> boofcv-image;;optical
-      (.getBand 1)
-      ImageMiscOps/flipHorizontal)
-  (-> boofcv-image;;optical
-      (.getBand 2)
-      ImageMiscOps/flipHorizontal)
-  boofcv-image)
+  (let [to-flip (.clone boofcv-image)]
+    (-> to-flip
+        (.getBand 0)
+        ImageMiscOps/flipHorizontal)
+    (-> to-flip
+        (.getBand 1)
+        ImageMiscOps/flipHorizontal)
+    (-> to-flip
+        (.getBand 2)
+        ImageMiscOps/flipHorizontal)
+    to-flip))
