@@ -56,3 +56,33 @@
         (.getBand 2)
         ImageMiscOps/flipHorizontal)
     to-flip))
+
+(defn joing-images-horizontally
+  "Join two boofCV images horizontally into one.
+  ImageA will be on the left
+  ImageB will be on the right"
+  [imageA
+   imageB]
+  (let [imageA-width (.getWidth imageA)
+        imageB-width (.getWidth imageB)
+        height (.getHeight imageA)
+        width (+ imageA-width
+                 imageB-width)
+        merged-image (boofcv.struct.image.Planar. boofcv.struct.image.GrayU8
+                                                  width
+                                                  height
+                                                  3)
+        subimageA (.subimage merged-image
+                             0
+                             0
+                             imageA-width
+                             height)
+        subimageB (.subimage merged-image
+                             imageA-width
+                             0
+                             (+ imageA-width
+                                imageB-width)
+                             height)]
+    (.setTo subimageA imageA)
+    (.setTo subimageB imageB)
+    merged-image))

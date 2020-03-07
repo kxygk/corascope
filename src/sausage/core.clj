@@ -563,3 +563,22 @@
 (fx/mount-renderer
  *state
  renderer)
+
+
+
+(defn display-image-in-third-window
+  "Debugging function to test optical image merging"
+  [boofcv-image]
+  (swap! *state assoc-in [:cores 2 :optical-image] boofcv-image)
+  (event-handler {:event/type ::update-display-image :core-number 2}))
+
+
+
+#_(display-image-in-third-window (sausage.optical/joing-images-horizontally (-> @*state
+                                                                              :cores
+                                                                              (get 1)
+                                                                              :optical-image )
+                                                                            (-> @*state
+                                                                                :cores
+                                                                                (get 0)
+                                                                                :optical-image )))
