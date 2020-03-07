@@ -15,16 +15,28 @@
          :width 400
          :height 400
          :display-width 300
-         :cores [
-                 {:optical-image nil ;; BoofCV image
-                  :display-image nil ;; JFX image
-                  :scan-line-pixel-offset-from-center 0
-                  :xrf-scan nil
-                  :crop-right 0.0 ;; what fraction off the "right" isn't part of the core
-                  :crop-left 0.0}]
+         :mm-per-pixel 0.5 ;; Common parameter across all cores
+         :mm-xrf-step-size 5 ;; Common parameter across all cores
+         :cores [{:optical nil
+                  :xrf-scan nil}]
          :selections [{:element "Mn"
-                       :max-count 1000}]
-         }))
+                       :max-count 1000}]}))
+
+
+                 ;; {:optical nil #_{:image nil ;; BoofCV image
+                 ;;                  :display nil ;; JFX image
+                 ;;                  :unscanned-pixels-left 0
+                 ;;                  :unscanned-pixels-right 0
+                 ;;                  :crop-pixels-left 0
+                 ;;                  :crop-pixels-right 0
+                 ;;                  :scan-line-pixel-offset-from-center 0}
+                 ;;  :xrf-scan nil #_{:header
+                 ;;                   :columns
+                 ;;                   :element-counts
+                 ;;                   :missing-steps-left 0
+                 ;;                   :missing-steps-right 0
+                 ;;                   :crop-steps-left 0.0
+                 ;;                   :crop-steps-right 0.0}
 
 (defmulti event-handler
   "CLJFX -  Event Handlers
@@ -113,10 +125,12 @@
         optical (-> @*state
                     :cores
                     (get core-number)
-                    :optical-image)]
+                    :optical
+                    :image)]
     (swap! *state assoc-in [:cores
                             core-number
-                            :display-image]
+                            :optical
+                            :display]
            (-> optical
                sausage.optical/flip-image
                sausage.optical/to-fx-image))))
@@ -138,7 +152,8 @@
     (swap! *state
            assoc-in [:cores
                      core-number
-                     :optical-image]
+                     :optical
+                     :image]
            optical-image)
     (event-handler {:event/type ::update-display-image
                     :core-number core-number})))
@@ -148,11 +163,9 @@
    element]
   (map #(vector (read-string (:position %))
                 (read-string (element %)))
-       (:data xrf-scan)))
+       (:element-counts xrf-scan)))
 
 (defmethod event-handler ::update-max-element-count [event]
-  ;;  @(fx/on-fx-thread
-  (println "updating max element")
   (swap! *state
          assoc-in [:selections
                    (:selection-number event)
@@ -165,6 +178,13 @@
                                                              :selections
                                                              (get 0)
                                                              :element)))))))
+
+ ;; (-> @*state :cores
+ ;;     (get 0)
+ ;;     :xrf-scan
+ ;;     :element-counts
+ ;;     first
+ ;;     :position)
 
 (defmethod event-handler ::load-xrf-scan [event]
   ;;  @(fx/on-fx-thread
@@ -187,12 +207,8 @@
                       count)]
     (swap! *state assoc-in [:cores
                             num-cores]
-           {:optical-image nil ;; BoofCV image
-            :display-image nil ;; JFX image
-            :scan-line-pixel-offset-from-center 0
-            :xrf-scan nil
-            :crop-right 0.0
-            :crop-left 0.0})))
+           {:optical nil
+            :xrf-scan nil})))
 
 (defmethod event-handler ::remove-core [event]
     (swap! *state assoc :cores
@@ -206,7 +222,6 @@
            fixed-left-margin-width
            height]}]
   {:fx/type :h-box
-   ;; :width width
    :children [{:fx/type :button
                :pref-width fixed-left-margin-width
                :min-width fixed-left-margin-width
@@ -237,79 +252,75 @@
   [{:keys [core-number
            width
            height
-           display-image
-           crop-right
-           crop-left
-           scan-line-pixel-offset-from-center]}]
+           optical]}]
   {:fx/type :h-box
    :pref-height height
-   :children (if display-image
-                 [{:fx/type :group
-                   :children (filter identity ;; TODO Find way to do conditional GUI elements without filter
-                                     [{:fx/type :image-view
-                                       :fit-width width
-                                       :fit-height height
-                                       :image display-image}
-                                      ;; Center Line
-                                      {:fx/type :line
-                                       :start-x 0
-                                       :start-y (/ height
-                                                   2.0)
-                                       :end-x width
-                                       :end-y (/ height
+   :children (if (nil? optical)
+               [{:fx/type :v-box
+                 :children [{:fx/type :button
+                             :pref-width width
+                             :pref-height height
+                             :on-action {:event/type ::load-optical-image
+                                         :core-number core-number}
+                             :text "Load image"}]}]
+               [{:fx/type :group
+                 :children (filter identity ;; TODO Find way to do conditional GUI elements without filter
+                                   [{:fx/type :image-view
+                                     :fit-width width
+                                     :fit-height height
+                                     :image (:display optical)}
+                                    ;; Center Line
+                                    {:fx/type :line
+                                     :start-x 0
+                                     :start-y (/ height
                                                  2.0)
-                                       :stroke-dash-array [10 10]
-                                       :stroke "white"}
-                                      ;; Right Crop
-                                      (if (not (zero? crop-right))
-                                        {:fx/type :line
-                                         :start-x ( - width
-                                                   (* crop-right
-                                                      width))
-                                         :start-y 0
-                                         :end-x ( - width
-                                                 (* crop-right
+                                     :end-x width
+                                     :end-y (/ height
+                                               2.0)
+                                     :stroke-dash-array [10 10]
+                                     :stroke "white"}
+                                    ;; Right Crop
+                                    (if (not (nil? (:crop-pixels-right optical)))
+                                      {:fx/type :line
+                                       :start-x ( - width
+                                                 (* (:crop-pixels-right optical) ;;crop-right
                                                     width))
-                                         :end-y height
-                                         :stroke "red"})
-                                      (if (not (zero? crop-right)) ;; TODO: Find clean way to make one if statement
-                                        {:fx/type :rectangle
-                                         :x ( - width
-                                             (* crop-right
-                                                width))
-                                         :y 0
-                                         :height height
-                                         :width (* crop-right
+                                       :start-y 0
+                                       :end-x ( - width
+                                               (* (:crop-pixels-right optical) ;;crop-right
+                                                  width))
+                                       :end-y height
+                                       :stroke "red"})
+                                    (if (not (nil? (:crop-pixels-right optical))) ;; TODO: Find clean way to make one if statement
+                                      {:fx/type :rectangle
+                                       :x ( - width
+                                           (* (:crop-pixels-right optical) ;;crop-right
+                                              width))
+                                       :y 0
+                                       :height height
+                                       :width (* (:crop-pixels-right optical) ;;crop-right
+                                                 width)
+                                       :opacity 0.05
+                                       :fill "red"})
+                                    ;; Left Crop
+                                    (if (not (nil? (:crop-pixels-left optical)))
+                                      {:fx/type :line
+                                       :start-x (* (:crop-pixels-left optical)
                                                    width)
-                                         :opacity 0.05
-                                         :fill "red"})
-                                      ;; Left Crop
-                                      (if (not (zero? crop-left))
-                                        {:fx/type :line
-                                         :start-x (* crop-left
-                                                     width)
-                                         :start-y 0
-                                         :end-x (* crop-left
-                                                   width)
-                                         :end-y height
-                                         :stroke "red"})
-                                      (if (not (zero? crop-left))
-                                        {:fx/type :rectangle
-                                         :x 0
-                                         :y 0
-                                         :height height
-                                         :width (* crop-left
-                                                   width)
-                                         :opacity 0.05
-                                         :fill "red"})
-                             ])}]
-                 [{:fx/type :v-box
-                   :children [{:fx/type :button
-                               :pref-width width
-                               :pref-height height
-                               :on-action {:event/type ::load-optical-image
-                                           :core-number core-number}
-                               :text "Load image"}]}])})
+                                       :start-y 0
+                                       :end-x (* (:crop-pixels-left optical)
+                                                 width)
+                                       :end-y height
+                                       :stroke "red"})
+                                    (if (not (nil? (:crop-pixels-left optical)))
+                                      {:fx/type :rectangle
+                                       :x 0
+                                       :y 0
+                                       :height height
+                                       :width (* (:crop-pixels-left optical) ;;crop-left
+                                                 width)
+                                       :opacity 0.05
+                                       :fill "red"})])}])})
 
 
 (defn xrf-columns-list ;; TODO: Figure out how the hell this works!
@@ -352,9 +363,6 @@
            height
            xrf-scan
            selection
-           crop-right
-           crop-left
-           load-event
            max-element-count]}]
   {:fx/type :h-box
    :children [{:fx/type :v-box
@@ -362,12 +370,13 @@
                            [{:fx/type fx/ext-instance-factory
                              :create #(sausage.plot/plot-points width
                                                                 height
-                                                                (element-counts xrf-scan (keyword selection))
+                                                                (element-counts xrf-scan
+                                                                                (keyword selection))
                                                                 (sausage.xrf/end-position xrf-scan)
                                                                 (* max-element-count
                                                                    1.3)
-                                                                crop-right
-                                                                crop-left
+                                                                0 ;;(:missing-steps-left xrf-scan)
+                                                                1 ;;(:missing-steps-right xrf-scan)
                                                                 )}]
                            [{:fx/type :button
                              :pref-width width
@@ -396,8 +405,8 @@
   [{:keys [core-number
            width
            height
-           crop-right
-           crop-left]}]
+           optical
+           xrf-scan]}]
   {:fx/type :h-box
    :children [{:fx/type :slider
                :max 0.45
@@ -410,7 +419,7 @@
                              width)
                :pref-height height
                :min-height height
-               :value crop-left
+               :value 0 ;; crop-left
                :on-value-changed {:event/type ::adjust-left-crop
                                   :core-number core-number}}
               {:fx/type :button
@@ -429,7 +438,7 @@
                :min-width (* 0.45 width) ;;width
                :pref-height height
                :min-height height
-               :value (- 1 crop-right)
+               :value 0 ;;(- 1 crop-right)
                :on-value-changed {:event/type ::adjust-right-crop
                                   :core-number core-number}}]})
 
@@ -440,7 +449,6 @@
            fixed-optical-scan-height
            fixed-slider-height
            core-number
-           height
            directory
            core
            selections]}]
@@ -450,16 +458,13 @@
                :core-number core-number
                :width width
                :height fixed-optical-scan-height
-               :display-image (:display-image core)
-               :crop-right (:crop-right core)
-               :crop-left (:crop-left core)
-               :scan-line-pixel-offset-from-center (:scan-line-pixel-offset-from-center core)}
+               :optical (:optical core)}
               {:fx/type crop-slider
                :core-number core-number
                :width width
                :height fixed-slider-height
-               :crop-right (:crop-right core)
-               :crop-left (:crop-left core)}
+               :optical (:optical core)
+               :xrf-scan (:xrf-scan core)}
               {:fx/type xrf-scan-display
                :core-number core-number
                :height (- height
@@ -468,13 +473,10 @@
                :width width
                :xrf-scan (:xrf-scan core)
                :selection (:element (get selections 0))
-               :crop-right (:crop-right core)
-               :crop-left (:crop-left core)
-               :load-event ::load-primary-xrf-scan
                :max-element-count (:max-count (get selections 0))}
               ]})
 
-(defn left-margin
+(defn margin
   ""
   [{:keys [width
            height
@@ -535,7 +537,7 @@
                                 :height fixed-workspace-settings-height}
                                {:fx/type :h-box
                                 :children (into []
-                                                (concat [{:fx/type left-margin
+                                                (concat [{:fx/type margin
                                                           :width fixed-left-margin-width
                                                           :height core-display-height
                                                           :fixed-optical-scan-height fixed-optical-scan-height

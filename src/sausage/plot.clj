@@ -77,8 +77,8 @@
    points
    max-position
    max-count
-   crop-right
-   crop-left]
+   crop-left
+   crop-right]
   (let [right-crop-distance (* (- 1 crop-right)
                                max-position)
         right-crop-points (filter #(> (first %)
@@ -90,13 +90,13 @@
                                      left-crop-distance)
                                  points)
         crop-points (concat right-crop-points
-                           left-crop-points)]
+                            left-crop-points)]
   (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
                                                       height
                                                       max-position
                                                       max-count)
                                            (add-points points
-                                                       crop-points)
+                                                       [])
                                            (viz/svg-plot2d-cartesian)
                                            (#(svgthing/svg {:width width
                                                             :height height}

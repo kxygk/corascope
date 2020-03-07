@@ -19,7 +19,7 @@
         data (map #(zipmap columns %) count-table)]
     {:header header
      :columns columns
-     :data data}))
+     :element-counts data}))
 
 
 (defn build-csv-row
@@ -35,7 +35,7 @@
    file-name]
   (let [header (:header xrf-scan)
         columns (:columns xrf-scan)
-        data (:data xrf-scan)]
+        data (:element-counts xrf-scan)]
 
     (clojure.data.csv/write-csv (clojure.java.io/writer (str directory "/" file-name))
                                 (into (merge header (into [] (map name columns)))
@@ -46,7 +46,7 @@
   "End position of the scan - in (mm)"
   [xrf-scan]
   (-> xrf-scan
-      :data
+      :element-counts
       first
       :position
       read-string))
@@ -55,7 +55,7 @@
   "End position of the scan - in (mm)"
   [xrf-scan]
   (-> xrf-scan
-      :data
+      :element-counts
       last
       :position
       read-string))
