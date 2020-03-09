@@ -252,7 +252,9 @@
   [{:keys [core-number
            width
            height
-           optical]}]
+           optical
+           crop-left
+           crop-right]}]
   {:fx/type :h-box
    :pref-height height
    :children (if (nil? optical)
@@ -265,62 +267,78 @@
                              :text "Load image"}]}]
                [{:fx/type :group
                  :children (filter identity ;; TODO Find way to do conditional GUI elements without filter
-                                   [{:fx/type :image-view
-                                     :fit-width width
-                                     :fit-height height
-                                     :image (:display optical)}
-                                    ;; Center Line
-                                    {:fx/type :line
-                                     :start-x 0
-                                     :start-y (/ height
+                                   (let [crop-left-pix (* crop-left
+                                                          width)
+                                         crop-right-pix (* crop-right
+                                                           width)]
+                                     [{:fx/type :image-view
+                                       :fit-width width
+                                       :fit-height height
+                                       :image (:display optical)}
+                                      ;; Center Line
+                                      {:fx/type :line
+                                       :start-x 0
+                                       :start-y (/ height
+                                                   2.0)
+                                       :end-x width
+                                       :end-y (/ height
                                                  2.0)
-                                     :end-x width
-                                     :end-y (/ height
-                                               2.0)
-                                     :stroke-dash-array [10 10]
-                                     :stroke "white"}
-                                    ;; Right Crop
-                                    (if (not (nil? (:crop-pixels-right optical)))
-                                      {:fx/type :line
-                                       :start-x ( - width
-                                                 (* (:crop-pixels-right optical) ;;crop-right
-                                                    width))
-                                       :start-y 0
-                                       :end-x ( - width
-                                               (* (:crop-pixels-right optical) ;;crop-right
-                                                  width))
-                                       :end-y height
-                                       :stroke "red"})
-                                    (if (not (nil? (:crop-pixels-right optical))) ;; TODO: Find clean way to make one if statement
-                                      {:fx/type :rectangle
-                                       :x ( - width
-                                           (* (:crop-pixels-right optical) ;;crop-right
-                                              width))
-                                       :y 0
-                                       :height height
-                                       :width (* (:crop-pixels-right optical) ;;crop-right
-                                                 width)
-                                       :opacity 0.05
-                                       :fill "red"})
-                                    ;; Left Crop
-                                    (if (not (nil? (:crop-pixels-left optical)))
-                                      {:fx/type :line
-                                       :start-x (* (:crop-pixels-left optical)
-                                                   width)
-                                       :start-y 0
-                                       :end-x (* (:crop-pixels-left optical)
-                                                 width)
-                                       :end-y height
-                                       :stroke "red"})
-                                    (if (not (nil? (:crop-pixels-left optical)))
-                                      {:fx/type :rectangle
-                                       :x 0
-                                       :y 0
-                                       :height height
-                                       :width (* (:crop-pixels-left optical) ;;crop-left
-                                                 width)
-                                       :opacity 0.05
-                                       :fill "red"})])}])})
+                                       :stroke-dash-array [10 10]
+                                       :stroke "white"}
+                                      ;; Right Crop
+                                      (if (pos? crop-right-pix)
+                                        {:fx/type :line
+                                         :start-x (- width
+                                                     crop-right-pix)
+                                         :start-y 0
+                                         :end-x (- width
+                                                   crop-right-pix)
+                                         :end-y height
+                                         :stroke "red"})
+                                      (if (pos? crop-right-pix)
+                                        {:fx/type :rectangle
+                                         :x (- width
+                                               crop-right-pix)
+                                         :y 0
+                                         :height height
+                                         :width crop-right-pix
+                                         :opacity 0.05
+                                         :fill "red"})
+                                      ;; Left Crop
+                                      (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
+                                        {:fx/type :line
+                                         :start-x crop-left-pix
+                                         :start-y 0
+                                         :end-x crop-left-pix
+                                         :end-y height
+                                         :stroke "red"})
+                                      (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
+                                        {:fx/type :rectangle
+                                         :x 0
+                                         :y 0
+                                         :height height
+                                         :width crop-left-pix
+                                         :opacity 0.05
+                                         :fill "red"})
+                                      ;; Left Unscanned Area
+                                      (if (not (nil? (:crop-pixels-left optical)))
+                                        {:fx/type :rectangle
+                                         :x 0
+                                         :y 0
+                                         :height height
+                                         :width crop-left-pix
+                                         :opacity 0.05
+                                         :fill "yellow"})
+                                      ;; Right Unscanned Area
+                                      (if (not (nil? (:crop-pixels-left optical)))
+                                        {:fx/type :rectangle
+                                         :x 0
+                                         :y 0
+                                         :height height
+                                         :width crop-right-pix
+                                         :opacity 0.05
+                                         :fill "yellow"})])
+                                      )}])})
 
 
 (defn xrf-columns-list ;; TODO: Figure out how the hell this works!
@@ -406,7 +424,9 @@
            width
            height
            optical
-           xrf-scan]}]
+           xrf-scan
+           crop-left
+           crop-right]}]
   {:fx/type :h-box
    :children [{:fx/type :slider
                :max 0.45
@@ -419,7 +439,7 @@
                              width)
                :pref-height height
                :min-height height
-               :value 0 ;; crop-left
+               :value crop-left
                :on-value-changed {:event/type ::adjust-left-crop
                                   :core-number core-number}}
               {:fx/type :button
@@ -434,11 +454,11 @@
                :min 0.55
                :show-tick-labels false
                :show-tick-marks false
-               :pref-width (* 0.45 width) ;;width
-               :min-width (* 0.45 width) ;;width
+               :pref-width (* 0.45 width)
+               :min-width (* 0.45 width)
                :pref-height height
                :min-height height
-               :value 0 ;;(- 1 crop-right)
+               :value (- 1 crop-right)
                :on-value-changed {:event/type ::adjust-right-crop
                                   :core-number core-number}}]})
 
@@ -458,13 +478,17 @@
                :core-number core-number
                :width width
                :height fixed-optical-scan-height
-               :optical (:optical core)}
+               :optical (:optical core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)}
               {:fx/type crop-slider
                :core-number core-number
                :width width
                :height fixed-slider-height
                :optical (:optical core)
-               :xrf-scan (:xrf-scan core)}
+               :xrf-scan (:xrf-scan core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)}
               {:fx/type xrf-scan-display
                :core-number core-number
                :height (- height
