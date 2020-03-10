@@ -59,3 +59,29 @@
       last
       :position
       read-string))
+
+(defn shift-string-number ;; TODO Make this unnecessary..
+  [shift
+   string-number]
+  (str (- (read-string string-number)
+          shift)))
+
+(defn crop
+  [xrf-scan-element-counts ;; TODO: Rewrite so it operates on 'xrf-scan'
+   crop-left-mm
+   crop-right-mm] ;; TODO rewrite as threaded ->
+  (let [end-mm (- (-> xrf-scan-element-counts last :position read-string)
+                  crop-right-mm)]
+    (filter #(< 0
+                (read-string (:position %)))
+            (map #(update % :position (partial shift-string-number crop-left-mm))
+                 (filter #(>= end-mm
+                             (read-string (:position %)))
+                         xrf-scan-element-counts)
+                 )
+            )
+  )
+  )
+
+
+(partial shift-string-number 100)

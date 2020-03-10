@@ -26,7 +26,7 @@
              
    :y-axis (viz/linear-axis
             {:domain      [0 max-count]
-             :range       [height 0]
+             :range       [height 45] ;; 45pix offset on the bottom for the legend
              ;; puts the axis out of view (can't show the grid with no axis)
              :pos         0 ;; major-size default
              :visible true
@@ -55,7 +55,7 @@
     (assoc spec
             :data
             (filter identity [(if (not (empty? crop-points))
-                                #_{:values  crop-points
+                                {:values  crop-points
                                  :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
                                  ;; :shape   (viz/svg-square 5)
                                  :layout  viz/svg-scatter-plot}
@@ -91,14 +91,14 @@
                                  points)
         crop-points (concat right-crop-points
                             left-crop-points)]
-  (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
-                                                      height
-                                                      max-position
-                                                      max-count)
-                                           (add-points points
-                                                       [])
-                                           (viz/svg-plot2d-cartesian)
-                                           (#(svgthing/svg {:width width
-                                                            :height height}
-                                                           %))
-                                           (svgthing/serialize)))))
+    (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
+                                                        height
+                                                        max-position
+                                                        max-count)
+                                             (add-points points
+                                                         crop-points)
+                                             (viz/svg-plot2d-cartesian)
+                                             (#(svgthing/svg {:width width
+                                                              :height height}
+                                                             %))
+                                             (svgthing/serialize)))))

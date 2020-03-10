@@ -18,7 +18,10 @@
          :mm-per-pixel 0.5 ;; Common parameter across all cores
          :mm-xrf-step-size 5 ;; Common parameter across all cores
          :cores [{:optical nil
-                  :xrf-scan nil}]
+                  :xrf-scan nil
+                  :length-mm 0
+                  :crop-left 0
+                  :crop-right 0}]
          :selections [{:element "Mn"
                        :max-count 1000}]}))
 
@@ -120,6 +123,49 @@
 ;;                                 xrf-scan
 ;;                                 "xrf-scan.txt"))))
 
+(defmethod event-handler ::update-unscanned-areas [event]
+  (let [core-number (:core-number event)
+        image-width-pix (-> @*state
+                            :cores
+                            (.get core-number)
+                            :optical
+                            :image
+                            .getWidth)
+        mm-per-pixel (:mm-per-pixel @*state)
+        ;; image-width-mm (* image-width-pix
+        ;;                   mm-per-pixel)
+        scan (-> @*state
+                 :cores
+                 (.get core-number)
+                 :xrf-scan
+                 :element-counts)
+        scan-start-mm (-> scan
+                          first
+                          :position
+                          read-string)
+        scan-start-pix (/ scan-start-mm
+                          mm-per-pixel)
+        scan-end-mm (-> scan
+                         last
+                         :position
+                         read-string)
+        scan-end-pix (/ scan-end-mm
+                        mm-per-pixel)
+        ]
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :optical
+                     :unscanned-left-pix]
+           scan-start-pix)
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :optical
+                     :unscanned-right-pix]
+           (- image-width-pix
+              scan-end-pix))))
+
 (defmethod event-handler ::update-display-image [event]
   (let [core-number (:core-number event)
         optical (-> @*state
@@ -134,6 +180,24 @@
            (-> optical
                sausage.optical/flip-image
                sausage.optical/to-fx-image))))
+
+(defmethod event-handler ::update-core-length [event]
+  (let [core-number (:core-number event)
+        width-pix (-> @*state
+                      :cores
+                      (get core-number)
+                      :optical
+                      :image
+                      .getWidth)
+        width-mm (* width-pix
+                    (-> @*state :mm-per-pixel))
+        ]
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :length-mm]
+           width-mm)))
+
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -156,7 +220,16 @@
                      :image]
            optical-image)
     (event-handler {:event/type ::update-display-image
-                    :core-number core-number})))
+                    :core-number core-number})
+    (event-handler {:event/type ::update-core-length
+                    :core-number core-number})
+
+    (if (-> @*state
+            :cores
+            (.get core-number)
+            :xrf-scan)
+      (event-handler {:event/type ::update-unscanned-areas
+                      :core-number core-number}))))
 
 (defn element-counts
   [xrf-scan
@@ -179,27 +252,31 @@
                                                              (get 0)
                                                              :element)))))))
 
- ;; (-> @*state :cores
- ;;     (get 0)
- ;;     :xrf-scan
- ;;     :element-counts
- ;;     first
- ;;     :position)
-
 (defmethod event-handler ::load-xrf-scan [event]
   ;;  @(fx/on-fx-thread
   (let [file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))]
+                 (.showOpenDialog (Stage.)))
+        core-number (:core-number event)
+        xrf-scan (sausage.xrf/load-xrf-scan-file file)]
     (swap! *state
            assoc-in [:cores
-                     (:core-number event)
+                     core-number
                      :xrf-scan]
-           (sausage.xrf/load-xrf-scan-file file))
-    ))
-
+           xrf-scan)
+    (if (-> @*state
+            :cores
+            (.get core-number)
+            :optical)
+      (event-handler {:event/type ::update-unscanned-areas
+                      :core-number core-number})
+      (swap! *state
+             assoc-in [:cores
+                       core-number
+                       :length-mm]
+             (sausage.xrf/end-position xrf-scan)))))
 
 (defmethod event-handler ::add-core [event]
   (let [num-cores (-> @*state
@@ -208,7 +285,9 @@
     (swap! *state assoc-in [:cores
                             num-cores]
            {:optical nil
-            :xrf-scan nil})))
+            :xrf-scan nil
+            :crop-left 0
+            :crop-right 0})))
 
 (defmethod event-handler ::remove-core [event]
     (swap! *state assoc :cores
@@ -302,7 +381,7 @@
                                          :y 0
                                          :height height
                                          :width crop-right-pix
-                                         :opacity 0.05
+                                         :opacity 0.10
                                          :fill "red"})
                                       ;; Left Crop
                                       (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
@@ -318,27 +397,62 @@
                                          :y 0
                                          :height height
                                          :width crop-left-pix
-                                         :opacity 0.05
+                                         :opacity 0.10
                                          :fill "red"})
                                       ;; Left Unscanned Area
-                                      (if (not (nil? (:crop-pixels-left optical)))
-                                        {:fx/type :rectangle
-                                         :x 0
-                                         :y 0
-                                         :height height
-                                         :width crop-left-pix
-                                         :opacity 0.05
-                                         :fill "yellow"})
-                                      ;; Right Unscanned Area
-                                      (if (not (nil? (:crop-pixels-left optical)))
-                                        {:fx/type :rectangle
-                                         :x 0
-                                         :y 0
-                                         :height height
-                                         :width crop-right-pix
-                                         :opacity 0.05
-                                         :fill "yellow"})])
-                                      )}])})
+                                      (if (and (not (nil? (:unscanned-left-pix optical)))
+                                               (pos? (:unscanned-left-pix optical)))
+                                        (let [left-width (* (/ (:unscanned-left-pix optical)
+                                                               (.getWidth (:image optical)))
+                                                            width)]
+                                          {:fx/type :line
+                                           :start-x left-width
+                                           :start-y 0
+                                           :end-x left-width
+                                           :end-y height
+                                           :stroke "brown"}))
+                                      (if (and (not (nil? (:unscanned-left-pix optical)))
+                                               (pos? (:unscanned-left-pix optical)))
+                                        (let [left-width (* (/ (:unscanned-left-pix optical)
+                                                               (.getWidth (:image optical)))
+                                                            width)]
+                                          {:fx/type :rectangle
+                                           :x 0
+                                           :y 0
+                                           :height height
+                                           :width left-width
+                                           :opacity 0.10
+                                           :fill "yellow"}))
+                                        ;; Right Unscanned Area
+                                        (if (and (not (nil? (:unscanned-left-pix optical)))
+                                                 (pos? (:unscanned-right-pix optical)))
+                                          
+                                          (let [right-width (* (/ (:unscanned-right-pix optical)
+                                                                  (.getWidth (:image optical)))
+                                                               width)]
+                                            {:fx/type :line
+                                             :start-x (- width
+                                                   right-width);;right-width
+                                             :start-y 0
+                                             :end-x (- width
+                                                   right-width);;right-width
+                                             :end-y height
+                                             :stroke "brown"}))
+                                      (if (and (not (nil? (:unscanned-left-pix optical)))
+                                               (pos? (:unscanned-right-pix optical)))
+                                        
+                                        (let [right-width (* (/ (:unscanned-right-pix optical)
+                                                                (.getWidth (:image optical)))
+                                                             width)]
+                                            {:fx/type :rectangle
+                                             :x (- width
+                                                   right-width)
+                                             :y 0
+                                             :height height
+                                             :width right-width
+                                             :opacity 0.10
+                                             :fill "yellow"}))
+                                        ]))}])})
 
 
 (defn xrf-columns-list ;; TODO: Figure out how the hell this works!
@@ -381,7 +495,10 @@
            height
            xrf-scan
            selection
-           max-element-count]}]
+           max-element-count
+           core-length-mm
+           crop-left
+           crop-right]}]
   {:fx/type :h-box
    :children [{:fx/type :v-box
                :children (if xrf-scan
@@ -390,11 +507,11 @@
                                                                 height
                                                                 (element-counts xrf-scan
                                                                                 (keyword selection))
-                                                                (sausage.xrf/end-position xrf-scan)
+                                                                core-length-mm
                                                                 (* max-element-count
                                                                    1.3)
-                                                                0 ;;(:missing-steps-left xrf-scan)
-                                                                1 ;;(:missing-steps-right xrf-scan)
+                                                                crop-left
+                                                                crop-right                                
                                                                 )}]
                            [{:fx/type :button
                              :pref-width width
@@ -417,6 +534,90 @@
                           (:core-number event)
                           :crop-left]
                           (:fx/event event)))
+
+(defmethod event-handler ::crop
+  [event]
+  (let [core-number (:core-number event) ;; TODO destructure from function argument
+        core (-> @*state
+                 :cores
+                 (get core-number))
+        xrf-scan-element-counts (-> core
+                            :xrf-scan
+                            :element-counts)
+        image (-> core
+                  :optical
+                  :image)
+        image-width-pix (-> image
+                            .getWidth)
+        crop-slider-left (-> core
+                             :crop-left)
+        crop-slider-right (-> core
+                              :crop-right)
+        crop-slider-left-pix (* crop-slider-left
+                                image-width-pix)
+        crop-slider-right-pix (* crop-slider-right
+                                 image-width-pix)
+        unscanned-left-pix  (-> core
+                                :optical
+                                :unscanned-left-pix)
+        unscanned-right-pix (-> core
+                                :optical
+                                :unscanned-right-pix)
+        crop-left-pix (if (> unscanned-left-pix
+                         crop-slider-left-pix)
+                    unscanned-left-pix
+                    crop-slider-left-pix)
+        crop-right-pix (if (> unscanned-right-pix
+                         crop-slider-right-pix)
+                    unscanned-right-pix
+                    crop-slider-right-pix)
+        mm-per-pixel (-> @*state
+                         :mm-per-pixel)
+        crop-left-mm (* crop-left-pix
+                        mm-per-pixel)
+        crop-right-mm (* crop-right-pix
+                         mm-per-pixel)]
+    (swap! *state assoc-in [:cores
+                            core-number
+                            :optical
+                            :image]
+           (sausage.optical/crop image
+                                 crop-left-pix
+                                 crop-right-pix))
+    (swap! *state assoc-in [:cores
+                            core-number
+                            :xrf-scan
+                            :element-counts]
+           (sausage.xrf/crop xrf-scan-element-counts
+                             crop-left-mm
+                             crop-right-mm))
+    (event-handler {:event/type ::update-core-length
+                    :core-number core-number})
+    (event-handler {:event/type ::update-display-image
+                    :core-number core-number})
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :optical
+                     :unscanned-left-pix]
+           0.0)
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :optical
+                     :unscanned-right-pix]
+           0.0)
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :crop-left]
+           0.0)
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :crop-right]
+           0.0)))
+                                 
 
 (defn crop-slider
   ""
@@ -446,7 +647,7 @@
                :pref-width (* 0.10
                               width)
                :pref-height height
-               :on-action {:event/type ::load-xrf-scan
+               :on-action {:event/type ::crop
                            :core-number core-number}
                :text "Crop"}
               {:fx/type :slider
@@ -497,7 +698,10 @@
                :width width
                :xrf-scan (:xrf-scan core)
                :selection (:element (get selections 0))
-               :max-element-count (:max-count (get selections 0))}
+               :max-element-count (:max-count (get selections 0))
+               :core-length-mm (:length-mm core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)}
               ]})
 
 (defn margin

@@ -57,7 +57,7 @@
         ImageMiscOps/flipHorizontal)
     to-flip))
 
-(defn joing-images-horizontally
+(defn join-horizontally
   "Join two boofCV images horizontally into one.
   ImageA will be on the left
   ImageB will be on the right"
@@ -86,3 +86,22 @@
     (.setTo subimageA imageA)
     (.setTo subimageB imageB)
     merged-image))
+
+(defn crop
+  "Crops a BoofCV image by crop-left/crop-right - which are fractional
+  NOTE: Don't forget that the image is flipped internally!!
+  Hence why the left/right are flipped here"
+  [boofcv-image
+   crop-left-pix
+   crop-right-pix]
+  (let [width (.getWidth boofcv-image)
+        height (.getHeight boofcv-image)
+        crop-start crop-right-pix
+        crop-end (- width
+                    crop-left-pix)]
+    (.subimage boofcv-image
+               crop-start
+               0
+               crop-end
+               height
+               nil)))
