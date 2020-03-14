@@ -99,7 +99,7 @@
    crop-right-pix]
   (cond (== 0
             crop-left-pix
-            crop-left-pix)
+            crop-right-pix)
         boofcv-image
         :else
         (let [width (.getWidth boofcv-image)
