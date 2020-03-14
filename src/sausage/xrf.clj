@@ -73,21 +73,17 @@
 
 (defn crop
   [xrf-scan-element-counts ;; TODO: Rewrite so it operates on 'xrf-scan'
+   length-mm
    crop-left-mm
    crop-right-mm] ;; TODO rewrite as threaded ->
-  (let [end-mm (- (-> xrf-scan-element-counts last :position read-string)
-                  crop-right-mm)]
-    (filter #(< 0
-                (read-string (:position %)))
-            (map #(shift-scan-point (- crop-left-mm)
-                                    %)
-                 (filter #(>= end-mm
-                             (read-string (:position %)))
-                         xrf-scan-element-counts)
-                 )
-            )
-  )
-  )
+  (filter #(< 0
+              (read-string (:position %)))
+          (map #(shift-scan-point (- crop-left-mm)
+                                  %)
+               (filter #(>= (- length-mm
+                               crop-right-mm)
+                            (read-string (:position %)))
+                       xrf-scan-element-counts))))
 
 
 (defn join-horizontally

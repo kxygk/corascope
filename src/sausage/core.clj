@@ -650,6 +650,8 @@
                             :xrf-scan
                             :element-counts]
            (sausage.xrf/crop xrf-scan-element-counts
+                             (-> core
+                                 :length-mm)
                              crop-left-mm
                              crop-right-mm))
     (event-handler {:event/type ::update-core-length
