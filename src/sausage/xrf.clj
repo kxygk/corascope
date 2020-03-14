@@ -63,8 +63,13 @@
 (defn shift-string-number ;; TODO Make this unnecessary..
   [shift
    string-number]
-  (str (- (read-string string-number)
+  (str (+ (read-string string-number)
           shift)))
+
+(defn shift-scan-point
+  [shift
+   scan-point]
+  (update scan-point :position (partial shift-string-number shift)))
 
 (defn crop
   [xrf-scan-element-counts ;; TODO: Rewrite so it operates on 'xrf-scan'
@@ -74,7 +79,8 @@
                   crop-right-mm)]
     (filter #(< 0
                 (read-string (:position %)))
-            (map #(update % :position (partial shift-string-number crop-left-mm))
+            (map #(shift-scan-point (- crop-left-mm)
+                                    %)
                  (filter #(>= end-mm
                              (read-string (:position %)))
                          xrf-scan-element-counts)
@@ -84,4 +90,17 @@
   )
 
 
-(partial shift-string-number 100)
+(defn join-horizontally
+  ""
+  [xrfA
+   xrfA-length
+   xrfB
+   xrfB-length]
+  (let [element-countsA (:element-counts xrfA)
+        shifted-element-countsB (map (partial shift-scan-point xrfA-length)
+                                     (:element-counts xrfB))
+        merged-counts (concat element-countsA
+                              shifted-element-countsB)]
+    (assoc xrfA
+           :element-counts
+           merged-counts)))

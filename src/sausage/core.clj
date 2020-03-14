@@ -30,16 +30,11 @@
                  ;;                  :display nil ;; JFX image
                  ;;                  :unscanned-pixels-left 0
                  ;;                  :unscanned-pixels-right 0
-                 ;;                  :crop-pixels-left 0
-                 ;;                  :crop-pixels-right 0
                  ;;                  :scan-line-pixel-offset-from-center 0}
                  ;;  :xrf-scan nil #_{:header
                  ;;                   :columns
                  ;;                   :element-counts
                  ;;                   :missing-steps-left 0
-                 ;;                   :missing-steps-right 0
-                 ;;                   :crop-steps-left 0.0
-                 ;;                   :crop-steps-right 0.0}
 
 (defmulti event-handler
   "CLJFX -  Event Handlers
@@ -107,22 +102,25 @@
       (.mkdirs file) ;; maybe should be moved to the save-workspace method
       (swap! *state assoc :working-directory path))))
 
-;; (defn save-to-working-directory
-;;   "Saves the current 'state' to the working directory (optical image, data table etc.)"
-;;   []
-;;   (let [working-directory (-> @*state
-;;                               :working-directory)
-;;         optical-image (->  @*state
-;;                            :optical-image)
-;;         xrf-scan (-> @*state
-;;                      :xrf-scan )]
-;;     (if optical-image (save-image working-directory
-;;                                   optical-image
-;;                                   "optical.tiff"))
-;;     (if xrf-scan (save-xrf-scan working-directory
-;;                                 xrf-scan
-;;                                 "xrf-scan.txt"))))
 
+;;## Example:
+;;Pixel index:  0 1 2 3 4 5 6 7 8
+;;             |-|-|-|-|-|-|-|-|-|
+;;             0mm               4.5mm
+;                   |~~~~~~~~~|
+;;XRF-Scan          |---------|
+;;                  1.25mm    3.75mm
+;;
+;; Optical scan   : mm/pixel = 0.5mm
+;;
+;; Unscanned Left : 2 Pixels / 1.0mm      ;; Third Pixel overlaps and remains
+;;
+;; Unscanned Right: 1 Pixel  / 0,5mm      ;; Second Pixel overlaps and remains
+;;
+;; Note: Cropping needs to be conservative, so unscanned areas need to be
+;;       /under-selected/ so that when you merge data doesn't overlap
+;;
+;;# Method annotated from example
 (defmethod event-handler ::update-unscanned-areas [event]
   (let [core-number (:core-number event)
         image-width-pix (-> @*state
@@ -130,10 +128,8 @@
                             (.get core-number)
                             :optical
                             :image
-                            .getWidth)
-        mm-per-pixel (:mm-per-pixel @*state)
-        ;; image-width-mm (* image-width-pix
-        ;;                   mm-per-pixel)
+                            .getWidth) ;; 9 Pixels
+        mm-per-pixel (:mm-per-pixel @*state) ;; 0.5 mm/pixel
         scan (-> @*state
                  :cores
                  (.get core-number)
@@ -142,29 +138,45 @@
         scan-start-mm (-> scan
                           first
                           :position
-                          read-string)
-        scan-start-pix (/ scan-start-mm
-                          mm-per-pixel)
+                          read-string) ;; 1.25mm
         scan-end-mm (-> scan
                          last
                          :position
-                         read-string)
-        scan-end-pix (/ scan-end-mm
-                        mm-per-pixel)
+                         read-string)  ;; 3.75mm
         ]
     (swap! *state
            assoc-in [:cores
                      core-number
                      :optical
                      :unscanned-left-pix]
-           scan-start-pix)
+            (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
+                                mm-per-pixel)))) ;; 2 Pixels entirely unscanned
     (swap! *state
            assoc-in [:cores
                      core-number
                      :optical
                      :unscanned-right-pix]
            (- image-width-pix
-              scan-end-pix))))
+              (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
+                                 mm-per-pixel))))))) ;; 9-8 = 1 Pixel entirely unscanned
+
+;;## Degenerate cases:
+;;# Scan starts on pixel edge
+;; scan-start-mm: 1.0mm
+;; scan-end-mm  : 4.0mm
+;;
+;;Pixel number: 1 2 3 4 5 6 7 8 9
+;;             |-|-|-|-|-|-|-|-|-|
+;;             0mm               4.5mm
+;                  |~~~~~~~~~~~|
+;;XRF-Scan         |-----------|
+;;                 1.0mm       4.0mm
+;;
+;; scan-start-pix 2nd pixel
+;; scan-end-pix 8th pixel
+;;
+;; unscanned-left-pix: 2 pixel
+;; unscanned-right-pix:1 pixel
 
 (defmethod event-handler ::update-display-image [event]
   (let [core-number (:core-number event)
@@ -181,23 +193,27 @@
                sausage.optical/flip-image
                sausage.optical/to-fx-image))))
 
+(defn update-core-length
+  ""
+  [core
+   mm-per-pixel]
+  (assoc core :length-mm (* mm-per-pixel
+                            (-> core
+                                :optical
+                                :image
+                                .getWidth))))
+
 (defmethod event-handler ::update-core-length [event]
   (let [core-number (:core-number event)
-        width-pix (-> @*state
-                      :cores
-                      (get core-number)
-                      :optical
-                      :image
-                      .getWidth)
-        width-mm (* width-pix
-                    (-> @*state :mm-per-pixel))
-        ]
+        core (-> @*state
+                 :cores
+                 (get core-number))]
     (swap! *state
            assoc-in [:cores
-                     core-number
-                     :length-mm]
-           width-mm)))
-
+                     core-number]
+           (update-core-length core
+                               (-> @*state
+                                   :mm-per-pixel)))))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -295,6 +311,45 @@
   (if (empty? (:cores @*state))
     (event-handler {:event/type ::add-core})))
 
+(defn merge-cores
+  [mm-per-pixel
+   core-a
+   core-b]
+  (let [merged-image (sausage.optical/join-horizontally (-> core-b
+                                                            :optical
+                                                            :image)
+                                                        (-> core-a
+                                                            :optical
+                                                            :image))
+        merged-xrf-scan (sausage.xrf/join-horizontally (-> core-a
+                                                           :xrf-scan)
+                                                       (-> core-a
+                                                           :length-mm)
+                                                       (-> core-b
+                                                           :xrf-scan)
+                                                       (-> core-b
+                                                           :length-mm))]
+    (-> core-a
+        (assoc-in [:optical :image] merged-image)
+        (assoc-in [:xrf-scan] merged-xrf-scan)
+        (update-core-length mm-per-pixel))))
+
+(defmethod event-handler ::merge-all-cores
+  [event]
+  (swap! *state
+         assoc
+         :cores
+         [(reduce (partial merge-cores (-> @*state :mm-per-pixel))
+                  (-> @*state
+                      :cores
+                      (get 0))
+                  (rest (-> @*state
+                            :cores)))])
+  (event-handler {:event/type ::update-display-image
+                  :core-number 0})
+  (event-handler {:event/type ::update-core-length
+                 :core-number 0}))
+
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
   [{:keys [working-directory
@@ -309,14 +364,20 @@
                :text "Set"}
               {:fx/type :text-field
                :editable false
-               :pref-height height
+               :pref-height height ;; TODO: What's with all these pref/min dimensions...?
                :prompt-text "Select a working directory.."
                :pref-column-count 999
                :text working-directory}
               {:fx/type :button
                :pref-height height
+               :pref-width (* 2 height)
+               :min-width (* 2 height)
+               :on-action {:event/type ::merge-all-cores}
+               :text "Merge"}
+              {:fx/type :button
+               :pref-height height
                :pref-width height ;; make square button
-               :min-width height
+               :min-width  height
                :on-action {:event/type ::remove-core}
                :text "-"}
               {:fx/type :button
@@ -553,24 +614,24 @@
                              :crop-left)
         crop-slider-right (-> core
                               :crop-right)
-        crop-slider-left-pix (* crop-slider-left
-                                image-width-pix)
-        crop-slider-right-pix (* crop-slider-right
-                                 image-width-pix)
-        unscanned-left-pix  (-> core
-                                :optical
-                                :unscanned-left-pix)
+        crop-slider-left-pix (int (Math/floor (* crop-slider-left
+                                                 image-width-pix)))
+        crop-slider-right-pix (int (Math/floor (* crop-slider-right
+                                                  image-width-pix)))
+        unscanned-left-pix (-> core
+                               :optical
+                               :unscanned-left-pix)
         unscanned-right-pix (-> core
                                 :optical
                                 :unscanned-right-pix)
         crop-left-pix (if (> unscanned-left-pix
-                         crop-slider-left-pix)
-                    unscanned-left-pix
-                    crop-slider-left-pix)
+                             crop-slider-left-pix)
+                        unscanned-left-pix
+                        crop-slider-left-pix)
         crop-right-pix (if (> unscanned-right-pix
+                              crop-slider-right-pix)
+                         unscanned-right-pix
                          crop-slider-right-pix)
-                    unscanned-right-pix
-                    crop-slider-right-pix)
         mm-per-pixel (-> @*state
                          :mm-per-pixel)
         crop-left-mm (* crop-left-pix
@@ -793,22 +854,3 @@
 (fx/mount-renderer
  *state
  renderer)
-
-
-
-(defn display-image-in-third-window
-  "Debugging function to test optical image merging"
-  [boofcv-image]
-  (swap! *state assoc-in [:cores 2 :optical-image] boofcv-image)
-  (event-handler {:event/type ::update-display-image :core-number 2}))
-
-
-
-#_(display-image-in-third-window (sausage.optical/joing-images-horizontally (-> @*state
-                                                                              :cores
-                                                                              (get 1)
-                                                                              :optical-image )
-                                                                            (-> @*state
-                                                                                :cores
-                                                                                (get 0)
-                                                                                :optical-image )))

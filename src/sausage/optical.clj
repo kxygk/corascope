@@ -63,29 +63,32 @@
   ImageB will be on the right"
   [imageA
    imageB]
-  (let [imageA-width (.getWidth imageA)
-        imageB-width (.getWidth imageB)
-        height (.getHeight imageA)
-        width (+ imageA-width
-                 imageB-width)
-        merged-image (boofcv.struct.image.Planar. boofcv.struct.image.GrayU8
-                                                  width
-                                                  height
-                                                  3)
-        subimageA (.subimage merged-image
-                             0
-                             0
-                             imageA-width
-                             height)
-        subimageB (.subimage merged-image
-                             imageA-width
-                             0
-                             (+ imageA-width
-                                imageB-width)
-                             height)]
-    (.setTo subimageA imageA)
-    (.setTo subimageB imageB)
-    merged-image))
+  (cond (nil? imageB) imageA ;; "base" cases
+        (nil? imageA) imageB
+        :else
+        (let [imageA-width (.getWidth imageA)
+              imageB-width (.getWidth imageB)
+              height (.getHeight imageA)
+              width (+ imageA-width
+                       imageB-width)
+              merged-image (boofcv.struct.image.Planar. boofcv.struct.image.GrayU8
+                                                        width
+                                                        height
+                                                        3)
+              subimageA (.subimage merged-image
+                                   0
+                                   0
+                                   imageA-width
+                                   height)
+              subimageB (.subimage merged-image
+                                   imageA-width
+                                   0
+                                   (+ imageA-width
+                                      imageB-width)
+                                   height)]
+          (.setTo subimageA imageA)
+          (.setTo subimageB imageB)
+          merged-image)))
 
 (defn crop
   "Crops a BoofCV image by crop-left/crop-right - which are fractional
@@ -94,14 +97,19 @@
   [boofcv-image
    crop-left-pix
    crop-right-pix]
-  (let [width (.getWidth boofcv-image)
-        height (.getHeight boofcv-image)
-        crop-start crop-right-pix
-        crop-end (- width
-                    crop-left-pix)]
-    (.subimage boofcv-image
-               crop-start
-               0
-               crop-end
-               height
-               nil)))
+  (cond (== 0
+            crop-left-pix
+            crop-left-pix)
+        boofcv-image
+        :else
+        (let [width (.getWidth boofcv-image)
+              height (.getHeight boofcv-image)
+              crop-start crop-right-pix
+              crop-end (- width
+                          crop-left-pix)]
+          (.subimage boofcv-image
+                     crop-start      ;; inclusive
+                     0               ;; inclusive
+                     crop-end        ;; exclusive
+                     height          ;;exclusive
+                     nil))))
