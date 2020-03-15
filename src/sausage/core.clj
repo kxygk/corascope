@@ -21,7 +21,8 @@
                   :xrf-scan nil
                   :length-mm 0
                   :crop-left 0
-                  :crop-right 0}]
+                  :crop-right 0
+                  :seams []}]
          :selections [{:element "Mn"
                        :max-count 1000}]}))
 
@@ -303,7 +304,8 @@
            {:optical nil
             :xrf-scan nil
             :crop-left 0
-            :crop-right 0})))
+            :crop-right 0
+            :seams []})))
 
 (defmethod event-handler ::remove-core [event]
     (swap! *state assoc :cores
@@ -330,6 +332,7 @@
                                                        (-> core-b
                                                            :length-mm))]
     (-> core-a
+        (update :seams #(into % [(-> core-a :length-mm)]))
         (assoc-in [:optical :image] merged-image)
         (assoc-in [:xrf-scan] merged-xrf-scan)
         (update-core-length mm-per-pixel))))
@@ -559,7 +562,8 @@
            max-element-count
            core-length-mm
            crop-left
-           crop-right]}]
+           crop-right
+           seams]}]
   {:fx/type :h-box
    :children [{:fx/type :v-box
                :children (if xrf-scan
@@ -572,7 +576,8 @@
                                                                 (* max-element-count
                                                                    1.3)
                                                                 crop-left
-                                                                crop-right                                
+                                                                crop-right
+                                                                seams
                                                                 )}]
                            [{:fx/type :button
                              :pref-width width
@@ -764,8 +769,8 @@
                :max-element-count (:max-count (get selections 0))
                :core-length-mm (:length-mm core)
                :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)}
-              ]})
+               :crop-right (:crop-right core)
+               :seams (:seams core)}]})
 
 (defn margin
   ""

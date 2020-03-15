@@ -21,12 +21,13 @@
              :visible false
              :label-dist  (- height 10)
              :major-size 0
-             :major 100
+             :major 500
+             :attribs {:stroke "none"} ;; axis line attributes
              })
              
    :y-axis (viz/linear-axis
             {:domain      [0 max-count]
-             :range       [height 45] ;; 45pix offset on the bottom for the legend
+             :range       [height 0]
              ;; puts the axis out of view (can't show the grid with no axis)
              :pos         0 ;; major-size default
              :visible true
@@ -35,40 +36,71 @@
              :label-y 10
              :major-size 0
              :minor-size -5
+             :attribs {:stroke "none"} ;; axis line attributes
             ;; :label-style {:fill "red" :text-anchor "start"}
              })
              
-   :grid   {;:attribs {:stroke "#caa"}
-            ; :minor-x true
-            ; :major-x true
-            ; :major-y true
-            :minor-y true
-            }})
+   ;; :grid   {;:attribs {:stroke "#caa"}
+   ;;          ; :minor-x true
+   ;;          ; :major-x true
+   ;;          ; :major-y true
+   ;;          :minor-y true
+   ;;          }
+   })
+
 
 (defn- add-points
   "Add the points (as little triangles) to the graph"
   [spec
-   points
-   crop-points]
+   points]
   (if (empty? points)
     spec ;; do nothing.. else:
     (assoc spec
             :data
-            (filter identity [(if (not (empty? crop-points))
-                                {:values  crop-points
-                                 :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
-                                 ;; :shape   (viz/svg-square 5)
-                                 :layout  viz/svg-scatter-plot}
-                                {:values  crop-points
-                                 :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
-                                 :bar-width 100
-                                 :interleave 1
-                                 :layout  viz/svg-bar-plot})
-                              {:values  points
-                               :attribs {:fill "none" :stroke "black" :stroke-width 2.25}
-                               ;; :shape   (viz/svg-triangle-down 6)
-                               :layout  viz/svg-line-plot}
-                              ]))))
+            [{:values  points
+              :attribs {:fill "none" :stroke "black" :stroke-width 2.25}
+              ;; :shape   (viz/svg-triangle-down 6)
+              :layout  viz/svg-line-plot}
+              ])))
+
+(defn- add-red-overlay
+  "Will draw red overlays at the selected points
+  ie. the points selected to be cropped"
+  [spec
+   points]
+  (if (empty? points)
+    spec
+    (update spec
+           :data
+           #(into %
+                  [{:values  points
+                    :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
+                    ;; :shape   (viz/svg-square 5)
+                    :layout  viz/svg-scatter-plot}
+                   {:values  points
+                    :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
+                    :bar-width 100
+                    :interleave 1
+                    :layout  viz/svg-bar-plot}]))))
+
+(defn- add-seam-marker
+  "Will draw red overlays at the selected points
+  ie. the points selected to be cropped"
+  [spec
+   seams
+   plot-height]
+  (if (empty? seams)
+    spec
+    (update spec
+           :data
+           #(into %
+                  [{:values (into [] (map (fn [pos] (vector pos
+                                                            plot-height))
+                                          seams))
+                    :attribs {:fill "#bfbfbf" :stroke "grey" :stroke-dasharray "1 5"}
+                    :bar-width 100
+                    :interleave 1
+                    :layout  viz/svg-bar-plot}]))))
 
 (defn plot-points
   ""
@@ -78,7 +110,8 @@
    max-position
    max-count
    crop-left
-   crop-right]
+   crop-right
+   seams]
   (let [right-crop-distance (* (- 1 crop-right)
                                max-position)
         right-crop-points (filter #(> (first %)
@@ -95,8 +128,10 @@
                                                         height
                                                         max-position
                                                         max-count)
-                                             (add-points points
-                                                         crop-points)
+                                             (add-points points)
+                                             (add-red-overlay crop-points)
+                                             (add-seam-marker seams
+                                                              max-count)
                                              (viz/svg-plot2d-cartesian)
                                              (#(svgthing/svg {:width width
                                                               :height height}
