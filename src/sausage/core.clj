@@ -238,26 +238,27 @@
                    (.setTitle "Open a project")
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))
-        optical-image (sausage.optical/load-image file)
-        core-number (:core-number event)]
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :optical
-                     :image]
-           optical-image)
-    (event-handler {:event/type ::update-display-image
-                    :core-number core-number})
-    (event-handler {:event/type ::update-core-length
-                    :core-number core-number})
+                 (.showOpenDialog (Stage.)))]
+    (if (some? file)
+      (let[optical-image (sausage.optical/load-image file)
+           core-number (:core-number event)]
+        (swap! *state
+               assoc-in [:cores
+                         core-number
+                         :optical
+                         :image]
+               optical-image)
+        (event-handler {:event/type ::update-display-image
+                        :core-number core-number})
+        (event-handler {:event/type ::update-core-length
+                        :core-number core-number})
 
-    (if (-> @*state
-            :cores
-            (.get core-number)
-            :xrf-scan)
-      (event-handler {:event/type ::update-unscanned-areas
-                      :core-number core-number}))))
+        (if (-> @*state
+                :cores
+                (.get core-number)
+                :xrf-scan)
+          (event-handler {:event/type ::update-unscanned-areas
+                          :core-number core-number}))))))
 
 (defn element-counts
   "Given an XRF-SCAN and a ELEMENT
@@ -321,28 +322,29 @@
                    (.setTitle "Open a project")
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))
-        core-number (:core-number event)
-        xrf-scan (sausage.xrf/load-xrf-scan-file file)]
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :xrf-scan]
-           xrf-scan)
-    (event-handler {:event/type ::update-core-length
-                    :core-number core-number})
-    (event-handler {:event/type ::update-max-element-count})
-    (if (-> @*state
-            :cores
-            (.get core-number)
-            :optical)
-      (event-handler {:event/type ::update-unscanned-areas
-                      :core-number core-number})
-      (swap! *state
-             assoc-in [:cores
-                       core-number
-                       :length-mm]
-             (sausage.xrf/end-position xrf-scan)))))
+                 (.showOpenDialog (Stage.)))]
+    (if (some? file)
+      (let [core-number (:core-number event)
+            xrf-scan (sausage.xrf/load-xrf-scan-file file)]
+        (swap! *state
+               assoc-in [:cores
+                         core-number
+                         :xrf-scan]
+               xrf-scan)
+        (event-handler {:event/type ::update-core-length
+                        :core-number core-number})
+        (event-handler {:event/type ::update-max-element-count})
+        (if (-> @*state
+                :cores
+                (.get core-number)
+                :optical)
+          (event-handler {:event/type ::update-unscanned-areas
+                          :core-number core-number})
+          (swap! *state
+                 assoc-in [:cores
+                           core-number
+                           :length-mm]
+                 (sausage.xrf/end-position xrf-scan)))))))
 
 (defmethod event-handler ::add-core [event]
   (let [num-cores (-> @*state
