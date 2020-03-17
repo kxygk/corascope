@@ -16,8 +16,6 @@
 
 (defn load-image
   [file]
-  (println "loading image")
-  (println file)
   (-> file
       (.getCanonicalPath)
       (boofcv.io.image.UtilImageIO/loadImage)
