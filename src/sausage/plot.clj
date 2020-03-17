@@ -92,10 +92,6 @@
            #(into %
                   [{:values  points
                     :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
-                     :shape   (viz/svg-square 5)
-                    :layout  viz/svg-scatter-plot}
-                   {:values  points
-                    :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
 ;;                    :bar-width 100
                     :interleave 1
                     :layout  viz/svg-bar-plot}]))))
