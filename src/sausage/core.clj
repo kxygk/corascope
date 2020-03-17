@@ -259,25 +259,60 @@
                       :core-number core-number}))))
 
 (defn element-counts
+  "Given an XRF-SCAN and a ELEMENT
+  Returns a vector of [position element-count] pairs
+  These can then be plotted"
   [xrf-scan
    element]
   (map #(vector (read-string (:position %))
                 (read-string (element %)))
        (:element-counts xrf-scan)))
 
+(defn get-max-count-for-element-in-core-scan
+  "Given a CORE and an ELEMENT
+  Returns the maximum count detected for this element"
+  [core
+   element]
+  (if (nil? (-> core :xrf-scan))
+    0.0
+    (let [pos-count-pairs (element-counts (-> core
+                                              :xrf-scan)
+                                          element)
+          counts (map second pos-count-pairs)]
+      (apply max counts))))
+
+(defn get-max-count-for-element-in-cores ;; TODO Collapse these function into one maybe..
+  "Given a list of CORES and an ELEMENT
+  Returns the maximum count detected for this element"
+  [cores
+   element]
+  (apply max
+         (map #(get-max-count-for-element-in-core-scan %
+                                                       element)
+              cores)))
+
+(defn update-selection
+  [selection]
+  (let [element (:element selection)
+        cores (-> @*state
+                  :cores)]
+    {:element element
+     :max-count (get-max-count-for-element-in-cores cores
+                                                    (keyword element))}))
+
 (defmethod event-handler ::update-max-element-count [event]
   (swap! *state
-         assoc-in [:selections
-                   (:selection-number event)
-                   :max-count]
-         (apply max (map second (element-counts (-> @*state
-                                                    :cores
-                                                    (get 0)
-                                                    :xrf-scan)
-                                                (keyword (-> @*state
-                                                             :selections
-                                                             (get 0)
-                                                             :element)))))))
+         update
+         :selections
+         #(into [] (map (fn [selection]
+                           (let [element (:element selection)
+                                 cores (-> @*state
+                                           :cores)]
+                             {:element element
+                              :max-count (get-max-count-for-element-in-cores cores
+                                                                             (keyword element))}))
+                         %))))
+
 
 (defmethod event-handler ::load-xrf-scan [event]
   ;;  @(fx/on-fx-thread
@@ -295,6 +330,7 @@
            xrf-scan)
     (event-handler {:event/type ::update-core-length
                     :core-number core-number})
+    (event-handler {:event/type ::update-max-element-count})
     (if (-> @*state
             :cores
             (.get core-number)
@@ -560,9 +596,7 @@
 (defmethod event-handler ::select-single
   [event]
   (swap! *state assoc-in [:selections 0 :element] (:fx/event event))
-  (event-handler {:event/type ::update-max-element-count
-                  :selection-number (:selection-number event)}))
-
+  (event-handler {:event/type ::update-max-element-count}))
 
 (defn xrf-scan-display
   "display and options for XRF scan data"
