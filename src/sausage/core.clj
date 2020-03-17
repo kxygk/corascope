@@ -619,8 +619,7 @@
                                                                 (element-counts xrf-scan
                                                                                 (keyword selection))
                                                                 core-length-mm
-                                                                (* max-element-count
-                                                                   1.3)
+                                                                max-element-count
                                                                 crop-left
                                                                 crop-right
                                                                 seams
@@ -891,8 +890,7 @@
                                                                         {:fx/type core-display
                                                                          :core-number index
                                                                          :width core-display-width
-                                                                         :height (- height
-                                                                                    fixed-workspace-settings-height)
+                                                                         :height core-display-height
                                                                          :fixed-optical-scan-height fixed-optical-scan-height
                                                                          :fixed-slider-height fixed-slider-height
                                                                          :core core
