@@ -7,7 +7,8 @@
    [cljfx.ext.list-view :as fx.ext.list-view])
   (:import javafx.stage.DirectoryChooser
            javafx.stage.FileChooser
-           javafx.stage.Stage))
+           javafx.stage.Stage)
+  (:gen-class))
 
 (def *state
   ""
@@ -902,6 +903,8 @@
    :middleware (fx/wrap-map-desc assoc :fx/type root)
    :opts {:fx.opt/map-event-handler event-handler}))
 
-(fx/mount-renderer
- *state
- renderer)
+
+(defn -main [& args]
+  (fx/mount-renderer
+   *state
+   renderer))
