@@ -198,11 +198,21 @@
   ""
   [core
    mm-per-pixel]
-  (assoc core :length-mm (* mm-per-pixel
-                            (-> core
-                                :optical
-                                :image
-                                .getWidth))))
+  (if (nil? (-> core :optical))
+    (if (nil? (-> core :xrf-scan))
+      (assoc core :length-mm nil)
+      (assoc core :length-mm (* mm-per-pixel
+                                (-> core
+                                    :xrf-scan
+                                    :element-counts
+                                    last
+                                    :position
+                                    read-string))))
+    (assoc core :length-mm (* mm-per-pixel
+                              (-> core
+                                  :optical
+                                  :image
+                                  .getWidth)))))
 
 (defmethod event-handler ::update-core-length [event]
   (let [core-number (:core-number event)
@@ -283,6 +293,8 @@
                      core-number
                      :xrf-scan]
            xrf-scan)
+    (event-handler {:event/type ::update-core-length
+                    :core-number core-number})
     (if (-> @*state
             :cores
             (.get core-number)
