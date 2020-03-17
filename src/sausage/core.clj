@@ -457,7 +457,7 @@
                              :on-action {:event/type ::load-optical-image
                                          :core-number core-number}
                              :text "Load image"}]}]
-               [{:fx/type :group
+               [{:fx/type :pane
                  :children (filter identity ;; TODO Find way to do conditional GUI elements without filter
                                    (let [crop-left-pix (* crop-left
                                                           width)
