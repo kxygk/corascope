@@ -714,6 +714,10 @@
                                  :length-mm)
                              crop-left-mm
                              crop-right-mm))
+    (if (== 0
+            core-number) ;; shift the merge seams
+      (swap! *state update-in [:cores 0 :seams] #(map (partial + (- crop-left-mm)) %)))
+
     (event-handler {:event/type ::update-core-length
                     :core-number core-number})
     (event-handler {:event/type ::update-display-image
