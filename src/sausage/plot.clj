@@ -137,14 +137,15 @@
                                  points)
         crop-points (concat right-crop-points
                             left-crop-points)
+        graph-height (nice-max-count max-count)
         plot-group (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
                                                                        height
                                                                        max-position
-                                                                       (nice-max-count max-count))
+                                                                       graph-height)
                                                             (add-points points)
                                                             (add-red-overlay crop-points)
                                                             (add-seam-marker seams
-                                                                             max-count)
+                                                                             graph-height)
                                                             (viz/svg-plot2d-cartesian)
                                                             (#(svgthing/svg {:width width
                                                                              :height height}
