@@ -897,6 +897,7 @@
         core-display-height (- height
                                fixed-workspace-settings-height)]
     {:fx/type :stage
+     :title "Sausage Scanner"
       :showing true
       :on-width-changed {:event/type ::width-changed}
       :on-height-changed {:event/type ::height-changed}
