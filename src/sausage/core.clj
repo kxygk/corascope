@@ -19,6 +19,8 @@
          :mm-per-pixel 0.5 ;; Common parameter across all cores
          :mm-xrf-step-size 5 ;; Common parameter across all cores
          :cores [{:optical nil
+                  :scan-line? true
+                  :merge-seams? true
                   :xrf-scan nil
                   :length-mm 0
                   :crop-left 0
@@ -444,6 +446,7 @@
 (defn optical-image-display
   "display and options for the optical image"
   [{:keys [core-number
+           scan-line?
            width
            height
            optical
@@ -470,15 +473,16 @@
                                        :fit-height height
                                        :image (:display optical)}
                                       ;; Center Line
-                                      {:fx/type :line
-                                       :start-x 0
-                                       :start-y (/ height
+                                      (if (true? scan-line?)
+                                        {:fx/type :line
+                                         :start-x 0
+                                         :start-y (/ height
+                                                     2.0)
+                                         :end-x width
+                                         :end-y (/ height
                                                    2.0)
-                                       :end-x width
-                                       :end-y (/ height
-                                                 2.0)
-                                       :stroke-dash-array [10 10]
-                                       :stroke "white"}
+                                         :stroke-dash-array [10 10]
+                                         :stroke "white"})
                                       ;; Right Crop
                                       (if (pos? crop-right-pix)
                                         {:fx/type :line
@@ -612,6 +616,7 @@
            core-length-mm
            crop-left
            crop-right
+           merge-seams?
            seams]}]
   {:fx/type :h-box
    :children [{:fx/type :v-box
@@ -625,7 +630,9 @@
                                                                 max-element-count
                                                                 crop-left
                                                                 crop-right
-                                                                seams
+                                                                (if merge-seams?
+                                                                  seams
+                                                                  [])
                                                                 )}]
                            [{:fx/type :button
                              :pref-width width
@@ -783,6 +790,8 @@
   ""
   [{:keys [width
            height
+           scan-line?
+           merge-seams?
            fixed-optical-scan-height
            fixed-slider-height
            core-number
@@ -793,6 +802,7 @@
    :children [
               {:fx/type optical-image-display
                :core-number core-number
+               :scan-line? scan-line?
                :width width
                :height fixed-optical-scan-height
                :optical (:optical core)
@@ -818,7 +828,16 @@
                :core-length-mm (:length-mm core)
                :crop-left  (:crop-left core)
                :crop-right (:crop-right core)
+               :merge-seams? merge-seams?
                :seams (:seams core)}]})
+
+(defmethod event-handler ::toggle-scan-line
+  [event]
+  (swap! *state assoc :scan-line? (:fx/event event)))
+
+(defmethod event-handler ::toggle-merge-seams
+  [event]
+  (swap! *state assoc :merge-seams? (:fx/event event)))
 
 (defn margin
   ""
@@ -832,11 +851,17 @@
   {:fx/type :v-box
    :pref-width width
    :pref-height fixed-optical-scan-height
-   :children [{:fx/type :h-box
-               :alignment :center
+   :children [{:fx/type :v-box
+;;               :alignment :center
                :pref-height fixed-optical-scan-height
                :children [{:fx/type :text
-                          :text "Optical"}]}
+                           :text "Optical"}
+                          {:fx/type :check-box
+                           :text "Scan Line"
+                           :on-selected-changed {:event/type ::toggle-scan-line}}
+                          {:fx/type :check-box
+                           :text "Merge Seams"
+                           :on-selected-changed {:event/type ::toggle-merge-seams}}]}
               {:fx/type :h-box
                :alignment :center
                :pref-height fixed-slider-height
@@ -856,6 +881,8 @@
   [{:keys [width
            display-width
            height
+           scan-line?
+           merge-seams?
            working-directory
            cores
            selections]}]
@@ -892,6 +919,8 @@
                                                          (map-indexed (fn [index core]
                                                                         {:fx/type core-display
                                                                          :core-number index
+                                                                         :scan-line? scan-line?
+                                                                         :merge-seams? merge-seams?
                                                                          :width core-display-width
                                                                          :height core-display-height
                                                                          :fixed-optical-scan-height fixed-optical-scan-height
