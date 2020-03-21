@@ -416,6 +416,8 @@
                :pref-width fixed-left-margin-width
                :min-width fixed-left-margin-width
                :pref-height height
+               :min-height height
+               :max-height height
                :on-action {:event/type ::set-working-directory}
                :text "Set"}
               {:fx/type :text-field
@@ -755,6 +757,12 @@
            crop-left
            crop-right]}]
   {:fx/type :h-box
+   :pref-height height
+   :min-height height
+   :max-height height
+   :pref-width width
+   :min-width width
+   :max-width width
    :children [{:fx/type :slider
                :max 0.45
                :min 0.0
