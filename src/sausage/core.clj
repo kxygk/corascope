@@ -753,7 +753,6 @@
            width
            height
            optical
-           xrf-scan
            crop-left
            crop-right]}]
   {:fx/type :h-box
@@ -824,7 +823,6 @@
                :width width
                :height fixed-slider-height
                :optical (:optical core)
-               :xrf-scan (:xrf-scan core)
                :crop-left  (:crop-left core)
                :crop-right (:crop-right core)}
               {:fx/type xrf-scan-display
