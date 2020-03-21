@@ -803,6 +803,9 @@
            directory
            core
            selections]}]
+(let [width (if (nil? (:optical core))
+              600
+              (-> core :optical :display .getWidth))]
   {:fx/type :v-box
    :children [
               {:fx/type :h-box
@@ -843,7 +846,8 @@
                :height (- height
                           fixed-core-options-height
                           fixed-optical-scan-height
-                          fixed-slider-height)
+                          fixed-slider-height
+                          70) ;; MAGIC NUMBER: https://github.com/cljfx/cljfx/issues/34
                :width width
                :xrf-scan (:xrf-scan core)
                :selection (:element (get selections 0))
@@ -852,7 +856,7 @@
                :crop-left  (:crop-left core)
                :crop-right (:crop-right core)
                :merge-seams? merge-seams?
-               :seams (:seams core)}]})
+               :seams (:seams core)}]}))
 
 (defmethod event-handler ::toggle-scan-line
   [event]
@@ -944,27 +948,33 @@
                                 :fixed-left-margin-width fixed-left-margin-width
                                 :height fixed-workspace-settings-height}
                                {:fx/type :h-box
-                                :children (into []
-                                                (concat [{:fx/type margin
-                                                          :width fixed-left-margin-width
-                                                          :height core-display-height
-                                                          :fixed-optical-scan-height fixed-optical-scan-height
-                                                          :fixed-slider-height fixed-slider-height
-                                                          :elements (map name
-                                                                         (:columns (:xrf-scan (get cores 0))))
-                                                          :selection (:element (get selections 0))}]
-                                                         (map-indexed (fn [index core]
-                                                                        {:fx/type core-display
-                                                                         :core-number index
-                                                                         :scan-line? scan-line?
-                                                                         :merge-seams? merge-seams?
-                                                                         :width core-display-width
-                                                                         :height core-display-height
-                                                                         :fixed-optical-scan-height fixed-optical-scan-height
-                                                                         :fixed-slider-height fixed-slider-height
-                                                                         :core core
-                                                                         :selections selections})
-                                                                      (:cores @*state))))}]}}}))
+                                :children [{:fx/type margin
+                                            :width fixed-left-margin-width
+                                            :height core-display-height
+                                            :fixed-core-options-height fixed-core-options-height
+                                            :fixed-optical-scan-height fixed-optical-scan-height
+                                            :fixed-slider-height fixed-slider-height
+                                            :elements (map name
+                                                           (:columns (:xrf-scan (get cores 0))))
+                                            :selection (:element (get selections 0))}
+                                           {:fx/type :scroll-pane
+                                            :hbar-policy :never
+                                            :vbar-policy :never
+                                            ;; :pref-viewport-width core-display-width
+                                            :content {:fx/type :h-box
+                                                      :children (into [] (map-indexed (fn [index core]
+                                                                               {:fx/type core-display
+                                                                                :core-number index
+                                                                                :scan-line? scan-line?
+                                                                                :merge-seams? merge-seams?
+                                                                                :width core-display-width
+                                                                                :height core-display-height
+                                                                                :fixed-core-options-height fixed-core-options-height
+                                                                                :fixed-optical-scan-height fixed-optical-scan-height
+                                                                                :fixed-slider-height fixed-slider-height
+                                                                                :core core
+                                                                                :selections selections})
+                                                                             cores))}}]}]}}}))
 
 (def renderer
   (fx/create-renderer
