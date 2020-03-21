@@ -428,12 +428,6 @@
                :text working-directory}
               {:fx/type :button
                :pref-height height
-               :pref-width (* 2 height)
-               :min-width (* 2 height)
-               :on-action {:event/type ::merge-all-cores}
-               :text "Merge"}
-              {:fx/type :button
-               :pref-height height
                :pref-width height ;; make square button
                :min-width  height
                :on-action {:event/type ::remove-core}
@@ -802,6 +796,7 @@
            height
            scan-line?
            merge-seams?
+           fixed-core-options-height
            fixed-optical-scan-height
            fixed-slider-height
            core-number
@@ -810,6 +805,24 @@
            selections]}]
   {:fx/type :v-box
    :children [
+              {:fx/type :h-box
+               :pref-height fixed-core-options-height
+               :min-height fixed-core-options-height
+               :max-height fixed-core-options-height
+               :alignment :bottom-left
+               :children [{:fx/type :text-field
+                           :editable true
+                           :pref-height height ;; TODO: What's with all these pref/min dimensions...?
+                           :prompt-text "Select a working directory.."
+                           :pref-column-count 10
+                           :text "hello"}
+                          {:fx/type :text
+                           :text "hi there"}
+                          #_{:fx/type :integer-spinner-value-factory
+                           :amount-to-step-by 1
+                           :value 10
+                           :max 100
+                           :min 10}]}
               {:fx/type optical-image-display
                :core-number core-number
                :scan-line? scan-line?
@@ -828,6 +841,7 @@
               {:fx/type xrf-scan-display
                :core-number core-number
                :height (- height
+                          fixed-core-options-height
                           fixed-optical-scan-height
                           fixed-slider-height)
                :width width
@@ -852,6 +866,7 @@
   ""
   [{:keys [width
            height
+           fixed-core-options-height
            fixed-optical-scan-height
            fixed-slider-height
            elements
@@ -859,12 +874,21 @@
            ]}]
   {:fx/type :v-box
    :pref-width width
-   :pref-height fixed-optical-scan-height
-   :children [{:fx/type :v-box
-;;               :alignment :center
+   :min-width width
+   :max-width width
+   :children [{:fx/type :button
+;;               :pref-width width
+               :pref-height fixed-core-options-height
+               :min-height fixed-core-options-height
+               :max-height fixed-core-options-height
+               :on-action {:event/type ::merge-all-cores}
+               :text ">> Merge"}
+              {:fx/type :v-box
+;;               :alignment :center-left
                :pref-height fixed-optical-scan-height
-               :children [{:fx/type :text
+               :children [ #_{:fx/type :text
                            :text "Optical"}
+                          {:fx/type :separator}
                           {:fx/type :check-box
                            :text "Scan Line"
                            :on-selected-changed {:event/type ::toggle-scan-line}}
@@ -882,8 +906,10 @@
                :selection selection
                :selection-number 0
                :height (- height
+                          fixed-core-options-height
                           fixed-optical-scan-height
-                          fixed-slider-height)}]})
+                          fixed-slider-height
+                          )}]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
@@ -895,8 +921,9 @@
            working-directory
            cores
            selections]}]
-  (let [fixed-workspace-settings-height 50
+  (let [fixed-workspace-settings-height 30
         fixed-left-margin-width 150
+        fixed-core-options-height 30
         fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
         fixed-slider-height 50
         fixed-element-selector-width 50
