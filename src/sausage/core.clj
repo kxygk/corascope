@@ -14,6 +14,7 @@
   ""
   (atom {:working-directory ""
          :width 400
+         :full-width? false
          :height 400
          :display-width 300
          :mm-per-pixel 0.5 ;; Common parameter across all cores
@@ -803,8 +804,9 @@
            directory
            core
            selections]}]
-(let [width (if (nil? (:optical core))
-              600
+  (let [width (if (or (nil? (:optical core))
+                      (not full-width?))
+              width
               (-> core :optical :display .getWidth))]
   {:fx/type :v-box
    :children [
@@ -857,6 +859,10 @@
                :merge-seams? merge-seams?
                :seams (:seams core)}]}))
 
+(defmethod event-handler ::toggle-full-width
+  [event]
+  (swap! *state assoc :full-width? (:fx/event event)))
+
 (defmethod event-handler ::toggle-scan-line
   [event]
   (swap! *state assoc :scan-line? (:fx/event event)))
@@ -889,9 +895,10 @@
               {:fx/type :v-box
 ;;               :alignment :center-left
                :pref-height fixed-optical-scan-height
-               :children [ #_{:fx/type :text
-                           :text "Optical"}
-                          {:fx/type :separator}
+               :children [{:fx/type :separator}
+                          {:fx/type :check-box
+                           :text "Full Width"
+                           :on-selected-changed {:event/type ::toggle-full-width}}
                           {:fx/type :check-box
                            :text "Scan Line"
                            :on-selected-changed {:event/type ::toggle-scan-line}}
@@ -917,6 +924,7 @@
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [width
+           full-width?
            display-width
            height
            scan-line?
@@ -930,9 +938,12 @@
         fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
         fixed-slider-height 50
         fixed-element-selector-width 50
-        core-display-width (/ (- width
-                                 fixed-left-margin-width)
-                              (count cores))
+        core-display-width (if full-width?
+                             (- width
+                              fixed-left-margin-width)
+                             (/ (- width
+                                   fixed-left-margin-width)
+                                (count cores)))
         core-display-height (- height
                                fixed-workspace-settings-height)]
     {:fx/type :stage
@@ -958,6 +969,7 @@
                                                                                 :scan-line? scan-line?
                                                                                 :merge-seams? merge-seams?
                                                                                 :width core-display-width
+                                                                                :full-width? full-width?
                                                                                 :height core-display-height
                                                                                 :fixed-core-options-height fixed-core-options-height
                                                                                 :fixed-optical-scan-height fixed-optical-scan-height
