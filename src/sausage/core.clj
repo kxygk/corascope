@@ -846,8 +846,7 @@
                :height (- height
                           fixed-core-options-height
                           fixed-optical-scan-height
-                          fixed-slider-height
-                          70) ;; MAGIC NUMBER: https://github.com/cljfx/cljfx/issues/34
+                          fixed-slider-height)
                :width width
                :xrf-scan (:xrf-scan core)
                :selection (:element (get selections 0))
@@ -939,9 +938,9 @@
     {:fx/type :stage
      :title "Sausage Scanner"
       :showing true
-      :on-width-changed {:event/type ::width-changed}
-      :on-height-changed {:event/type ::height-changed}
       :scene {:fx/type :scene
+              :on-width-changed {:event/type ::width-changed}
+              :on-height-changed {:event/type ::height-changed}
               :root {:fx/type :v-box
                      :children[{:fx/type workspace-settings-display
                                 :working-directory working-directory
