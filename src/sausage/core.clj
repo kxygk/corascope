@@ -947,16 +947,7 @@
                                 :fixed-left-margin-width fixed-left-margin-width
                                 :height fixed-workspace-settings-height}
                                {:fx/type :h-box
-                                :children [{:fx/type margin
-                                            :width fixed-left-margin-width
-                                            :height core-display-height
-                                            :fixed-core-options-height fixed-core-options-height
-                                            :fixed-optical-scan-height fixed-optical-scan-height
-                                            :fixed-slider-height fixed-slider-height
-                                            :elements (map name
-                                                           (:columns (:xrf-scan (get cores 0))))
-                                            :selection (:element (get selections 0))}
-                                           {:fx/type :scroll-pane
+                                :children [{:fx/type :scroll-pane
                                             :hbar-policy :never
                                             :vbar-policy :never
                                             ;; :pref-viewport-width core-display-width
@@ -973,7 +964,16 @@
                                                                                 :fixed-slider-height fixed-slider-height
                                                                                 :core core
                                                                                 :selections selections})
-                                                                             cores))}}]}]}}}))
+                                                                                      cores))}}
+                                           {:fx/type margin
+                                            :width fixed-left-margin-width
+                                            :height core-display-height
+                                            :fixed-core-options-height fixed-core-options-height
+                                            :fixed-optical-scan-height fixed-optical-scan-height
+                                            :fixed-slider-height fixed-slider-height
+                                            :elements (map name
+                                                           (:columns (:xrf-scan (get cores 0))))
+                                            :selection (:element (get selections 0))}]}]}}}))
 
 (def renderer
   (fx/create-renderer
