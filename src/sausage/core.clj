@@ -23,7 +23,8 @@
                   :scan-line? true
                   :merge-seams? true
                   :xrf-scan nil
-                  :length-mm 0
+                  :length-mm 0.0
+                  :start-mm 0.0
                   :crop-left 0
                   :crop-right 0
                   :seams []}]
@@ -198,6 +199,24 @@
                sausage.optical/flip-image
                sausage.optical/to-fx-image))))
 
+(defmethod event-handler ::reset-core-start [event]
+  (let [core-number (:core-number event)
+        cores (-> @*state :cores)
+        previous-core (-> cores (get (dec core-number)))]
+    (println "updating start of core" core-number)
+    (swap! *state assoc-in [:cores
+                            core-number
+                            :start-mm]
+           (if (zero? core-number)
+             0.0
+             (+ (-> previous-core
+                    :start-mm)
+                (-> previous-core
+                    :length-mm))))
+    (if (some? (get cores (inc core-number))) ;; reset all subsequent start measurements
+      (event-handler {:event/type ::reset-core-start
+                      :core-number (inc core-number)}))))
+
 (defn update-core-length
   ""
   [core
@@ -228,7 +247,9 @@
                      core-number]
            (update-core-length core
                                (-> @*state
-                                   :mm-per-pixel)))))
+                                   :mm-per-pixel)))
+    (event-handler {:event/type ::reset-core-start
+                    :core-number core-number})))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -359,7 +380,10 @@
             :xrf-scan nil
             :crop-left 0
             :crop-right 0
-            :seams []})))
+            :length-mm 0.0
+            :seams []})
+    (event-handler {:event/type ::reset-core-start
+                    :core-number num-cores})))
 
 (defmethod event-handler ::remove-core [event]
     (swap! *state assoc :cores
@@ -371,20 +395,29 @@
   [mm-per-pixel
    core-a
    core-b]
-  (let [merged-image (sausage.optical/join-horizontally (-> core-b
+  (let [gap-pmm (- (-> core-b ;; gap between the end of one core and start of next
+                       :start-mm)
+                   (+ (-> core-a
+                          :start-mm)
+                      (-> core-a
+                          :length-mm)))
+        gap-pix (/ gap-pmm
+                   mm-per-pixel)
+        merged-image (sausage.optical/join-horizontally (-> core-b
                                                             :optical
                                                             :image)
                                                         (-> core-a
                                                             :optical
-                                                            :image))
+                                                            :image)
+                                                        gap-pix)
         merged-xrf-scan (sausage.xrf/join-horizontally (-> core-a
                                                            :xrf-scan)
-                                                       (-> core-a
-                                                           :length-mm)
                                                        (-> core-b
-                                                           :xrf-scan)
+                                                           :start-mm)
                                                        (-> core-b
-                                                           :length-mm))]
+                                                           :xrf-scan))]
+
+
     (-> core-a
         (update :seams #(into % [(-> core-a :length-mm)]))
         (assoc-in [:optical :image] merged-image)
@@ -791,9 +824,59 @@
                :on-value-changed {:event/type ::adjust-right-crop
                                   :core-number core-number}}]})
 
+(defmethod event-handler ::update-core-start [event]
+  (let [core-number (:core-number event)
+        input-value-mm (-> (:fx/event event)
+                           read-string ;;  returns a 'long'
+                           double)     ;; 'Math/round' can't take a long...
+        mm-per-pixel (-> @*state
+                         :mm-per-pixel)
+        rounded-to-pixel (Math/round (/ input-value-mm
+                                        mm-per-pixel))
+        corrected-start-mm (* rounded-to-pixel
+                              mm-per-pixel)]
+    (println "corrected" corrected-start-mm)
+    (swap! *state
+           assoc-in [:cores
+                     core-number
+                     :start-mm]
+           corrected-start-mm)))
+
+(defn core-options-display
+  ""
+  [{:keys [core-number
+           width
+           height
+           start-mm]}]
+  {:fx/type :h-box
+   :pref-height height
+   :min-height height
+   :max-height height
+   :alignment :center-left
+   :children [{:fx/type :text-field
+               :editable true
+               :pref-height height
+               :prompt-text "Core Start (mm)"
+               :pref-column-count 9
+               :text (str start-mm)
+               :on-text-changed {:event/type ::update-core-start
+                                 :core-number core-number}
+               ;; :value-factory {:fx/type :integer-spinner-value-factory
+               ;;                 :value 10
+               ;;                 :min 0
+               ;;                 :max 100}
+               }
+              {:fx/type :separator
+               :orientation :horizontal}
+              {:fx/type :text
+               :text "Core Start (mm)"}
+              {:fx/type :separator
+               :orientation :vertical}]})
+
 (defn core-display
   ""
   [{:keys [width
+           full-width?
            height
            scan-line?
            merge-seams?
@@ -810,24 +893,11 @@
               (-> core :optical :display .getWidth))]
   {:fx/type :v-box
    :children [
-              {:fx/type :h-box
-               :pref-height fixed-core-options-height
-               :min-height fixed-core-options-height
-               :max-height fixed-core-options-height
-               :alignment :bottom-left
-               :children [{:fx/type :text-field
-                           :editable true
-                           :pref-height height ;; TODO: What's with all these pref/min dimensions...?
-                           :prompt-text "Select a working directory.."
-                           :pref-column-count 10
-                           :text "hello"}
-                          {:fx/type :text
-                           :text "hi there"}
-                          #_{:fx/type :integer-spinner-value-factory
-                           :amount-to-step-by 1
-                           :value 10
-                           :max 100
-                           :min 10}]}
+              {:fx/type core-options-display
+               :core-number core-number
+               :width width
+               :height fixed-core-options-height
+               :start-mm (:start-mm core)}
               {:fx/type optical-image-display
                :core-number core-number
                :scan-line? scan-line?
@@ -961,7 +1031,6 @@
                                 :children [{:fx/type :scroll-pane
                                             :hbar-policy :never
                                             :vbar-policy :never
-                                            ;; :pref-viewport-width core-display-width
                                             :content {:fx/type :h-box
                                                       :children (into [] (map-indexed (fn [index core]
                                                                                {:fx/type core-display

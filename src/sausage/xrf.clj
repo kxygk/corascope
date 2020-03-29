@@ -89,11 +89,10 @@
 (defn join-horizontally
   ""
   [xrfA
-   xrfA-length
-   xrfB
-   xrfB-length]
+   xrfB-start-mm
+   xrfB]
   (let [element-countsA (:element-counts xrfA)
-        shifted-element-countsB (map (partial shift-scan-point xrfA-length)
+        shifted-element-countsB (map (partial shift-scan-point xrfB-start-mm)
                                      (:element-counts xrfB))
         merged-counts (concat element-countsA
                               shifted-element-countsB)]
