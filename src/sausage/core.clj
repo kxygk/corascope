@@ -506,10 +506,10 @@
                                                   ;; Center Line
                                                   (if (true? scan-line?)
                                                     {:fx/type :line
-                                                     :start-x 0
+                                                     :start-x 1 ;; pixel offset
                                                      :start-y (/ height
                                                                  2.0)
-                                                     :end-x width
+                                                     :end-x (dec width)
                                                      :end-y (/ height
                                                                2.0)
                                                      :stroke-dash-array [10 10]
