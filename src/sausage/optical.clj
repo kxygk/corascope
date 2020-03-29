@@ -60,7 +60,9 @@
   ImageA will be on the left
   ImageB will be on the right"
   [imageA
-   imageB]
+   imageB
+   gap-pix]
+  (println "gap pix:" gap-pix)
   (cond (nil? imageB) imageA ;; "base" cases
         (nil? imageA) imageB
         :else
@@ -68,7 +70,8 @@
               imageB-width (.getWidth imageB)
               height (.getHeight imageA)
               width (+ imageA-width
-                       imageB-width)
+                       imageB-width
+                       gap-pix)
               merged-image (boofcv.struct.image.Planar. boofcv.struct.image.GrayU8
                                                         width
                                                         height
@@ -79,10 +82,12 @@
                                    imageA-width
                                    height)
               subimageB (.subimage merged-image
-                                   imageA-width
+                                   (+ imageA-width
+                                      gap-pix)
                                    0
                                    (+ imageA-width
-                                      imageB-width)
+                                      imageB-width
+                                      gap-pix)
                                    height)]
           (.setTo subimageA imageA)
           (.setTo subimageB imageB)
