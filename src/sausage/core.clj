@@ -825,22 +825,26 @@
                                   :core-number core-number}}]})
 
 (defmethod event-handler ::update-core-start [event]
-  (let [core-number (:core-number event)
-        input-value-mm (-> (:fx/event event)
-                           read-string ;;  returns a 'long'
-                           double)     ;; 'Math/round' can't take a long...
-        mm-per-pixel (-> @*state
-                         :mm-per-pixel)
-        rounded-to-pixel (Math/round (/ input-value-mm
-                                        mm-per-pixel))
-        corrected-start-mm (* rounded-to-pixel
-                              mm-per-pixel)]
-    (println "corrected" corrected-start-mm)
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :start-mm]
-           corrected-start-mm)))
+  (try
+    (let [core-number (:core-number event)
+          input-value-mm (-> (:fx/event event)
+                             read-string ;;  returns a 'long'
+                             double)     ;; 'Math/round' can't take a long...
+          mm-per-pixel (-> @*state
+                           :mm-per-pixel)
+          rounded-to-pixel (Math/round (/ input-value-mm
+                                          mm-per-pixel))
+          corrected-start-mm (* rounded-to-pixel
+                                mm-per-pixel)]
+      (println "corrected" corrected-start-mm)
+      (swap! *state
+             assoc-in [:cores
+                       core-number
+                       :start-mm]
+             corrected-start-mm))
+    (catch Exception ex
+      (event-handler {:event/type ::reset-core-start
+                      :core-number (:core-number event)}))))
 
 (defn core-options-display
   ""
