@@ -442,12 +442,12 @@
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
   [{:keys [working-directory
-           fixed-left-margin-width
+           fixed-margin-width
            height]}]
   {:fx/type :h-box
    :children [{:fx/type :button
-               :pref-width fixed-left-margin-width
-               :min-width fixed-left-margin-width
+               :pref-width fixed-margin-width
+               :min-width fixed-margin-width
                :pref-height height
                :min-height height
                :max-height height
@@ -1005,7 +1005,7 @@
            cores
            selections]}]
   (let [fixed-workspace-settings-height 30
-        fixed-left-margin-width 150
+        fixed-margin-width 150
         fixed-core-options-height 30
         fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
         fixed-slider-height 50
@@ -1027,7 +1027,7 @@
               :root {:fx/type :v-box
                      :children[{:fx/type workspace-settings-display
                                 :working-directory working-directory
-                                :fixed-left-margin-width fixed-left-margin-width
+                                :fixed-margin-width fixed-margin-width
                                 :height fixed-workspace-settings-height}
                                {:fx/type :h-box
                                 :children [{:fx/type :scroll-pane
@@ -1049,7 +1049,7 @@
                                                                                 :selections selections})
                                                                                       cores))}}
                                            {:fx/type margin
-                                            :width fixed-left-margin-width
+                                            :width fixed-margin-width
                                             :height core-display-height
                                             :fixed-core-options-height fixed-core-options-height
                                             :fixed-optical-scan-height fixed-optical-scan-height
