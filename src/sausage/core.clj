@@ -16,7 +16,6 @@
          :width 400
          :full-width? false
          :height 400
-         :display-width 300
          :mm-per-pixel 0.5 ;; Common parameter across all cores
          :mm-xrf-step-size 5 ;; Common parameter across all cores
          :cores [{:optical nil
@@ -91,8 +90,8 @@
 
 (defmethod event-handler ::width-changed
   [event]
-  (swap! *state assoc :width (:fx/event event))
-  (swap! *state assoc :display-width (:fx/event event)))
+  (swap! *state assoc :width (:fx/event event)))
+
 (defmethod event-handler ::height-changed
   [event]
   (swap! *state assoc :height (:fx/event event)))
@@ -999,7 +998,6 @@
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [width
            full-width?
-           display-width
            height
            scan-line?
            merge-seams?
