@@ -878,8 +878,7 @@
 
 (defn core-display
   ""
-  [{:keys [width
-           full-width?
+  [{:keys [width-factor
            height
            scan-line?
            merge-seams?
@@ -890,47 +889,47 @@
            directory
            core
            selections]}]
-  (let [width (if (or (nil? (:optical core))
-                      (not full-width?))
-              width
-              (-> core :optical :display .getWidth))]
-  {:fx/type :v-box
-   :children [
-              {:fx/type core-options-display
-               :core-number core-number
-               :width width
-               :height fixed-core-options-height
-               :start-mm (:start-mm core)}
-              {:fx/type optical-image-display
-               :core-number core-number
-               :scan-line? scan-line?
-               :width width
-               :height fixed-optical-scan-height
-               :optical (:optical core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)}
-              {:fx/type crop-slider
-               :core-number core-number
-               :width width
-               :height fixed-slider-height
-               :optical (:optical core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)}
-              {:fx/type xrf-scan-display
-               :core-number core-number
-               :height (- height
-                          fixed-core-options-height
-                          fixed-optical-scan-height
-                          fixed-slider-height)
-               :width width
-               :xrf-scan (:xrf-scan core)
-               :selection (:element (get selections 0))
-               :max-element-count (:max-count (get selections 0))
-               :core-length-mm (:length-mm core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)
-               :merge-seams? merge-seams?
-               :seams (:seams core)}]}))
+  (let [width (if (pos? (-> core :length-mm))
+                (* width-factor
+                   (-> core :length-mm))
+                300)]
+    {:fx/type :v-box
+     :children [
+                {:fx/type core-options-display
+                 :core-number core-number
+                 :width width
+                 :height fixed-core-options-height
+                 :start-mm (:start-mm core)}
+                {:fx/type optical-image-display
+                 :core-number core-number
+                 :scan-line? scan-line?
+                 :width width
+                 :height fixed-optical-scan-height
+                 :optical (:optical core)
+                 :crop-left  (:crop-left core)
+                 :crop-right (:crop-right core)}
+                {:fx/type crop-slider
+                 :core-number core-number
+                 :width width
+                 :height fixed-slider-height
+                 :optical (:optical core)
+                 :crop-left  (:crop-left core)
+                 :crop-right (:crop-right core)}
+                {:fx/type xrf-scan-display
+                 :core-number core-number
+                 :height fixed-optical-scan-height #_(- height
+                                                        fixed-core-options-height
+                                                        fixed-optical-scan-height
+                                                        fixed-slider-height)
+                 :width width
+                 :xrf-scan (:xrf-scan core)
+                 :selection (:element (get selections 0))
+                 :max-element-count (:max-count (get selections 0))
+                 :core-length-mm (:length-mm core)
+                 :crop-left  (:crop-left core)
+                 :crop-right (:crop-right core)
+                 :merge-seams? merge-seams?
+                 :seams (:seams core)}]}))
 
 (defmethod event-handler ::toggle-full-width
   [event]
@@ -1010,12 +1009,13 @@
         fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
         fixed-slider-height 50
         fixed-element-selector-width 50
-        core-display-width (if full-width?
-                             (- width
-                              fixed-left-margin-width)
-                             (/ (- width
-                                   fixed-left-margin-width)
-                                (count cores)))
+        core-display-width (if (or full-width?
+                                   (and (zero? (-> @*state :cores last :start-mm)) ;; TODO Make dummy cores have length
+                                        (zero? (-> @*state :cores last :length-mm)))) ;; degenerate case of no cores
+                             1
+                             (/ (- width fixed-margin-width)
+                                (+ (-> @*state :cores last :start-mm)
+                                   (-> @*state :cores last :length-mm))))
         core-display-height (- height
                                fixed-workspace-settings-height)]
     {:fx/type :stage
@@ -1033,13 +1033,14 @@
                                 :children [{:fx/type :scroll-pane
                                             :hbar-policy :never
                                             :vbar-policy :never
+                                            :pref-viewport-width (- width fixed-margin-width)
                                             :content {:fx/type :h-box
                                                       :children (into [] (map-indexed (fn [index core]
                                                                                {:fx/type core-display
                                                                                 :core-number index
                                                                                 :scan-line? scan-line?
                                                                                 :merge-seams? merge-seams?
-                                                                                :width core-display-width
+                                                                                :width-factor core-display-width
                                                                                 :full-width? full-width?
                                                                                 :height core-display-height
                                                                                 :fixed-core-options-height fixed-core-options-height
