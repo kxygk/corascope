@@ -104,7 +104,7 @@
 ;;Pixel index:  0 1 2 3 4 5 6 7 8
 ;;             |-|-|-|-|-|-|-|-|-|
 ;;             0mm               4.5mm
-;                   |~~~~~~~~~|
+                                        ;                   |~~~~~~~~~|
 ;;XRF-Scan          |---------|
 ;;                  1.25mm    3.75mm
 ;;
@@ -125,7 +125,7 @@
 ;;Pixel number: 1 2 3 4 5 6 7 8 9
 ;;             |-|-|-|-|-|-|-|-|-|
 ;;             0mm               4.5mm
-;                  |~~~~~~~~~~~|
+                                        ;                  |~~~~~~~~~~~|
 ;;XRF-Scan         |-----------|
 ;;                 1.0mm       4.0mm
 ;;
@@ -1092,14 +1092,14 @@
    :min-width width
    :max-width width
    :children [{:fx/type :button
-;;               :pref-width width
+               ;;               :pref-width width
                :pref-height fixed-core-options-height
                :min-height fixed-core-options-height
                :max-height fixed-core-options-height
                :on-action {:event/type ::merge-all-cores}
                :text ">> Merge"}
               {:fx/type :v-box
-;;               :alignment :center-left
+               ;;               :alignment :center-left
                :pref-height fixed-optical-scan-height
                :children [{:fx/type :separator}
                           {:fx/type :check-box
@@ -1144,9 +1144,7 @@
         fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
         fixed-slider-height 50
         fixed-element-selector-width 50
-        core-display-width (if (or full-width?
-                                   (and (zero? (-> @*state :cores last :start-mm)) ;; TODO Make dummy cores have length
-                                        (zero? (-> @*state :cores last :length-mm)))) ;; degenerate case of no cores
+        core-display-width (if full-width?
                              1
                              (/ (- width fixed-margin-width)
                                 (+ (-> @*state :cores last :start-mm)
