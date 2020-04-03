@@ -22,17 +22,6 @@
          :selections [{:element "Mn"
                        :max-count 1000}]}))
 
-
-                 ;; {:optical nil #_{:image nil ;; BoofCV image
-                 ;;                  :display nil ;; JFX image
-                 ;;                  :unscanned-pixels-left 0
-                 ;;                  :unscanned-pixels-right 0
-                 ;;                  :scan-line-pixel-offset-from-center 0}
-                 ;;  :xrf-scan nil #_{:header
-                 ;;                   :columns
-                 ;;                   :element-counts
-                 ;;                   :missing-steps-left 0
-
 (defmulti event-handler
   "CLJFX -  Event Handlers
 
@@ -88,6 +77,7 @@
   [event]
   (swap! *state assoc :height (:fx/event event)))
 
+;; TODO Get this all hooked up properly
 (defmethod event-handler ::set-working-directory [_]
   @(fx/on-fx-thread
     (let [file (-> (doto (DirectoryChooser.)
@@ -117,6 +107,24 @@
 ;; Note: Cropping needs to be conservative, so unscanned areas need to be
 ;;       /under-selected/ so that when you merge data doesn't overlap
 ;;
+;;## Degenerate cases:
+;;# Scan starts on pixel edge
+;; scan-start-mm: 1.0mm
+;; scan-end-mm  : 4.0mm
+;;
+;;Pixel number: 1 2 3 4 5 6 7 8 9
+;;             |-|-|-|-|-|-|-|-|-|
+;;             0mm               4.5mm
+;                  |~~~~~~~~~~~|
+;;XRF-Scan         |-----------|
+;;                 1.0mm       4.0mm
+;;
+;; scan-start-pix 2nd pixel
+;; scan-end-pix 8th pixel
+;;
+;; unscanned-left-pix: 2 pixel
+;; unscanned-right-pix:1 pixel
+;;
 ;;# Method annotated from example
 (defmethod event-handler ::update-unscanned-areas [event]
   (let [core-number (:core-number event)
@@ -137,17 +145,17 @@
                           :position
                           read-string) ;; 1.25mm
         scan-end-mm (-> scan
-                         last
-                         :position
-                         read-string)  ;; 3.75mm
+                        last
+                        :position
+                        read-string)  ;; 3.75mm
         ]
     (swap! *state
            assoc-in [:cores
                      core-number
                      :optical
                      :unscanned-left-pix]
-            (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
-                                mm-per-pixel)))) ;; 2 Pixels entirely unscanned
+           (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
+                               mm-per-pixel)))) ;; 2 Pixels entirely unscanned
     (swap! *state
            assoc-in [:cores
                      core-number
@@ -157,25 +165,13 @@
               (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
                                  mm-per-pixel))))))) ;; 9-8 = 1 Pixel entirely unscanned
 
-;;## Degenerate cases:
-;;# Scan starts on pixel edge
-;; scan-start-mm: 1.0mm
-;; scan-end-mm  : 4.0mm
+;; Updates the core's 'display image' based on
+;; the internally stored 'optical image'
 ;;
-;;Pixel number: 1 2 3 4 5 6 7 8 9
-;;             |-|-|-|-|-|-|-|-|-|
-;;             0mm               4.5mm
-;                  |~~~~~~~~~~~|
-;;XRF-Scan         |-----------|
-;;                 1.0mm       4.0mm
-;;
-;; scan-start-pix 2nd pixel
-;; scan-end-pix 8th pixel
-;;
-;; unscanned-left-pix: 2 pixel
-;; unscanned-right-pix:1 pixel
-
-(defmethod event-handler ::update-display-image [event]
+;; NOTE: This is done because we want to avoid
+;; operations on the underlying 'optical image'
+(defmethod event-handler ::update-display-image
+  [event]
   (let [core-number (:core-number event)
         optical (-> @*state
                     :cores
@@ -190,37 +186,50 @@
                sausage.optical/flip-image
                sausage.optical/to-fx-image))))
 
-
-
 (defn overlap?
+  "Check if CORE-A and CORE-B overlap in any way
+  RETURN: TRUE/FALSE"
   [core-a
    core-b]
   (if (>= (-> core-b :start-mm)
-         (+ (-> core-a :start-mm)
-            (-> core-a :length-mm))) ;; end-mm
+          (+ (-> core-a :start-mm)
+             (-> core-a :length-mm))) ;; end-mm
     false
     true))
 
- (defn overlapping-cores
-   [cores]
-   (if (empty? cores)
-     [[][]]
-     (let [current-core (first cores)
-           later-cores (rest cores)
-           [overlapping-current-core
-            not-overlapping-current-core] (split-with (partial overlap? current-core)
-                                                      later-cores)
-           [current-level-cores
-            other-level-cores] (overlapping-cores not-overlapping-current-core)]
-       [(into [current-core]
-              current-level-cores)
-        (into (into [] overlapping-current-core)
-              other-level-cores)])))
+(defn overlapping-cores
+  "Given a vector of CORES, it will check which overlap
+  and gives you two lists:
+  - not-overlapping: a selection of cores that don't overlap (biased towards 0mm)
+  - overlapping: the remaining cores that did overlap (and may mutually overlap)
+  RETURNS: [[not-overlapping][overlapping]]"
+  [cores]
+  (if (empty? cores)
+    [[][]]
+    (let [current-core (first cores)
+          later-cores (rest cores)
+          [overlapping-current-core
+           not-overlapping-current-core] (split-with (partial overlap? current-core)
+                                                     later-cores)
+          [current-level-cores
+           other-level-cores] (overlapping-cores not-overlapping-current-core)]
+      [(into [current-core]
+             current-level-cores)
+       (into (into [] overlapping-current-core)
+             other-level-cores)])))
 
 (defn pyramid-stack
-  "Stacks sections into a 'pyramid'.
-  Lower rows as tightly as possible.
-  Pieces that don't fit go into subsequent rows"
+  "Stacks CORES into a 'pyramid'.
+  Lower rows as tightly as possible - biased to 0mm
+  ie. it takes the first core, then chooses the next core that fits next to it
+  and then the next.. etc.
+  Cores that don't fit on the first row we again try to fit on the next row.
+  This happens recursively.
+  RETURNS:
+  [[core-x core-y core-z] ;; first row
+   [core-a core-b]        ;; second row
+   [core-c]]               ;; third row ... etc.
+  "
   [cores]
   (let [[current-level-cores
          other-cores] (overlapping-cores cores)]
@@ -231,8 +240,10 @@
             (pyramid-stack other-cores)))))
 
 (defn inject-index
-  "take a vector of maps and adds the index into each map.
-  At a later stage of a processing pipeline these can be extracted"
+  "Given a VECTOR-OF-MAPS it will add and index key into each map.
+  key is named: :tracking-index
+  After processing the maps you can use the injected index
+  to figure out which one it was"
   [vector-of-maps]
   (map #(assoc %1
                :tracking-index
@@ -241,20 +252,31 @@
        (range (count vector-of-maps))))
 
 (defn reduce-to-indeces
-  "take a vector of vector of maps that all have an index at :tracking-index
-  and reduce to just a vector of vector of indeces"
+  "Given a MAP a tracking :tracking-index
+  RETURN: index
+  Given a VECTOR recursively call this function
+  RETURN: vector of vector of vector... of indeces
+  EXAMPLE OUTPUT:
+  [[0 2 4]
+   [1]
+   [3 5]]"
   [element]
   (if (map? element)
     (:tracking-index element)
     (map reduce-to-indeces element)))
 
 (defn sort-cores
+  "Given a vector of CORES,
+  RETURN: a vector sorted by :start-mm
+  NOTE: The core-number/index will change"
   [cores]
   (into [] (sort #(< (:start-mm %1)
                      (:start-mm %2))
                  cores)))
 
-
+;; Adjusts the CORE list so that the cores are in order based on :start-mm
+;; Then (re)generates a pyramid/stacked layout so we can then look up which
+;; core shows up on which level
 (defmethod event-handler ::sort-cores [event]
   (println "Sorting Cores")
   (swap! *state
@@ -271,12 +293,16 @@
              reduce-to-indeces)))
 
 (defn- does-vector-contain-value
+  "Local helper - Checks if a VECTOR contains a VALUE
+  RETURNS: TRUE/FALSE"
   [value vector]
   (reduce #(or %1 (= %2 value))
           false
           vector))
 
 (defn get-core-row
+  "Give a CORE-NUMBER and LAYOUT
+  RETURN: Which row the core should be displayed on"
   [core-number layout]
   (let [does-row-have-core? (map (partial does-vector-contain-value
                                           core-number)
@@ -286,12 +312,17 @@
     row-with-core))
 
 (defn update-core-length
-  ""
+  "Given a CORE and the optical image's MM-PER-PIXEL
+  RETURN: A core with an updated :length-mm
+  NOTE: This is either derived from the optical scan size
+        or the xrf-scan size
+  DEGENERATE: If there is no :optical or :xrf-scan then
+              the length is reset to a global default  "
   [core
    mm-per-pixel]
   (if (nil? (-> core :optical))
     (if (nil? (-> core :xrf-scan))
-      (assoc core :length-mm nil)
+      (assoc core :length-mm fixed-default-core-length)
       (assoc core :length-mm (* mm-per-pixel
                                 (-> core
                                     :xrf-scan
@@ -305,6 +336,8 @@
                                   :image
                                   .getWidth)))))
 
+;; Makes sure the :length-mm is set properly based on the
+;; :optical scan and the :xrf-scan
 (defmethod event-handler ::update-core-length [event]
   (let [core-number (:core-number event)
         core (-> @*state
@@ -352,9 +385,12 @@
                           :core-number core-number}))))))
 
 (defn element-counts
-  "Given an XRF-SCAN and a ELEMENT
-  Returns a vector of [position element-count] pairs
-  These can then be plotted"
+  "Given an XRF-SCAN and a ELEMENT (keyword)
+  RETURN:
+  [[position element-count]
+   [position element-count]
+   ...
+   [position element-count]]"
   [xrf-scan
    element]
   (map #(vector (read-string (:position %))
@@ -398,13 +434,13 @@
          update
          :selections
          #(into [] (map (fn [selection]
-                           (let [element (:element selection)
-                                 cores (-> @*state
-                                           :cores)]
-                             {:element element
-                              :max-count (get-max-count-for-element-in-cores cores
-                                                                             (keyword element))}))
-                         %))))
+                          (let [element (:element selection)
+                                cores (-> @*state
+                                          :cores)]
+                            {:element element
+                             :max-count (get-max-count-for-element-in-cores cores
+                                                                            (keyword element))}))
+                        %))))
 
 
 (defmethod event-handler ::load-xrf-scan [event]
@@ -446,7 +482,7 @@
            {:start-mm (if (nil? (-> @*state :cores last))
                         0.0 ;; if no core to tack on to, then set to zero
                         (+ (-> @*state :cores last :start-mm)
-                         (-> @*state :cores last :length-mm)))
+                           (-> @*state :cores last :length-mm)))
             :optical nil
             :xrf-scan nil
             :crop-left 0
@@ -455,16 +491,19 @@
             :seams []})
     (event-handler {:event/type ::sort-cores})))
 
-(event-handler {:event/type ::add-core}) ;; INTIALIZE STATE TODO: Maybe remove/move somewhere else
-
+;; INTIALIZE GLOBAL STATE
+;; TODO: Maybe remove/move somewhere else
+(event-handler {:event/type ::add-core})
 
 (defmethod event-handler ::remove-core [event]
-    (swap! *state assoc :cores
-           (pop (:cores @*state)))
+  (swap! *state assoc :cores
+         (pop (:cores @*state)))
   (if (empty? (:cores @*state))
     (event-handler {:event/type ::add-core})))
 
 (defn merge-cores
+  "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
+  RESULT: One core with optical and xrf-scans merged"
   [mm-per-pixel
    core-a
    core-b]
@@ -497,6 +536,7 @@
         (assoc-in [:xrf-scan] merged-xrf-scan)
         (update-core-length mm-per-pixel))))
 
+;; TODO: Make sure this doesn't get called when cores overlap
 (defmethod event-handler ::merge-all-cores
   [event]
   (swap! *state
@@ -511,7 +551,7 @@
   (event-handler {:event/type ::update-display-image
                   :core-number 0})
   (event-handler {:event/type ::update-core-length
-                 :core-number 0}))
+                  :core-number 0}))
 
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
@@ -675,8 +715,8 @@
                                                        :fill "yellow"}))
                                                   ]))}]}])})
 
-
-(defn xrf-columns-list ;; TODO: Figure out how the hell this works!
+;; TODO: Figure out how the hell this works! Or maybe remove entirely?
+(defn xrf-columns-list
   "List of Elements (and other stuff)"
   [{:keys [items
            selection
@@ -698,10 +738,12 @@
           :items items
           :orientation :vertical}})
 
+;; TODO: Implement/Remove
 (defmethod event-handler ::select-multiple
   [event]
   "multi select not implemented")
 
+;; TODO: Implement/Remove
 (defmethod event-handler ::select-single
   [event]
   (swap! *state assoc-in [:selections 0 :element] (:fx/event event))
@@ -743,30 +785,33 @@
                                          :core-number core-number}
                              :text "Load XRF Scan"}])}]})
 
-
 (defmethod event-handler ::adjust-right-crop
   [event]
   (swap! *state assoc-in [:cores
                           (:core-number event)
                           :crop-right]
-                          (- 1 (:fx/event event))))
+         (- 1 (:fx/event event))))
 
 (defmethod event-handler ::adjust-left-crop
   [event]
   (swap! *state assoc-in [:cores
                           (:core-number event)
                           :crop-left]
-                          (:fx/event event)))
+         (:fx/event event)))
 
+;; Crop both :optical and :xrf-data
+;; 1 - always crop areas that are optically scanned but have no xrf data
+;; 2 - optionally crop more based on the slider positions
+;; TODO: Simplify this .. with some destructuring or something
 (defmethod event-handler ::crop
   [event]
-  (let [core-number (:core-number event) ;; TODO destructure from function argument
+  (let [core-number (:core-number event)
         core (-> @*state
                  :cores
                  (get core-number))
         xrf-scan-element-counts (-> core
-                            :xrf-scan
-                            :element-counts)
+                                    :xrf-scan
+                                    :element-counts)
         image (-> core
                   :optical
                   :image)
@@ -846,10 +891,9 @@
                      core-number
                      :crop-right]
            0.0)))
-                                 
 
 (defn crop-slider
-  ""
+  "The sliders that visually help the user cropping the data"
   [{:keys [core-number
            width
            height
@@ -897,6 +941,7 @@
                :on-value-changed {:event/type ::adjust-right-crop
                                   :core-number core-number}}]})
 
+;; Update :start-mm based on user input and then resorts/lays-out the cores
 (defmethod event-handler ::update-core-start [event]
   (try
     (let [core-number (:core-number event)
@@ -917,96 +962,98 @@
              corrected-start-mm))
     (catch Exception ex
       (println "Invalid core-start input"))))
-(event-handler {:event/type ::sort-cores}))
+
+
+(event-handler {:event/type ::sort-cores})
 
 (defn core-options-display
-  ""
-  [{:keys [core-number
-           width
-           height
-           start-mm]}]
-  {:fx/type :h-box
-   :pref-height height
-   :min-height height
-   :max-height height
-   :alignment :center-left
-   :children [{:fx/type :text-field
-               :editable true
-               :pref-height height
-               :prompt-text "Core Start (mm)"
-               :pref-column-count 9
-               :text (str start-mm)
-               :on-text-changed {:event/type ::update-core-start
-                                 :core-number core-number}
-               ;; :value-factory {:fx/type :integer-spinner-value-factory
-               ;;                 :value 10
-               ;;                 :min 0
-               ;;                 :max 100}
-               }
-              {:fx/type :separator
-               :orientation :horizontal}
-              {:fx/type :text
-               :text "Core Start (mm)"}
-              {:fx/type :separator
-               :orientation :vertical}]})
+"The options bar at the top of every core"
+[{:keys [core-number
+         width
+         height
+         start-mm]}]
+{:fx/type :h-box
+ :pref-height height
+ :min-height height
+ :max-height height
+ :alignment :center-left
+ :children [{:fx/type :text-field
+             :editable true
+             :pref-height height
+             :prompt-text "Core Start (mm)"
+             :pref-column-count 9
+             :text (str start-mm)
+             :on-text-changed {:event/type ::update-core-start
+                               :core-number core-number}
+             ;; :value-factory {:fx/type :integer-spinner-value-factory
+             ;;                 :value 10
+             ;;                 :min 0
+             ;;                 :max 100}
+             }
+            {:fx/type :separator
+             :orientation :horizontal}
+            {:fx/type :text
+             :text "Core Start (mm)"}
+            {:fx/type :separator
+             :orientation :vertical}]})
 
 (defn core-display
-  ""
-  [{:keys [width-factor
-           height
-           scan-line?
-           merge-seams?
-           display-row
-           fixed-core-options-height
-           fixed-optical-scan-height
-           fixed-slider-height
-           core-number
-           directory
-           core
-           selections]}]
-  (let [width (* width-factor
-                 (-> core :length-mm))] ;; TODO: Convert to pixels
-    {:fx/type :v-box
-     :layout-x (* width-factor
-                  (-> core :start-mm))  ;; TODO: Convert to pixels
-     :layout-y (* height
-                  display-row)  ;; TODO: Convert to pixels
-     :children [
-                {:fx/type core-options-display
-                 :core-number core-number
-                 :width width
-                 :height fixed-core-options-height
-                 :start-mm (:start-mm core)}
-                {:fx/type optical-image-display
-                 :core-number core-number
-                 :scan-line? scan-line?
-                 :width width
-                 :height fixed-optical-scan-height
-                 :optical (:optical core)
-                 :crop-left  (:crop-left core)
-                 :crop-right (:crop-right core)}
-                {:fx/type crop-slider
-                 :core-number core-number
-                 :width width
-                 :height fixed-slider-height
-                 :optical (:optical core)
-                 :crop-left  (:crop-left core)
-                 :crop-right (:crop-right core)}
-                {:fx/type xrf-scan-display
-                 :core-number core-number
-                 :height fixed-optical-scan-height #_(- height
-                                                        fixed-core-options-height
-                                                        fixed-optical-scan-height
-                                                        fixed-slider-height)
-                 :width width
-                 :xrf-scan (:xrf-scan core)
-                 :selection (:element (get selections 0))
-                 :max-element-count (:max-count (get selections 0))
-                 :core-length-mm (:length-mm core)
-                 :crop-left  (:crop-left core)
-                 :crop-right (:crop-right core)
-                 :merge-seams? merge-seams?
-                 :seams (:seams core)}]}))
+"The cummulative core display"
+[{:keys [width-factor
+         height
+         scan-line?
+         merge-seams?
+         display-row
+         fixed-core-options-height
+         fixed-optical-scan-height
+         fixed-slider-height
+         core-number
+         directory
+         core
+         selections]}]
+(let [width (* width-factor
+               (-> core :length-mm))] ;; TODO: Convert to pixels
+  {:fx/type :v-box
+   :layout-x (* width-factor
+                (-> core :start-mm))  ;; TODO: Convert to pixels
+   :layout-y (* height
+                display-row)  ;; TODO: Convert to pixels
+   :children [
+              {:fx/type core-options-display
+               :core-number core-number
+               :width width
+               :height fixed-core-options-height
+               :start-mm (:start-mm core)}
+              {:fx/type optical-image-display
+               :core-number core-number
+               :scan-line? scan-line?
+               :width width
+               :height fixed-optical-scan-height
+               :optical (:optical core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)}
+              {:fx/type crop-slider
+               :core-number core-number
+               :width width
+               :height fixed-slider-height
+               :optical (:optical core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)}
+              {:fx/type xrf-scan-display
+               :core-number core-number
+               :height fixed-optical-scan-height #_(- height
+                                                      fixed-core-options-height
+                                                      fixed-optical-scan-height
+                                                      fixed-slider-height)
+               :width width
+               :xrf-scan (:xrf-scan core)
+               :selection (:element (get selections 0))
+               :max-element-count (:max-count (get selections 0))
+               :core-length-mm (:length-mm core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)
+               :merge-seams? merge-seams?
+               :seams (:seams core)}]}))
 
 (defmethod event-handler ::toggle-full-width
   [event]
@@ -1021,7 +1068,7 @@
   (swap! *state assoc :merge-seams? (:fx/event event)))
 
 (defn margin
-  ""
+  "The right margin with global options/toggles"
   [{:keys [width
            height
            fixed-core-options-height
@@ -1101,46 +1148,46 @@
                                )]
     {:fx/type :stage
      :title "Sausage Scanner"
-      :showing true
-      :scene {:fx/type :scene
-              :on-width-changed {:event/type ::width-changed}
-              :on-height-changed {:event/type ::height-changed}
-              :root {:fx/type :v-box
-                     :children[{:fx/type workspace-settings-display
-                                :working-directory working-directory
-                                :fixed-margin-width fixed-margin-width
-                                :height fixed-workspace-settings-height}
-                               {:fx/type :h-box
-                                :children [{:fx/type :scroll-pane
-                                            :hbar-policy :never
-                                            :vbar-policy :never
-                                            :pref-viewport-width (- width fixed-margin-width)
-                                            :content {:fx/type :pane
-                                                      :children (into [] (map-indexed (fn [index core]
-                                                                               {:fx/type core-display
-                                                                                :core-number index
-                                                                                :scan-line? scan-line?
-                                                                                :merge-seams? merge-seams?
-                                                                                :width-factor core-display-width
-                                                                                :full-width? full-width?
-                                                                                :height core-display-height
-                                                                                :display-row (get-core-row index
-                                                                                                           layout)
-                                                                                :fixed-core-options-height fixed-core-options-height
-                                                                                :fixed-optical-scan-height fixed-optical-scan-height
-                                                                                :fixed-slider-height fixed-slider-height
-                                                                                :core core
-                                                                                :selections selections})
-                                                                                      cores))}}
-                                           {:fx/type margin
-                                            :width fixed-margin-width
-                                            :height core-display-height
-                                            :fixed-core-options-height fixed-core-options-height
-                                            :fixed-optical-scan-height fixed-optical-scan-height
-                                            :fixed-slider-height fixed-slider-height
-                                            :elements (map name
-                                                           (:columns (:xrf-scan (get cores 0))))
-                                            :selection (:element (get selections 0))}]}]}}}))
+     :showing true
+     :scene {:fx/type :scene
+             :on-width-changed {:event/type ::width-changed}
+             :on-height-changed {:event/type ::height-changed}
+             :root {:fx/type :v-box
+                    :children[{:fx/type workspace-settings-display
+                               :working-directory working-directory
+                               :fixed-margin-width fixed-margin-width
+                               :height fixed-workspace-settings-height}
+                              {:fx/type :h-box
+                               :children [{:fx/type :scroll-pane
+                                           :hbar-policy :never
+                                           :vbar-policy :never
+                                           :pref-viewport-width (- width fixed-margin-width)
+                                           :content {:fx/type :pane
+                                                     :children (into [] (map-indexed (fn [index core]
+                                                                                       {:fx/type core-display
+                                                                                        :core-number index
+                                                                                        :scan-line? scan-line?
+                                                                                        :merge-seams? merge-seams?
+                                                                                        :width-factor core-display-width
+                                                                                        :full-width? full-width?
+                                                                                        :height core-display-height
+                                                                                        :display-row (get-core-row index
+                                                                                                                   layout)
+                                                                                        :fixed-core-options-height fixed-core-options-height
+                                                                                        :fixed-optical-scan-height fixed-optical-scan-height
+                                                                                        :fixed-slider-height fixed-slider-height
+                                                                                        :core core
+                                                                                        :selections selections})
+                                                                                     cores))}}
+                                          {:fx/type margin
+                                           :width fixed-margin-width
+                                           :height core-display-height
+                                           :fixed-core-options-height fixed-core-options-height
+                                           :fixed-optical-scan-height fixed-optical-scan-height
+                                           :fixed-slider-height fixed-slider-height
+                                           :elements (map name
+                                                          (:columns (:xrf-scan (get cores 0))))
+                                           :selection (:element (get selections 0))}]}]}}}))
 
 (def renderer
   (fx/create-renderer
