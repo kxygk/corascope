@@ -190,23 +190,100 @@
                sausage.optical/flip-image
                sausage.optical/to-fx-image))))
 
-(defmethod event-handler ::reset-core-start [event]
-  (let [core-number (:core-number event)
-        cores (-> @*state :cores)
-        previous-core (-> cores (get (dec core-number)))]
-    (println "updating start of core" core-number)
-    (swap! *state assoc-in [:cores
-                            core-number
-                            :start-mm]
-           (if (zero? core-number)
-             0.0
-             (+ (-> previous-core
-                    :start-mm)
-                (-> previous-core
-                    :length-mm))))
-    (if (some? (get cores (inc core-number))) ;; reset all subsequent start measurements
-      (event-handler {:event/type ::reset-core-start
-                      :core-number (inc core-number)}))))
+
+
+(defn overlap?
+  [core-a
+   core-b]
+  (if (>= (-> core-b :start-mm)
+         (+ (-> core-a :start-mm)
+            (-> core-a :length-mm))) ;; end-mm
+    false
+    true))
+
+ (defn overlapping-cores
+   [cores]
+   (if (empty? cores)
+     [[][]]
+     (let [current-core (first cores)
+           later-cores (rest cores)
+           [overlapping-current-core
+            not-overlapping-current-core] (split-with (partial overlap? current-core)
+                                                      later-cores)
+           [current-level-cores
+            other-level-cores] (overlapping-cores not-overlapping-current-core)]
+       [(into [current-core]
+              current-level-cores)
+        (into (into [] overlapping-current-core)
+              other-level-cores)])))
+
+(defn pyramid-stack
+  "Stacks sections into a 'pyramid'.
+  Lower rows as tightly as possible.
+  Pieces that don't fit go into subsequent rows"
+  [cores]
+  (let [[current-level-cores
+         other-cores] (overlapping-cores cores)]
+    (if (empty? other-cores)
+      [current-level-cores
+       other-cores]
+      (into [current-level-cores]
+            (pyramid-stack other-cores)))))
+
+(defn inject-index
+  "take a vector of maps and adds the index into each map.
+  At a later stage of a processing pipeline these can be extracted"
+  [vector-of-maps]
+  (map #(assoc %1
+               :tracking-index
+               %2)
+       vector-of-maps
+       (range (count vector-of-maps))))
+
+(defn reduce-to-indeces
+  "take a vector of vector of maps that all have an index at :tracking-index
+  and reduce to just a vector of vector of indeces"
+  [element]
+  (if (map? element)
+    (:tracking-index element)
+    (map reduce-to-indeces element)))
+
+(defn sort-cores
+  [cores]
+  (into [] (sort #(< (:start-mm %1)
+                     (:start-mm %2))
+                 cores)))
+
+
+(defmethod event-handler ::sort-cores [event]
+  (println "Sorting Cores")
+  (swap! *state
+         update
+         :cores
+         sort-cores)
+  (swap! *state
+         assoc
+         :layout
+         (-> @*state
+             :cores
+             inject-index
+             pyramid-stack
+             reduce-to-indeces)))
+
+(defn- does-vector-contain-value
+  [value vector]
+  (reduce #(or %1 (= %2 value))
+          false
+          vector))
+
+(defn get-core-row
+  [core-number layout]
+  (let [does-row-have-core? (map (partial does-vector-contain-value
+                                          core-number)
+                                 layout)
+        row-with-core (first (keep-indexed #(if (true? %2) %1)
+                                           does-row-have-core?))]
+    row-with-core))
 
 (defn update-core-length
   ""
@@ -239,8 +316,7 @@
            (update-core-length core
                                (-> @*state
                                    :mm-per-pixel)))
-    (event-handler {:event/type ::reset-core-start
-                    :core-number core-number})))
+    ))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -367,14 +443,18 @@
                       count)]
     (swap! *state assoc-in [:cores
                             num-cores]
-           {:optical nil
+           {:start-mm (if (nil? (-> @*state :cores last))
+                        0.0 ;; if no core to tack on to, then set to zero
+                        (+ (-> @*state :cores last :start-mm)
+                         (-> @*state :cores last :length-mm)))
+            :optical nil
             :xrf-scan nil
             :crop-left 0
             :crop-right 0
-            :length-mm 0.0
+            :length-mm 300.0
             :seams []})
-    (event-handler {:event/type ::reset-core-start
-                    :core-number num-cores})))
+    (event-handler {:event/type ::sort-cores})))
+
 (event-handler {:event/type ::add-core}) ;; INTIALIZE STATE TODO: Maybe remove/move somewhere else
 
 
@@ -836,8 +916,8 @@
                        :start-mm]
              corrected-start-mm))
     (catch Exception ex
-      (event-handler {:event/type ::reset-core-start
-                      :core-number (:core-number event)}))))
+      (println "Invalid core-start input"))))
+(event-handler {:event/type ::sort-cores}))
 
 (defn core-options-display
   ""
@@ -876,6 +956,7 @@
            height
            scan-line?
            merge-seams?
+           display-row
            fixed-core-options-height
            fixed-optical-scan-height
            fixed-slider-height
@@ -883,11 +964,13 @@
            directory
            core
            selections]}]
-  (let [width (if (pos? (-> core :length-mm))
-                (* width-factor
-                   (-> core :length-mm))
-                300)]
+  (let [width (* width-factor
+                 (-> core :length-mm))] ;; TODO: Convert to pixels
     {:fx/type :v-box
+     :layout-x (* width-factor
+                  (-> core :start-mm))  ;; TODO: Convert to pixels
+     :layout-y (* height
+                  display-row)  ;; TODO: Convert to pixels
      :children [
                 {:fx/type core-options-display
                  :core-number core-number
@@ -995,6 +1078,7 @@
            scan-line?
            merge-seams?
            working-directory
+           layout
            cores
            selections]}]
   (let [fixed-workspace-settings-height 30
@@ -1010,8 +1094,11 @@
                              (/ (- width fixed-margin-width)
                                 (+ (-> @*state :cores last :start-mm)
                                    (-> @*state :cores last :length-mm))))
-        core-display-height (- height
-                               fixed-workspace-settings-height)]
+        core-display-height (+ fixed-core-options-height
+                               fixed-optical-scan-height
+                               fixed-optical-scan-height ;; TODO Update somehow... graph is the same size as optical display right now
+                               fixed-slider-height
+                               )]
     {:fx/type :stage
      :title "Sausage Scanner"
       :showing true
@@ -1028,7 +1115,7 @@
                                             :hbar-policy :never
                                             :vbar-policy :never
                                             :pref-viewport-width (- width fixed-margin-width)
-                                            :content {:fx/type :h-box
+                                            :content {:fx/type :pane
                                                       :children (into [] (map-indexed (fn [index core]
                                                                                {:fx/type core-display
                                                                                 :core-number index
@@ -1037,6 +1124,8 @@
                                                                                 :width-factor core-display-width
                                                                                 :full-width? full-width?
                                                                                 :height core-display-height
+                                                                                :display-row (get-core-row index
+                                                                                                           layout)
                                                                                 :fixed-core-options-height fixed-core-options-height
                                                                                 :fixed-optical-scan-height fixed-optical-scan-height
                                                                                 :fixed-slider-height fixed-slider-height
