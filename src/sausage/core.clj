@@ -18,15 +18,7 @@
          :height 400
          :mm-per-pixel 0.5 ;; Common parameter across all cores
          :mm-xrf-step-size 5 ;; Common parameter across all cores
-         :cores [{:optical nil
-                  :scan-line? true
-                  :merge-seams? true
-                  :xrf-scan nil
-                  :length-mm 0.0
-                  :start-mm 0.0
-                  :crop-left 0
-                  :crop-right 0
-                  :seams []}]
+         :cores []
          :selections [{:element "Mn"
                        :max-count 1000}]}))
 
@@ -383,6 +375,8 @@
             :seams []})
     (event-handler {:event/type ::reset-core-start
                     :core-number num-cores})))
+(event-handler {:event/type ::add-core}) ;; INTIALIZE STATE TODO: Maybe remove/move somewhere else
+
 
 (defmethod event-handler ::remove-core [event]
     (swap! *state assoc :cores
