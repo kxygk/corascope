@@ -10,6 +10,16 @@
            javafx.stage.Stage)
   (:gen-class))
 
+;; GLOBAL CONSTANTS
+;; Can be freely adjusted to tweak the display
+
+;; The cores are displayed/scaled based on their lengths so uninitialized cores
+;; need a "size" so that they can take up space to display properly
+;; Otherwise nothing shows up and there is no "Load" buttons.
+;; (TODO: Think of a less goofy UI solution)
+(def fixed-default-core-length 300.0)
+
+
 (def *state
   ""
   (atom {:working-directory ""
@@ -487,7 +497,7 @@
             :xrf-scan nil
             :crop-left 0
             :crop-right 0
-            :length-mm 300.0
+            :length-mm fixed-default-core-length
             :seams []})
     (event-handler {:event/type ::sort-cores})))
 
