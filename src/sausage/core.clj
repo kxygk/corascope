@@ -1073,6 +1073,7 @@
   "The right margin with global options/toggles"
   [{:keys [width
            height
+           can-merge?
            elements
            selection
            ]}]
@@ -1086,6 +1087,7 @@
                :min-height fixed-core-options-height
                :max-height fixed-core-options-height
                :on-action {:event/type ::merge-all-cores}
+               :disable (not can-merge?)
                :text ">> Merge"}
               {:fx/type :v-box
                ;;               :alignment :center-left
@@ -1170,6 +1172,9 @@
                                           {:fx/type margin
                                            :width fixed-margin-width
                                            :height core-display-height
+                                           :can-merge? (-> layout
+                                                           second
+                                                           empty?)
                                            :elements (map name
                                                           (:columns (:xrf-scan (get cores 0))))
                                            :selection (:element (get selections 0))}]}]}}}))
