@@ -18,7 +18,12 @@
 ;; Otherwise nothing shows up and there is no "Load" buttons.
 ;; (TODO: Think of a less goofy UI solution)
 (def fixed-default-core-length 300.0)
-
+(def fixed-workspace-settings-height 30.0)
+(def fixed-margin-width 150)
+(def fixed-core-options-height 30)
+(def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
+(def fixed-slider-height 50)
+(def fixed-element-selector-width 50)
 
 (def *state
   ""
@@ -566,7 +571,6 @@
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
   [{:keys [working-directory
-           fixed-margin-width
            height]}]
   {:fx/type :h-box
    :children [{:fx/type :button
@@ -1012,9 +1016,6 @@
          scan-line?
          merge-seams?
          display-row
-         fixed-core-options-height
-         fixed-optical-scan-height
-         fixed-slider-height
          core-number
          directory
          core
@@ -1049,10 +1050,7 @@
                :crop-right (:crop-right core)}
               {:fx/type xrf-scan-display
                :core-number core-number
-               :height fixed-optical-scan-height #_(- height
-                                                      fixed-core-options-height
-                                                      fixed-optical-scan-height
-                                                      fixed-slider-height)
+               :height fixed-optical-scan-height
                :width width
                :xrf-scan (:xrf-scan core)
                :selection (:element (get selections 0))
@@ -1079,9 +1077,6 @@
   "The right margin with global options/toggles"
   [{:keys [width
            height
-           fixed-core-options-height
-           fixed-optical-scan-height
-           fixed-slider-height
            elements
            selection
            ]}]
@@ -1136,13 +1131,7 @@
            layout
            cores
            selections]}]
-  (let [fixed-workspace-settings-height 30
-        fixed-margin-width 150
-        fixed-core-options-height 30
-        fixed-optical-scan-height 133.0  ;; needs to be fixed so the core displays line up
-        fixed-slider-height 50
-        fixed-element-selector-width 50
-        core-display-width (if full-width?
+  (let [core-display-width (if full-width?
                              1
                              (/ (- width fixed-margin-width)
                                 (+ (-> @*state :cores last :start-mm)
@@ -1161,7 +1150,6 @@
              :root {:fx/type :v-box
                     :children[{:fx/type workspace-settings-display
                                :working-directory working-directory
-                               :fixed-margin-width fixed-margin-width
                                :height fixed-workspace-settings-height}
                               {:fx/type :h-box
                                :children [{:fx/type :scroll-pane
@@ -1179,18 +1167,12 @@
                                                                                         :height core-display-height
                                                                                         :display-row (get-core-row index
                                                                                                                    layout)
-                                                                                        :fixed-core-options-height fixed-core-options-height
-                                                                                        :fixed-optical-scan-height fixed-optical-scan-height
-                                                                                        :fixed-slider-height fixed-slider-height
                                                                                         :core core
                                                                                         :selections selections})
                                                                                      cores))}}
                                           {:fx/type margin
                                            :width fixed-margin-width
                                            :height core-display-height
-                                           :fixed-core-options-height fixed-core-options-height
-                                           :fixed-optical-scan-height fixed-optical-scan-height
-                                           :fixed-slider-height fixed-slider-height
                                            :elements (map name
                                                           (:columns (:xrf-scan (get cores 0))))
                                            :selection (:element (get selections 0))}]}]}}}))
