@@ -358,8 +358,8 @@
                      core-number]
            (update-core-length core
                                (-> @*state
-                                   :mm-per-pixel)))
-    ))
+                                   :mm-per-pixel))))
+    (event-handler {:event/type ::sort-cores}))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -971,10 +971,8 @@
                        :start-mm]
              corrected-start-mm))
     (catch Exception ex
-      (println "Invalid core-start input"))))
-
-
-(event-handler {:event/type ::sort-cores})
+      (println "Invalid core-start input")))
+  (event-handler {:event/type ::sort-cores}))
 
 (defn core-options-display
 "The options bar at the top of every core"
