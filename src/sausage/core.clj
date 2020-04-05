@@ -997,10 +997,6 @@
              :text (str start-mm)
              :on-text-changed {:event/type ::update-core-start
                                :core-number core-number}
-             ;; :value-factory {:fx/type :integer-spinner-value-factory
-             ;;                 :value 10
-             ;;                 :min 0
-             ;;                 :max 100}
              }
             {:fx/type :separator
              :orientation :horizontal}
@@ -1011,7 +1007,7 @@
 
 (defn core-display
 "The cummulative core display"
-[{:keys [width-factor
+[{:keys [horizontal-zoom-factor
          height
          scan-line?
          merge-seams?
@@ -1020,10 +1016,10 @@
          directory
          core
          selections]}]
-(let [width (* width-factor
+(let [width (* horizontal-zoom-factor
                (-> core :length-mm))] ;; TODO: Convert to pixels
   {:fx/type :v-box
-   :layout-x (* width-factor
+   :layout-x (* horizontal-zoom-factor
                 (-> core :start-mm))  ;; TODO: Convert to pixels
    :layout-y (* height
                 display-row)  ;; TODO: Convert to pixels
@@ -1131,11 +1127,13 @@
            layout
            cores
            selections]}]
-  (let [core-display-width (if full-width?
+  (let [horizontal-zoom-factor (if full-width?
                              1
                              (/ (- width fixed-margin-width)
                                 (+ (-> @*state :cores last :start-mm)
                                    (-> @*state :cores last :length-mm))))
+        ;; TODO: Maybe put this in a state variable so it's not recalculated all the time.
+        ;; ... only when the end point can change
         core-display-height (+ fixed-core-options-height
                                fixed-optical-scan-height
                                fixed-optical-scan-height ;; TODO Update somehow... graph is the same size as optical display right now
@@ -1162,8 +1160,7 @@
                                                                                         :core-number index
                                                                                         :scan-line? scan-line?
                                                                                         :merge-seams? merge-seams?
-                                                                                        :width-factor core-display-width
-                                                                                        :full-width? full-width?
+                                                                                        :horizontal-zoom-factor horizontal-zoom-factor
                                                                                         :height core-display-height
                                                                                         :display-row (get-core-row index
                                                                                                                    layout)
