@@ -32,6 +32,7 @@
   org.openjfx/javafx-swing$linux {:mvn/version "14"}
   org.openjfx/javafx-swing$mac {:mvn/version "14"}
   org.openjfx/javafx-swing$win {:mvn/version "14"}
+
   ;; These libraries are not used. This drastically reduces the file size
   ;; They are also specified as excluded in the `cljfx` call above
   ;; org.openjfx/javafx-media {:mvn/version "14"}
@@ -43,10 +44,24 @@
   ;; org.openjfx/javafx-web$mac {:mvn/version "14"}
   ;; org.openjfx/javafx-web$win {:mvn/version "14"}
   }
+
+ ;; need to be (re)specified explicitely due to weirdness in cambada
+ ;; https://github.com/jdhollis/cambada#caveats
  :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
              "clojars" {:url "https://repo.clojars.org/"}}
- :aliases {:uberjar
-           {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.2"}}
-            :main-opts ["-m" "cambada.uberjar"
-                        "--aot" "all"
-                        "-m" "sausage.core"]}}}
+
+ :aliases {;; call 'clj -A:uberjar' to run
+           :uberjar {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.2"}}
+                     :main-opts ["-m" "cambada.uberjar"
+                                 "--aot" "all"
+                                 "-m" "sausage.core"]}
+           :native-image {:extra-deps
+                          {luchiniatwork/cambada {:mvn/version "1.0.0"}}
+                          :main-opts ["-m" "cambada.native-image"
+                                      "-m" "sausage.core"]}
+           :depstar
+              {:extra-deps
+               {seancorfield/depstar {:mvn/version "0.5.2"}}
+               :main-opts ["-m" "hf.depstar.uberjar"
+                           "sausage.jar" "--compile"
+                            "-m" "sausage.core"]}}}
