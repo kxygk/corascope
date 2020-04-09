@@ -1,14 +1,19 @@
 {:deps
  {org.clojure/clojure {:mvn/version "1.10.0"}
-  org.boofcv/boofcv-core {:mvn/version "0.35"} ;; ???????
-  cljfx {:mvn/version "1.6.7"} ;; gui
-  org.openjfx/javafx-swing {:mvn/version "13"}
+  org.boofcv/boofcv-core {:mvn/version "0.35"
+                          :exclusions [org.boofcv/boofcv-recognition]}
+  cljfx {:mvn/version "1.6.7"
+         :exclusions [org.openjfx/javafx-web
+                      org.openjfx/javafx-media]}
   org.clojure/data.csv {:mvn/version "0.1.4"} ;; data injestion
-  thi.ng/geom {:mvn/version "1.0.0-RC4"} ;; plotting
+  thi.ng/geom {:mvn/version "1.0.0-RC4"
+               :exclusions [org.clojure/clojurescript
+                            org.jogamp.gluegen/gluegen-rt]}
   com.github.afester.javafx/FranzXaver {:mvn/version "0.1"} ;; SVG to JFX friendly stuff...
 
   ;; Dark magic from:
   ;; https://old.reddit.com/r/Clojure/comments/fw93gc/new_clojurians_ask_anything/fmspx8m/
+  ;; These are dependencies of `cljfx`
   ;; By default JavaFX will only bundle binaries for the platform you build on
   ;; This forces it to also include linux/mac/win binaries
   org.openjfx/javafx-base {:mvn/version "14"}
@@ -23,14 +28,20 @@
   org.openjfx/javafx-graphics$linux {:mvn/version "14"}
   org.openjfx/javafx-graphics$mac {:mvn/version "14"}
   org.openjfx/javafx-graphics$win {:mvn/version "14"}
-  org.openjfx/javafx-media {:mvn/version "14"}
-  org.openjfx/javafx-media$linux {:mvn/version "14"}
-  org.openjfx/javafx-media$mac {:mvn/version "14"}
-  org.openjfx/javafx-media$win {:mvn/version "14"}
-  org.openjfx/javafx-web {:mvn/version "14"}
-  org.openjfx/javafx-web$linux {:mvn/version "14"}
-  org.openjfx/javafx-web$mac {:mvn/version "14"}
-  org.openjfx/javafx-web$win {:mvn/version "14"}
+  org.openjfx/javafx-swing {:mvn/version "14"}
+  org.openjfx/javafx-swing$linux {:mvn/version "14"}
+  org.openjfx/javafx-swing$mac {:mvn/version "14"}
+  org.openjfx/javafx-swing$win {:mvn/version "14"}
+  ;; These libraries are not used. This drastically reduces the file size
+  ;; They are also specified as excluded in the `cljfx` call above
+  ;; org.openjfx/javafx-media {:mvn/version "14"}
+  ;; org.openjfx/javafx-media$linux {:mvn/version "14"}
+  ;; org.openjfx/javafx-media$mac {:mvn/version "14"}
+  ;; org.openjfx/javafx-media$win {:mvn/version "14"}
+  ;; org.openjfx/javafx-web {:mvn/version "14"}
+  ;; org.openjfx/javafx-web$linux {:mvn/version "14"}
+  ;; org.openjfx/javafx-web$mac {:mvn/version "14"}
+  ;; org.openjfx/javafx-web$win {:mvn/version "14"}
   }
  :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
              "clojars" {:url "https://repo.clojars.org/"}}
