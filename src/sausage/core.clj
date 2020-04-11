@@ -1029,18 +1029,18 @@
                :width width
                :height fixed-core-options-height
                :start-mm (:start-mm core)}
+              {:fx/type crop-slider
+               :core-number core-number
+               :width width
+               :height fixed-slider-height
+               :optical (:optical core)
+               :crop-left  (:crop-left core)
+               :crop-right (:crop-right core)}
               {:fx/type optical-image-display
                :core-number core-number
                :scan-line? scan-line?
                :width width
                :height fixed-optical-scan-height
-               :optical (:optical core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)}
-              {:fx/type crop-slider
-               :core-number core-number
-               :width width
-               :height fixed-slider-height
                :optical (:optical core)
                :crop-left  (:crop-left core)
                :crop-right (:crop-right core)}
