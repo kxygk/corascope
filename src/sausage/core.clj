@@ -20,7 +20,7 @@
 (def fixed-default-core-length 300.0)
 (def fixed-workspace-settings-height 30.0)
 (def fixed-margin-width 150)
-(def fixed-core-options-height 30)
+(def fixed-core-header-height 30)
 (def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
 (def fixed-slider-height 50)
 (def fixed-element-selector-width 50)
@@ -34,8 +34,17 @@
          :mm-per-pixel 0.5 ;; Common parameter across all cores
          :mm-xrf-step-size 5 ;; Common parameter across all cores
          :cores []
-         :selections [{:element "Mn"
-                       :max-count 1000}]}))
+         :displays [{:type :optical
+                     :height fixed-optical-scan-height
+                     :scan-line? true}
+                    {:type :element-count
+                     :height (* 2 fixed-optical-scan-height)
+                     :merge-seams? true
+                     :element "Mn"
+                     :max-count 1000}
+                    {:type :optical
+                     :height (* 2 fixed-optical-scan-height)
+                     :scan-line? true}]}))
 
 (defmulti event-handler
   "CLJFX -  Event Handlers
@@ -974,7 +983,7 @@
       (println "Invalid core-start input")))
   (event-handler {:event/type ::sort-cores}))
 
-(defn core-options-display
+(defn core-header-display
 "The options bar at the top of every core"
 [{:keys [core-number
          width
@@ -1005,13 +1014,11 @@
 "The cummulative core display"
 [{:keys [horizontal-zoom-factor
          height
-         scan-line?
-         merge-seams?
          display-row
          core-number
          directory
          core
-         selections]}]
+         displays]}]
 (let [width (* horizontal-zoom-factor
                (-> core :length-mm))] ;; TODO: Convert to pixels
   {:fx/type :v-box
@@ -1019,39 +1026,40 @@
                 (-> core :start-mm))  ;; TODO: Convert to pixels
    :layout-y (* height
                 display-row)  ;; TODO: Convert to pixels
-   :children [
-              {:fx/type core-options-display
-               :core-number core-number
-               :width width
-               :height fixed-core-options-height
-               :start-mm (:start-mm core)}
-              {:fx/type crop-slider
-               :core-number core-number
-               :width width
-               :height fixed-slider-height
-               :optical (:optical core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)}
-              {:fx/type optical-image-display
-               :core-number core-number
-               :scan-line? scan-line?
-               :width width
-               :height fixed-optical-scan-height
-               :optical (:optical core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)}
-              {:fx/type xrf-scan-display
-               :core-number core-number
-               :height fixed-optical-scan-height
-               :width width
-               :xrf-scan (:xrf-scan core)
-               :selection (:element (get selections 0))
-               :max-element-count (:max-count (get selections 0))
-               :core-length-mm (:length-mm core)
-               :crop-left  (:crop-left core)
-               :crop-right (:crop-right core)
-               :merge-seams? merge-seams?
-               :seams (:seams core)}]}))
+   :children (into [{:fx/type core-header-display
+                     :core-number core-number
+                     :width width
+                     :height fixed-core-header-height
+                     :start-mm (:start-mm core)}
+                    {:fx/type crop-slider
+                     :core-number core-number
+                     :width width
+                     :height fixed-slider-height
+                     :optical (:optical core)
+                     :crop-left  (:crop-left core)
+                     :crop-right (:crop-right core)}]
+                   (map #(case (:type %)
+                           :optical {:fx/type optical-image-display
+                                     :core-number core-number
+                                     :scan-line? (:scan-line? %)
+                                     :width width
+                                     :height (:height %) ;;fixed-optical-scan-height
+                                     :optical (:optical core)
+                                     :crop-left  (:crop-left core)
+                                     :crop-right (:crop-right core)}
+                           :element-count {:fx/type xrf-scan-display
+                                           :core-number core-number
+                                           :height (:height %) ;;fixed-optical-scan-height
+                                           :width width
+                                           :xrf-scan (:xrf-scan core)
+                                           :selection (:element %)
+                                           :max-element-count (:max-count %)
+                                           :core-length-mm (:length-mm core)
+                                           :crop-left  (:crop-left core)
+                                           :crop-right (:crop-right core)
+                                           :merge-seams? (:merge-seams? %)
+                                           :seams (:seams core)})
+                        displays))}))
 
 (defmethod event-handler ::toggle-full-width
   [event]
@@ -1059,84 +1067,138 @@
 
 (defmethod event-handler ::toggle-scan-line
   [event]
-  (swap! *state assoc :scan-line? (:fx/event event)))
+  (swap! *state
+         assoc-in
+         [:displays
+          (:display-number event)
+          :scan-line?]
+         (:fx/event event)))
 
 (defmethod event-handler ::toggle-merge-seams
   [event]
-  (swap! *state assoc :merge-seams? (:fx/event event)))
+  (swap! *state
+         assoc-in
+         [:displays
+          (:display-number event)
+          :merge-seams?]
+         (:fx/event event)))
+
+(defn core-header-options
+  ""
+  [{:keys [;;display-number
+           width
+           can-merge?]}]
+  {:fx/type :h-box
+   :pref-height fixed-core-header-height
+   :min-height fixed-core-header-height
+   :max-height fixed-core-header-height
+   :children [{:fx/type :button
+               :max-height Double/MAX_VALUE
+               :on-action {:event/type ::merge-all-cores}
+               :disable (not can-merge?)
+               :text ">> Merge"}
+              {:fx/type :check-box
+               :text "Full Width"
+               :on-selected-changed {:event/type ::toggle-full-width}}]})
+
+
+(defn crop-options
+  ""
+  [{:keys [width]}]
+  {:fx/type :h-box
+   :pref-height fixed-slider-height
+   :min-height fixed-slider-height
+   :max-height fixed-slider-height
+   :children [{:fx/type :button
+               :max-height Double/MAX_VALUE
+               :on-action {:event/type ::merge-all-cores}
+               :disable true
+               :text "Crop Options (not working yet)"}
+              {:fx/type :check-box
+               :text "Hi"
+               :on-selected-changed {:event/type ::toggle-full-width}}]})
+
+(defn optical-image-options
+  ""
+  [{:keys [display-number
+           height
+           scan-line?]}]
+  {:fx/type :v-box
+   :pref-height height
+   :min-height height
+   :max-height height
+   :children [{:fx/type :check-box
+               :text "Scan Line"
+               :selected scan-line?
+               :on-selected-changed {:event/type ::toggle-scan-line
+                                     :display-number display-number}}]})
+
+(defn xrf-scan-options
+  ""
+  [{:keys [display-number
+           height
+           merge-seams?]}]
+  {:fx/type :v-box
+   :pref-height height
+   :min-height height
+   :max-height height
+   :children [{:fx/type :check-box
+               :text "Merge Seams"
+               :selected merge-seams?
+               :on-selected-changed {:event/type ::toggle-merge-seams
+                                     :display-number display-number}}]})
 
 (defn margin
-  "The right margin with global options/toggles"
+  "The right margin with global options/toggles.
+  First come static options
+  Followed by per-display options"
   [{:keys [width
            height
            can-merge?
-           elements
-           selection
+           displays
            ]}]
   {:fx/type :v-box
    :pref-width width
    :min-width width
    :max-width width
-   :children [{:fx/type :button
-               ;;               :pref-width width
-               :pref-height fixed-core-options-height
-               :min-height fixed-core-options-height
-               :max-height fixed-core-options-height
-               :on-action {:event/type ::merge-all-cores}
-               :disable (not can-merge?)
-               :text ">> Merge"}
+   :children [{:fx/type core-header-options
+               :width width
+               :can-merge? can-merge?}
+              {:fx/type crop-options}
               {:fx/type :v-box
                ;;               :alignment :center-left
-               :pref-height fixed-optical-scan-height
-               :children [{:fx/type :separator}
-                          {:fx/type :check-box
-                           :text "Full Width"
-                           :on-selected-changed {:event/type ::toggle-full-width}}
-                          {:fx/type :check-box
-                           :text "Scan Line"
-                           :on-selected-changed {:event/type ::toggle-scan-line}}
-                          {:fx/type :check-box
-                           :text "Merge Seams"
-                           :on-selected-changed {:event/type ::toggle-merge-seams}}]}
-              {:fx/type :h-box
-               :alignment :center
-               :pref-height fixed-slider-height
-               :children [{:fx/type :text
-                           :text "-"}]}
-              {:fx/type xrf-columns-list
-               :items elements
-               :selection-mode :single
-               :selection selection
-               :selection-number 0
-               :height (- height
-                          fixed-core-options-height
-                          fixed-optical-scan-height
-                          fixed-slider-height
-                          )}]})
+               ;;               :pref-height fixed-optical-scan-height
+               :children (map-indexed (fn [display-number
+                                           display]
+                                        (case (:type display)
+                                          :optical {:fx/type optical-image-options
+                                                    :display-number display-number
+                                                    :height (:height display)
+                                                    :scan-line? (:scan-line? display)}
+                                          :element-count {:fx/type xrf-scan-options
+                                                          :display-number display-number
+                                                          :height (:height display)
+                                                          :merge-seams? (:merge-seams? display)}))
+                                      displays)}]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [width
            full-width?
            height
-           scan-line?
-           merge-seams?
            working-directory
            layout
            cores
-           selections]}]
+           displays]}]
   (let [horizontal-zoom-factor (if full-width?
                              1
                              (/ (- width fixed-margin-width)
                                 (+ (-> @*state :cores last :start-mm)
                                    (-> @*state :cores last :length-mm))))
-        ;; TODO: Maybe put this in a state variable so it's not recalculated all the time.
-        ;; ... only when the end point can change
-        core-display-height (+ fixed-core-options-height
-                               fixed-optical-scan-height
-                               fixed-optical-scan-height ;; TODO Update somehow... graph is the same size as optical display right now
-                               fixed-slider-height
-                               )]
+        core-display-height (reduce #(+ %1 (:height %2))
+                                    (+ fixed-core-header-height
+                                       fixed-slider-height)
+                                    displays)]
     {:fx/type :stage
      :title "Sausage Scanner"
      :showing true
@@ -1153,27 +1215,23 @@
                                            :vbar-policy :never
                                            :pref-viewport-width (- width fixed-margin-width)
                                            :content {:fx/type :pane
-                                                     :children (into [] (map-indexed (fn [index core]
-                                                                                       {:fx/type core-display
-                                                                                        :core-number index
-                                                                                        :scan-line? scan-line?
-                                                                                        :merge-seams? merge-seams?
-                                                                                        :horizontal-zoom-factor horizontal-zoom-factor
-                                                                                        :height core-display-height
-                                                                                        :display-row (get-core-row index
-                                                                                                                   layout)
-                                                                                        :core core
-                                                                                        :selections selections})
-                                                                                     cores))}}
+                                                     :children (map-indexed (fn [index core]
+                                                                              {:fx/type core-display
+                                                                               :core-number index
+                                                                               :horizontal-zoom-factor horizontal-zoom-factor
+                                                                               :height core-display-height
+                                                                               :display-row (get-core-row index
+                                                                                                          layout)
+                                                                               :core core
+                                                                               :displays displays})
+                                                                            cores)}}
                                           {:fx/type margin
                                            :width fixed-margin-width
                                            :height core-display-height
                                            :can-merge? (-> layout
                                                            second
                                                            empty?)
-                                           :elements (map name
-                                                          (:columns (:xrf-scan (get cores 0))))
-                                           :selection (:element (get selections 0))}]}]}}}))
+                                           :displays displays}]}]}}}))
 
 (def renderer
   (fx/create-renderer
