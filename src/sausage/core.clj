@@ -506,10 +506,6 @@
             :seams []})
     (event-handler {:event/type ::sort-cores})))
 
-;; INTIALIZE GLOBAL STATE
-;; TODO: Maybe remove/move somewhere else
-(event-handler {:event/type ::add-core})
-
 (defmethod event-handler ::remove-core [event]
   (swap! *state assoc :cores
          (pop (:cores @*state)))
@@ -1188,4 +1184,7 @@
 (defn -main [& args]
   (fx/mount-renderer
    *state
-   renderer))
+   renderer)
+  ;; Add a first empty core
+  ;; The UI paradigm doesn't make much sense with zero cores
+  (event-handler {:event/type ::add-core}))
