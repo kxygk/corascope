@@ -19,7 +19,7 @@
 ;; (TODO: Think of a less goofy UI solution)
 (def fixed-default-core-length 300.0)
 (def fixed-workspace-settings-height 30.0)
-(def fixed-margin-width 150)
+(def fixed-margin-width 456) ;; dialed in to fit the periodic table
 (def fixed-core-header-height 30)
 (def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
 (def fixed-slider-height 50)
@@ -1158,16 +1158,10 @@
            displays
            ]}]
   {:fx/type :v-box
-   :pref-width width
-   :min-width width
-   :max-width width
    :children [{:fx/type core-header-options
-               :width width
                :can-merge? can-merge?}
               {:fx/type crop-options}
               {:fx/type :v-box
-               ;;               :alignment :center-left
-               ;;               :pref-height fixed-optical-scan-height
                :children (map-indexed (fn [display-number
                                            display]
                                         (case (:type display)
