@@ -450,19 +450,24 @@
      :max-count (get-max-count-for-element-in-cores cores
                                                     element)}))
 
+(defn- update-max-element-in-display
+  [cores
+   display]
+  (if (= :element-count
+         (:type display))
+    (assoc display
+           :max-count
+           (get-max-count-for-element-in-cores cores
+                                               (:element display)))
+    display))
+
 (defmethod event-handler ::update-max-element-count [event]
   (swap! *state
          update
-         :selections
-         #(into [] (map (fn [selection]
-                          (let [element (:element selection)
-                                cores (-> @*state
-                                          :cores)]
-                            {:element element
-                             :max-count (get-max-count-for-element-in-cores cores
-                                                                            (keyword element))}))
-                        %))))
-
+         :displays
+         #(mapv (partial update-max-element-in-display (-> @*state
+                                                           :cores))
+                %)))
 
 (defmethod event-handler ::load-xrf-scan [event]
   ;;  @(fx/on-fx-thread
@@ -737,40 +742,6 @@
                                                        :fill "yellow"}))
                                                   ]))}]}])})
 
-;; TODO: Figure out how the hell this works! Or maybe remove entirely?
-(defn xrf-columns-list
-  "List of Elements (and other stuff)"
-  [{:keys [items
-           selection
-           selection-mode
-           selection-number
-           height]}]
-  {:fx/type fx.ext.list-view/with-selection-props
-   :props (case selection-mode
-            :single (cond-> {:selection-mode :single
-                             :on-selected-item-changed {:event/type ::select-single
-                                                        :selection-number selection-number}}
-                      (seq selection)
-                      (assoc :selected-item (-> selection sort first))))
-   :desc {:fx/type :list-view
-          :cell-factory (fn [path]
-                          {:text path})
-          :pref-height height
-          :max-width 99999
-          :items items
-          :orientation :vertical}})
-
-;; TODO: Implement/Remove
-(defmethod event-handler ::select-multiple
-  [event]
-  "multi select not implemented")
-
-;; TODO: Implement/Remove
-(defmethod event-handler ::select-single
-  [event]
-  (swap! *state assoc-in [:selections 0 :element] (:fx/event event))
-  (event-handler {:event/type ::update-max-element-count}))
-
 (defn xrf-scan-display
   "display and options for XRF scan data"
   [{:keys [core-number
@@ -987,82 +958,82 @@
   (event-handler {:event/type ::sort-cores}))
 
 (defn core-header-display
-"The options bar at the top of every core"
-[{:keys [core-number
-         width
-         height
-         start-mm]}]
-{:fx/type :h-box
- :pref-height height
- :min-height height
- :max-height height
- :alignment :center-left
- :children [{:fx/type :text-field
-             :editable true
-             :pref-height height
-             :prompt-text "Core Start (mm)"
-             :pref-column-count 9
-             :text (str start-mm)
-             :on-text-changed {:event/type ::update-core-start
-                               :core-number core-number}
-             }
-            {:fx/type :separator
-             :orientation :horizontal}
-            {:fx/type :text
-             :text "Core Start (mm)"}
-            {:fx/type :separator
-             :orientation :vertical}]})
+  "The options bar at the top of every core"
+  [{:keys [core-number
+           width
+           height
+           start-mm]}]
+  {:fx/type :h-box
+   :pref-height height
+   :min-height height
+   :max-height height
+   :alignment :center-left
+   :children [{:fx/type :text-field
+               :editable true
+               :pref-height height
+               :prompt-text "Core Start (mm)"
+               :pref-column-count 9
+               :text (str start-mm)
+               :on-text-changed {:event/type ::update-core-start
+                                 :core-number core-number}
+               }
+              {:fx/type :separator
+               :orientation :horizontal}
+              {:fx/type :text
+               :text "Core Start (mm)"}
+              {:fx/type :separator
+               :orientation :vertical}]})
 
 (defn core-display
-"The cummulative core display"
-[{:keys [horizontal-zoom-factor
-         height
-         display-row
-         core-number
-         directory
-         core
-         displays]}]
-(let [width (* horizontal-zoom-factor
-               (-> core :length-mm))] ;; TODO: Convert to pixels
-  {:fx/type :v-box
-   :layout-x (* horizontal-zoom-factor
-                (-> core :start-mm))  ;; TODO: Convert to pixels
-   :layout-y (* height
-                display-row)  ;; TODO: Convert to pixels
-   :children (into [{:fx/type core-header-display
-                     :core-number core-number
-                     :width width
-                     :height fixed-core-header-height
-                     :start-mm (:start-mm core)}
-                    {:fx/type crop-slider
-                     :core-number core-number
-                     :width width
-                     :height fixed-slider-height
-                     :optical (:optical core)
-                     :crop-left  (:crop-left core)
-                     :crop-right (:crop-right core)}]
-                   (map #(case (:type %)
-                           :optical {:fx/type optical-image-display
-                                     :core-number core-number
-                                     :scan-line? (:scan-line? %)
-                                     :width width
-                                     :height (:height %) ;;fixed-optical-scan-height
-                                     :optical (:optical core)
-                                     :crop-left  (:crop-left core)
-                                     :crop-right (:crop-right core)}
-                           :element-count {:fx/type xrf-scan-display
-                                           :core-number core-number
-                                           :height (:height %) ;;fixed-optical-scan-height
-                                           :width width
-                                           :xrf-scan (:xrf-scan core)
-                                           :selection (:element %)
-                                           :max-element-count (:max-count %)
-                                           :core-length-mm (:length-mm core)
-                                           :crop-left  (:crop-left core)
-                                           :crop-right (:crop-right core)
-                                           :merge-seams? (:merge-seams? %)
-                                           :seams (:seams core)})
-                        displays))}))
+  "The cummulative core display"
+  [{:keys [horizontal-zoom-factor
+           height
+           display-row
+           core-number
+           directory
+           core
+           displays]}]
+  (let [width (* horizontal-zoom-factor
+                 (-> core :length-mm))] ;; TODO: Convert to pixels
+    {:fx/type :v-box
+     :layout-x (* horizontal-zoom-factor
+                  (-> core :start-mm))  ;; TODO: Convert to pixels
+     :layout-y (* height
+                  display-row)  ;; TODO: Convert to pixels
+     :children (into [{:fx/type core-header-display
+                       :core-number core-number
+                       :width width
+                       :height fixed-core-header-height
+                       :start-mm (:start-mm core)}
+                      {:fx/type crop-slider
+                       :core-number core-number
+                       :width width
+                       :height fixed-slider-height
+                       :optical (:optical core)
+                       :crop-left  (:crop-left core)
+                       :crop-right (:crop-right core)}]
+                     (map #(case (:type %)
+                             :optical {:fx/type optical-image-display
+                                       :core-number core-number
+                                       :scan-line? (:scan-line? %)
+                                       :width width
+                                       :height (:height %) ;;fixed-optical-scan-height
+                                       :optical (:optical core)
+                                       :crop-left  (:crop-left core)
+                                       :crop-right (:crop-right core)}
+                             :element-count {:fx/type xrf-scan-display
+                                             :core-number core-number
+                                             :height (:height %) ;;fixed-optical-scan-height
+                                             :width width
+                                             :xrf-scan (:xrf-scan core)
+                                             :selection (:element %)
+                                             :max-element-count (:max-count %)
+                                             :core-length-mm (:length-mm core)
+                                             :crop-left  (:crop-left core)
+                                             :crop-right (:crop-right core)
+                                             :merge-seams? (:merge-seams? %)
+                                             :seams (:seams core)})
+                          displays))}))
 
 (defmethod event-handler ::toggle-full-width
   [event]
@@ -1085,6 +1056,73 @@
           (:display-number event)
           :merge-seams?]
          (:fx/event event)))
+
+(def periodic-table
+  [[:H  nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil :He]
+   [:Li :Be nil nil nil nil nil nil nil nil nil nil :B  :C  :N  :O  :F  :Ne]
+   [:Na :Mg nil nil nil nil nil nil nil nil nil nil :Al :Si :P  :S  :Cl :Ar]
+   [:K  :Ca :Sc :Ti :V  :Cr :Mn :Fe :Co :Ni :Cu :Zn :Ga :Ge :As :Se :Br :Kr]
+   [:Rb :Sr :Y  :Zr :Nb :Mo :Tc :Ru :Rh :Pd :Ag :Cd :In :Sn :Sb :Te :I  :Xe]
+   [:Cs :Ba :La :Hf :Ta :W  :Re :Os :Ir :Pt :Au :Hg :Tl :Pb :Bi :Po :At :Rn]
+   [:Fr :Ra :Ac :Rf :Db :Sg :Bh :Hs :Mt :Ds :Rg :Cn :Nh :Fl :Mc :Lv :Ts :Og]
+   [:.. :Th :.. :U]])
+
+(defmethod event-handler ::update-selected-element [event]
+  (swap! *state
+         assoc-in
+         [:displays
+          (:display-number event)
+          :element]
+         (:element event))
+  (event-handler {:event/type ::update-max-element-count}))
+
+(defn periodic-buttons
+  "Periodic table as a grid of buttons
+  Excess  columns in the xrf-scan file are then appended at the end"
+  [{:keys [columns
+           display-number]}]
+  (let [non-elements (clojure.set/difference  (set (-> @*state :columns))
+                                              (set (flatten periodic-table)))]
+    {:fx/type :grid-pane
+     :children
+     (into (filter some?
+                   (apply concat
+                          (map-indexed (fn [valence-electrons period]
+                                         (map-indexed (fn [group element]
+                                                        (if (some? element)
+                                                          {:fx/type :button
+                                                           :padding 2.0
+                                                           :min-width 25
+                                                           :max-height 25
+                                                           :pref-width 25
+                                                           :grid-pane/column group
+                                                           :grid-pane/row valence-electrons
+                                                           :disable (not (contains? columns element))
+                                                           :on-action {:event/type ::update-selected-element
+                                                                       :display-number display-number
+                                                                       :element element}
+                                                           :text (name element)}))
+                                                      period
+                                                      ))
+                                       periodic-table)))
+           (if (some? non-elements)
+             (map-indexed (fn [row-after-table non-element]
+                            (let [columns 6]
+                              {:fx/type :button
+                               :grid-pane/column-span (/ (count (first periodic-table))
+                                                         columns)
+                               :max-width Double/MAX_VALUE
+                               :grid-pane/column (* (int (mod row-after-table columns))
+                                                    (/ (count (first periodic-table))
+                                                       columns))
+                               :grid-pane/row (+ (count periodic-table)
+                                                 (int (/ row-after-table columns)))
+                               :on-action {:event/type ::update-selected-element
+                                           :display-number display-number
+                                           :element non-element}
+                               :text (name non-element)}))
+                          non-elements)
+             [] ))}))
 
 (defn core-header-options
   ""
@@ -1150,7 +1188,10 @@
                :text "Merge Seams"
                :selected merge-seams?
                :on-selected-changed {:event/type ::toggle-merge-seams
-                                     :display-number display-number}}]})
+                                     :display-number display-number}}
+              {:fx/type periodic-buttons
+               :display-number display-number
+               :columns columns}]})
 
 (defn margin
   "The right margin with global options/toggles.
