@@ -17,8 +17,11 @@
                      (first (drop 2 full-csv-table)))
         count-table (drop 3 full-csv-table)
         data (map #(zipmap columns %) count-table)]
+    (assert (= (count columns)
+               (count (set columns)))
+            "BAD NEWS: Your XRF scan has non-unique columns names. This isn't supported!")
     {:header header
-     :columns columns
+     :columns (set columns)
      :element-counts data}))
 
 

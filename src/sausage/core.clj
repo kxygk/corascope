@@ -473,7 +473,13 @@
                  (.showOpenDialog (Stage.)))]
     (if (some? file)
       (let [core-number (:core-number event)
-            xrf-scan (sausage.xrf/load-xrf-scan-file file)]
+            xrf-scan (sausage.xrf/load-xrf-scan-file file)
+            columns (:columns xrf-scan)]
+        (swap! *state
+               update
+               :columns
+               clojure.set/union
+               columns)
         (swap! *state
                assoc-in [:cores
                          core-number
@@ -1134,6 +1140,7 @@
   ""
   [{:keys [display-number
            height
+           columns
            merge-seams?]}]
   {:fx/type :v-box
    :pref-height height
@@ -1151,6 +1158,7 @@
   Followed by per-display options"
   [{:keys [width
            height
+           columns
            can-merge?
            displays
            ]}]
@@ -1169,6 +1177,7 @@
                                           :element-count {:fx/type xrf-scan-options
                                                           :display-number display-number
                                                           :height (:height display)
+                                                          :columns columns
                                                           :merge-seams? (:merge-seams? display)}))
                                       displays)}]})
 
@@ -1179,6 +1188,7 @@
            height
            working-directory
            layout
+           columns
            cores
            displays]}]
   (let [horizontal-zoom-factor (if full-width?
@@ -1219,6 +1229,7 @@
                                           {:fx/type margin
                                            :width fixed-margin-width
                                            :height core-display-height
+                                           :columns columns
                                            :can-merge? (-> layout
                                                            second
                                                            empty?)
