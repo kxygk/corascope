@@ -370,7 +370,7 @@
            (update-core-length core
                                (-> @*state
                                    :mm-per-pixel))))
-    (event-handler {:event/type ::sort-cores}))
+  (event-handler {:event/type ::sort-cores}))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -1233,10 +1233,10 @@
            cores
            displays]}]
   (let [horizontal-zoom-factor (if full-width?
-                             1
-                             (/ (- width fixed-margin-width)
-                                (+ (-> @*state :cores last :start-mm)
-                                   (-> @*state :cores last :length-mm))))
+                                 1
+                                 (/ (- width fixed-margin-width)
+                                    (+ (-> @*state :cores last :start-mm)
+                                       (-> @*state :cores last :length-mm))))
         core-display-height (reduce #(+ %1 (:height %2))
                                     (+ fixed-core-header-height
                                        fixed-slider-height)
@@ -1274,7 +1274,8 @@
                                            :can-merge? (-> layout
                                                            second
                                                            empty?)
-                                           :displays displays}]}]}}}))
+                                           :displays displays}
+                                          ]}]}}}))
 
 (def renderer
   (fx/create-renderer

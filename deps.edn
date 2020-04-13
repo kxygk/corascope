@@ -5,12 +5,6 @@
   cljfx {:mvn/version "1.6.7"
          :exclusions [org.openjfx/javafx-web
                       org.openjfx/javafx-media]}
-  org.clojure/data.csv {:mvn/version "0.1.4"} ;; data injestion
-  thi.ng/geom {:mvn/version "1.0.0-RC4"
-               :exclusions [org.clojure/clojurescript
-                            org.jogamp.gluegen/gluegen-rt]}
-  com.github.afester.javafx/FranzXaver {:mvn/version "0.1"} ;; SVG to JFX friendly stuff...
-
   ;; Dark magic from:
   ;; https://old.reddit.com/r/Clojure/comments/fw93gc/new_clojurians_ask_anything/fmspx8m/
   ;; These are dependencies of `cljfx`
@@ -43,6 +37,15 @@
   ;; org.openjfx/javafx-web$linux {:mvn/version "14"}
   ;; org.openjfx/javafx-web$mac {:mvn/version "14"}
   ;; org.openjfx/javafx-web$win {:mvn/version "14"}
+
+  org.clojure/data.csv {:mvn/version "0.1.4"} ;; data injestion
+  thi.ng/geom {:mvn/version "1.0.0-RC4"
+               :exclusions [org.clojure/clojurescript]}
+  com.github.afester.javafx/FranzXaver {:mvn/version "0.1"} ;; SVG to JFX friendly stuff...
+
+
+
+
   }
 
  ;; need to be (re)specified explicitely due to weirdness in cambada
