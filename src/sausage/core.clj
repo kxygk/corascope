@@ -1234,9 +1234,9 @@
 
 
 (defn -main [& args]
-  (fx/mount-renderer
-   *state
-   renderer)
   ;; Add a first empty core
   ;; The UI paradigm doesn't make much sense with zero cores
-  (event-handler {:event/type ::add-core}))
+  (event-handler {:event/type ::add-core})
+  (fx/mount-renderer
+   *state
+   renderer))
