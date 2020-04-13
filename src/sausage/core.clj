@@ -22,7 +22,7 @@
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
 (def fixed-core-header-height 30)
 (def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
-(def fixed-slider-height 50)
+(def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
 (def *state
@@ -890,7 +890,6 @@
   [{:keys [core-number
            width
            height
-           optical
            crop-left
            crop-right]}]
   {:fx/type :h-box
@@ -901,33 +900,26 @@
    :min-width width
    :max-width width
    :children [{:fx/type :slider
-               :max 0.45
+               :max 0.5
                :min 0.0
                :show-tick-labels false
                :show-tick-marks false
-               :pref-width (* 0.45
+               :pref-width (* 0.5
                               width)
-               :min-width (* 0.45
+               :min-width (* 0.5
                              width)
                :pref-height height
                :min-height height
                :value crop-left
                :on-value-changed {:event/type ::adjust-left-crop
                                   :core-number core-number}}
-              {:fx/type :button
-               :pref-width (* 0.10
-                              width)
-               :pref-height height
-               :on-action {:event/type ::crop
-                           :core-number core-number}
-               :text "Crop"}
               {:fx/type :slider
                :max 1.0
-               :min 0.55
+               :min 0.5
                :show-tick-labels false
                :show-tick-marks false
-               :pref-width (* 0.45 width)
-               :min-width (* 0.45 width)
+               :pref-width (* 0.5 width)
+               :min-width (* 0.5 width)
                :pref-height height
                :min-height height
                :value (- 1 crop-right)
@@ -962,27 +954,43 @@
   [{:keys [core-number
            width
            height
-           start-mm]}]
-  {:fx/type :h-box
-   :pref-height height
-   :min-height height
-   :max-height height
-   :alignment :center-left
-   :children [{:fx/type :text-field
-               :editable true
+           start-mm
+           crop-left
+           crop-right]}]
+  {:fx/type :v-box
+   :children [{:fx/type :h-box
                :pref-height height
-               :prompt-text "Core Start (mm)"
-               :pref-column-count 9
-               :text (str start-mm)
-               :on-text-changed {:event/type ::update-core-start
-                                 :core-number core-number}
-               }
-              {:fx/type :separator
-               :orientation :horizontal}
-              {:fx/type :text
-               :text "Core Start (mm)"}
-              {:fx/type :separator
-               :orientation :vertical}]})
+               :min-height height
+               :max-height height
+               :alignment :center-left
+               :children [{:fx/type :text-field
+                           :editable true
+                           :pref-height height
+                           :pref-column-count 6
+                           :text (str start-mm)
+                           :on-text-changed {:event/type ::update-core-start
+                                             :core-number core-number}
+                           }
+                          {:fx/type :separator
+                           :orientation :horizontal}
+                          {:fx/type :text
+                           :text "(mm)"}
+                          {:fx/type :separator
+                           :orientation :vertical}
+                          {:fx/type :h-box
+                           :children [{:fx/type :button
+                                       :pref-width (* 0.10
+                                                      width)
+                                       :pref-height height
+                                       :on-action {:event/type ::crop
+                                                   :core-number core-number}
+                                       :text "Crop"}]}]}
+              {:fx/type crop-slider
+               :core-number core-number
+               :width width
+               :height fixed-slider-height
+               :crop-left  crop-left
+               :crop-right crop-right}]})
 
 (defn core-display
   "The cummulative core display"
@@ -1004,13 +1012,8 @@
                        :core-number core-number
                        :width width
                        :height fixed-core-header-height
-                       :start-mm (:start-mm core)}
-                      {:fx/type crop-slider
-                       :core-number core-number
-                       :width width
-                       :height fixed-slider-height
-                       :optical (:optical core)
-                       :crop-left  (:crop-left core)
+                       :start-mm (:start-mm core)
+                       :crop-left (:crop-left core)
                        :crop-right (:crop-right core)}]
                      (map #(case (:type %)
                              :optical {:fx/type optical-image-display
@@ -1133,30 +1136,19 @@
    :pref-height fixed-core-header-height
    :min-height fixed-core-header-height
    :max-height fixed-core-header-height
+   :alignment :center-left
    :children [{:fx/type :button
+               :max-height Double/MAX_VALUE
+               :on-action {:event/type ::merge-all-cores}
+               :disable true
+               :text "Crop"}
+              {:fx/type :button
                :max-height Double/MAX_VALUE
                :on-action {:event/type ::merge-all-cores}
                :disable (not can-merge?)
                :text ">> Merge"}
               {:fx/type :check-box
                :text "Full Width"
-               :on-selected-changed {:event/type ::toggle-full-width}}]})
-
-
-(defn crop-options
-  ""
-  [{:keys [width]}]
-  {:fx/type :h-box
-   :pref-height fixed-slider-height
-   :min-height fixed-slider-height
-   :max-height fixed-slider-height
-   :children [{:fx/type :button
-               :max-height Double/MAX_VALUE
-               :on-action {:event/type ::merge-all-cores}
-               :disable true
-               :text "Crop Options (not working yet)"}
-              {:fx/type :check-box
-               :text "Hi"
                :on-selected-changed {:event/type ::toggle-full-width}}]})
 
 (defn optical-image-options
@@ -1206,7 +1198,6 @@
   {:fx/type :v-box
    :children [{:fx/type core-header-options
                :can-merge? can-merge?}
-              {:fx/type crop-options}
               {:fx/type :v-box
                :children (map-indexed (fn [display-number
                                            display]
