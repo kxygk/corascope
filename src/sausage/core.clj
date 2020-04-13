@@ -40,11 +40,8 @@
                     {:type :element-count
                      :height (* 2 fixed-optical-scan-height)
                      :merge-seams? true
-                     :element "Mn"
-                     :max-count 1000}
-                    {:type :optical
-                     :height (* 2 fixed-optical-scan-height)
-                     :scan-line? true}]}))
+                     :element :Mn
+                     :max-count 1000}]}))
 
 (defmulti event-handler
   "CLJFX -  Event Handlers
@@ -451,7 +448,7 @@
                   :cores)]
     {:element element
      :max-count (get-max-count-for-element-in-cores cores
-                                                    (keyword element))}))
+                                                    element)}))
 
 (defmethod event-handler ::update-max-element-count [event]
   (swap! *state
