@@ -20,8 +20,9 @@
 (def fixed-default-core-length 300.0)
 (def fixed-workspace-settings-height 30.0)
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
-(def fixed-core-header-height 30)
+(def fixed-core-header-height 48)
 (def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
+(def fixed-element-count-height 300.0)  ;; needs to be fixed so the core displays line up
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
@@ -38,10 +39,19 @@
                      :height fixed-optical-scan-height
                      :scan-line? true}
                     {:type :element-count
-                     :height (* 2 fixed-optical-scan-height)
+                     :height fixed-element-count-height
                      :merge-seams? true
                      :element :Mn
-                     :max-count 1000}]}))
+                     :max-count 1000}
+                    {:type :optical
+                     :height fixed-optical-scan-height
+                     :scan-line? true}
+                    {:type :element-count
+                     :height fixed-element-count-height
+                     :merge-seams? true
+                     :element :Mn
+                     :max-count 1000}]}
+        ))
 
 (defmulti event-handler
   "CLJFX -  Event Handlers
@@ -524,10 +534,18 @@
     (event-handler {:event/type ::sort-cores})))
 
 (defmethod event-handler ::remove-core [event]
-  (swap! *state assoc :cores
-         (pop (:cores @*state)))
+  (let [core-number (:core-number event)]
+    (if (nil? core-number)
+      (swap! *state assoc :cores
+             (pop (:cores @*state)))
+      (swap! *state
+             update
+             :cores
+             #(vec (concat (subvec % 0 (:core-number event))
+                           (subvec % (inc (:core-number event))))))))
   (if (empty? (:cores @*state))
-    (event-handler {:event/type ::add-core})))
+    (event-handler {:event/type ::add-core}) ;; already does sorting
+    (event-handler {:event/type ::sort-cores})))
 
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
@@ -953,44 +971,49 @@
   "The options bar at the top of every core"
   [{:keys [core-number
            width
-           height
            start-mm
            crop-left
            crop-right]}]
-  {:fx/type :v-box
-   :children [{:fx/type :h-box
-               :pref-height height
-               :min-height height
-               :max-height height
-               :alignment :center-left
-               :children [{:fx/type :text-field
-                           :editable true
-                           :pref-height height
-                           :pref-column-count 6
-                           :text (str start-mm)
-                           :on-text-changed {:event/type ::update-core-start
-                                             :core-number core-number}
-                           }
-                          {:fx/type :separator
-                           :orientation :horizontal}
-                          {:fx/type :text
-                           :text "(mm)"}
-                          {:fx/type :separator
-                           :orientation :vertical}
-                          {:fx/type :h-box
-                           :children [{:fx/type :button
-                                       :pref-width (* 0.10
-                                                      width)
-                                       :pref-height height
-                                       :on-action {:event/type ::crop
-                                                   :core-number core-number}
-                                       :text "Crop"}]}]}
-              {:fx/type crop-slider
-               :core-number core-number
-               :width width
-               :height fixed-slider-height
-               :crop-left  crop-left
-               :crop-right crop-right}]})
+  (let [height (- fixed-core-header-height
+                  fixed-slider-height)]
+    {:fx/type :v-box
+     :children [{:fx/type :h-box
+                 :pref-height height
+                 :min-height height
+                 :max-height height
+                 :alignment :center-left
+                 :children [{:fx/type :text-field
+                             :editable true
+                             :pref-height height
+                             :pref-column-count 6
+                             :text (str start-mm)
+                             :on-text-changed {:event/type ::update-core-start
+                                               :core-number core-number}
+                             }
+                            {:fx/type :separator
+                             :orientation :horizontal}
+                            {:fx/type :text
+                             :text "(mm)"}
+                            {:fx/type :button
+                             :pref-width (* 0.10
+                                            width)
+                             :pref-height height
+                             :on-action {:event/type ::crop
+                                         :core-number core-number}
+                             :text "Crop"}
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
+                            {:fx/type :button
+                             :text "X"
+                             :on-action {:event/type ::remove-core
+                                         :core-number core-number}}
+                            ]}
+                {:fx/type crop-slider
+                 :core-number core-number
+                 :width width
+                 :height fixed-slider-height
+                 :crop-left  crop-left
+                 :crop-right crop-right}]}))
 
 (defn core-display
   "The cummulative core display"
@@ -1011,7 +1034,6 @@
      :children (into [{:fx/type core-header-display
                        :core-number core-number
                        :width width
-                       :height fixed-core-header-height
                        :start-mm (:start-mm core)
                        :crop-left (:crop-left core)
                        :crop-right (:crop-right core)}]
@@ -1157,9 +1179,6 @@
            height
            scan-line?]}]
   {:fx/type :v-box
-   :pref-height height
-   :min-height height
-   :max-height height
    :children [{:fx/type :check-box
                :text "Scan Line"
                :selected scan-line?
@@ -1173,17 +1192,41 @@
            columns
            merge-seams?]}]
   {:fx/type :v-box
-   :pref-height height
-   :min-height height
-   :max-height height
-   :children [{:fx/type :check-box
+   :children [{:fx/type periodic-buttons
+               :display-number display-number
+               :columns columns}
+              {:fx/type :check-box
                :text "Merge Seams"
                :selected merge-seams?
                :on-selected-changed {:event/type ::toggle-merge-seams
-                                     :display-number display-number}}
-              {:fx/type periodic-buttons
-               :display-number display-number
-               :columns columns}]})
+                                     :display-number display-number}}]})
+
+(defmethod event-handler ::remove-display [event]
+  (swap! *state
+         update
+         :displays
+         #(vec (concat (subvec % 0 (:display-number event))
+                       (subvec % (inc (:display-number event))))))
+  )
+
+(defn display-options-header
+  [{:keys [display-number
+           display-name]}]
+  {:fx/type :v-box
+   :alignment :center-left
+   :children [{:fx/type :separator
+               :orientation :horizontal}
+              {:fx/type :h-box
+               :children [{:fx/type :text
+                           :text display-name}
+                          {:fx/type :pane
+                           :h-box/hgrow :always}
+                          {:fx/type :pane
+                           :h-box/hgrow :always}
+                          {:fx/type :button
+                           :text "X"
+                           :on-action {:event/type ::remove-display
+                                       :display-number display-number}}]}]})
 
 (defn margin
   "The right margin with global options/toggles.
@@ -1199,19 +1242,26 @@
    :children [{:fx/type core-header-options
                :can-merge? can-merge?}
               {:fx/type :v-box
-               :children (map-indexed (fn [display-number
-                                           display]
-                                        (case (:type display)
-                                          :optical {:fx/type optical-image-options
-                                                    :display-number display-number
-                                                    :height (:height display)
-                                                    :scan-line? (:scan-line? display)}
-                                          :element-count {:fx/type xrf-scan-options
-                                                          :display-number display-number
-                                                          :height (:height display)
-                                                          :columns columns
-                                                          :merge-seams? (:merge-seams? display)}))
-                                      displays)}]})
+               :children (flatten (map-indexed (fn [display-number
+                                                    display]
+                                                 {:fx/type :v-box
+                                                  :pref-height (:height display);; height
+                                                  :min-height (:height display) ;;height
+                                                  :max-height (:height display) ;;height
+                                                  :children [{:fx/type display-options-header
+                                                              :display-number display-number
+                                                              :display-name (name (:type display))}
+                                                             (case (:type display)
+                                                               :optical {:fx/type optical-image-options
+                                                                         :display-number display-number
+                                                                         :height (:height display)
+                                                                         :scan-line? (:scan-line? display)}
+                                                               :element-count {:fx/type xrf-scan-options
+                                                                               :display-number display-number
+                                                                               :height (:height display)
+                                                                               :columns columns
+                                                                               :merge-seams? (:merge-seams? display)})]})
+                                               displays))}]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
