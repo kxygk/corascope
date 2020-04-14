@@ -1136,6 +1136,7 @@
                               {:fx/type :button
                                :grid-pane/column-span (/ (count (first periodic-table))
                                                          columns)
+                               :max-height 25
                                :max-width Double/MAX_VALUE
                                :grid-pane/column (* (int (mod row-after-table columns))
                                                     (/ (count (first periodic-table))
