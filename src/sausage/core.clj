@@ -1228,6 +1228,37 @@
                            :on-action {:event/type ::remove-display
                                        :display-number display-number}}]}]})
 
+
+(defmethod event-handler ::add-display [event]
+  (swap! *state
+         update
+         :displays
+         #(conj %
+                (case (:display-type event)
+                  :optical
+                  {:type :optical
+                   :height fixed-optical-scan-height
+                   :scan-line? true}
+                  :element-count
+                  {:type :element-count
+                   :height fixed-element-count-height
+                   :merge-seams? true
+                   :element :Mn
+                   :max-count 1000})))
+  (event-handler {:event/type ::update-max-element-count}))
+
+(defn add-display-options
+  [_]
+  {:fx/type :h-box
+   :children [{:fx/type :button
+               :on-action {:event/type ::add-display
+                           :display-type :optical}
+               :text " + Optical"}
+              {:fx/type :button
+               :on-action {:event/type ::add-display
+                           :display-type :element-count}
+               :text " +  Element Count"}]})
+
 (defn margin
   "The right margin with global options/toggles.
   First come static options
@@ -1261,7 +1292,8 @@
                                                                                :height (:height display)
                                                                                :columns columns
                                                                                :merge-seams? (:merge-seams? display)})]})
-                                               displays))}]})
+                                               displays))}
+              {:fx/type add-display-options}]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
