@@ -1271,6 +1271,9 @@
            displays
            ]}]
   {:fx/type :v-box
+   :pref-width width
+   :min-width width
+   :max-width width
    :children [{:fx/type core-header-options
                :can-merge? can-merge?}
               {:fx/type :v-box
