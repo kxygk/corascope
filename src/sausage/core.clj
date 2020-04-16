@@ -948,9 +948,7 @@
 (defmethod event-handler ::update-core-start [event]
   (try
     (let [core-number (:core-number event)
-          input-value-mm (-> (:fx/event event)
-                             read-string ;;  returns a 'long'
-                             double)     ;; 'Math/round' can't take a long...
+          input-value-mm (:fx/event event)
           mm-per-pixel (-> @*state
                            :mm-per-pixel)
           rounded-to-pixel (Math/round (/ input-value-mm
@@ -972,6 +970,7 @@
   [{:keys [core-number
            width
            start-mm
+           mm-per-pixel
            crop-left
            crop-right]}]
   (let [height (- fixed-core-header-height
@@ -982,13 +981,15 @@
                  :min-height height
                  :max-height height
                  :alignment :center-left
-                 :children [{:fx/type :text-field
+                 :children [{:fx/type :spinner
                              :editable true
-                             :pref-height height
-                             :pref-column-count 6
-                             :text (str start-mm)
-                             :on-text-changed {:event/type ::update-core-start
-                                               :core-number core-number}
+                             :value-factory {:fx/type :double-spinner-value-factory
+                                             :amount-to-step-by mm-per-pixel
+                                             :min 0.0
+                                             :max Double/MAX_VALUE
+                                             :value start-mm}
+                              :on-value-changed {:event/type ::update-core-start
+                                                                :core-number core-number}
                              }
                             {:fx/type :separator
                              :orientation :horizontal}
@@ -1018,6 +1019,7 @@
 (defn core-display
   "The cummulative core display"
   [{:keys [horizontal-zoom-factor
+           mm-per-pixel
            height
            display-row
            core-number
@@ -1035,6 +1037,7 @@
                        :core-number core-number
                        :width width
                        :start-mm (:start-mm core)
+                       :mm-per-pixel mm-per-pixel
                        :crop-left (:crop-left core)
                        :crop-right (:crop-right core)}]
                      (map #(case (:type %)
@@ -1305,6 +1308,7 @@
            full-width?
            height
            working-directory
+           mm-per-pixel
            layout
            columns
            cores
@@ -1338,6 +1342,7 @@
                                                                               {:fx/type core-display
                                                                                :core-number index
                                                                                :horizontal-zoom-factor horizontal-zoom-factor
+                                                                               :mm-per-pixel mm-per-pixel
                                                                                :height core-display-height
                                                                                :display-row (get-core-row index
                                                                                                           layout)

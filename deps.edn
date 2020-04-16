@@ -2,7 +2,7 @@
  {org.clojure/clojure {:mvn/version "1.10.0"}
   org.boofcv/boofcv-core {:mvn/version "0.35"
                           :exclusions [org.boofcv/boofcv-recognition]}
-  cljfx {:mvn/version "1.6.7"
+  cljfx {:mvn/version "1.6.8"
          :exclusions [org.openjfx/javafx-web
                       org.openjfx/javafx-media]}
   ;; Dark magic from:
