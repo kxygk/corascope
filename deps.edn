@@ -40,7 +40,8 @@
 
   org.clojure/data.csv {:mvn/version "0.1.4"} ;; data injestion
   thi.ng/geom {:mvn/version "1.0.0-RC4"
-               :exclusions [org.clojure/clojurescript]}
+               :exclusions [org.clojure/clojurescript
+                            org.jogamp.jogl/jogl-all]}
   guru.nidi.com.kitfox/svgSalamander {:mvn/version "1.1.3"}
 }
 
