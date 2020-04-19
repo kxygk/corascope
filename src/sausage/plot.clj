@@ -1,5 +1,5 @@
 (ns sausage.plot
-  (:require [sausage.svg2jfx]
+  (:require [sausage.svg]
             [thi.ng.geom.core :as g] ;; The graphing libraires
             [thi.ng.math.core :as m]
             [thi.ng.geom.viz.core :as viz]
@@ -35,11 +35,13 @@
             {:domain [0 max-position]
              :range  [0.0 width]
              :pos    0.0
-             :visible false
-;;             :label-dist  (- height 10)
-             ;; :major-size 0
-;;             :major 500
-;;             :attribs {:stroke "none"} ;; axis line attributes
+             :visible true
+             :label-style {:stroke "none"
+                       :font-family nil}
+             :label-dist  (- height 1)
+;;             :major-size 0
+             :major 500
+             :attribs {:stroke "none"} ;; axis line attributes
              })
              
    :y-axis (viz/linear-axis
@@ -49,11 +51,12 @@
              :pos         0 ;; major-size default
              :visible true
              :major (nearest-power-of-ten max-count)
-             :label-dist -10
+             :label-dist -25
              :label-y 10
              :major-size 5
              :minor-size 5
-              :attribs {:stroke "none"} ;; axis line attributes
+             :label-style {:stroke "none"
+                       :font-family nil} ;; axis line attributes
             ;; :label-style {:fill "red" :text-anchor "start"}
              })
              
@@ -137,18 +140,19 @@
                                  points)
         crop-points (concat right-crop-points
                             left-crop-points)
-        graph-height (nice-max-count max-count)
-        plot-group (sausage.svg2jfx/svg-to-javafx-group (-> (grid-spec width
-                                                                       height
-                                                                       max-position
-                                                                       graph-height)
-                                                            (add-points points)
-                                                            (add-red-overlay crop-points)
-                                                            (add-seam-marker seams
-                                                                             graph-height)
-                                                            (viz/svg-plot2d-cartesian)
-                                                            (#(svgthing/svg {:width width
-                                                                             :height height}
-                                                                            %))
-                                                            (svgthing/serialize)))]
-    plot-group))
+        graph-height (nice-max-count max-count)]
+    (sausage.svg/render-as-jfx-image (-> (grid-spec width
+                                                    height
+                                                    max-position
+                                                    graph-height)
+                                         (add-points points)
+                                         (add-red-overlay crop-points)
+                                         (add-seam-marker seams
+                                                          graph-height)
+                                         (viz/svg-plot2d-cartesian)
+                                         (#(svgthing/svg {:width width
+                                                          :height height}
+                                                         %))
+                                         (svgthing/serialize))
+                                     width
+                                     height)))

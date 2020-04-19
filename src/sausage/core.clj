@@ -776,19 +776,20 @@
   {:fx/type :h-box
    :children [{:fx/type :v-box
                :children (if xrf-scan
-                           [{:fx/type fx/ext-instance-factory
-                             :create #(sausage.plot/plot-points width
-                                                                height
-                                                                (element-counts xrf-scan
-                                                                                (keyword selection))
-                                                                core-length-mm
-                                                                max-element-count
-                                                                crop-left
-                                                                crop-right
-                                                                (if merge-seams?
-                                                                  seams
-                                                                  [])
-                                                                )}]
+                           [{:fx/type :image-view
+                             :fit-width width
+                             :fit-height height
+                             :image (sausage.plot/plot-points width
+                                                              height
+                                                              (element-counts xrf-scan
+                                                                              (keyword selection))
+                                                              core-length-mm
+                                                              max-element-count
+                                                              crop-left
+                                                              crop-right
+                                                              (if merge-seams?
+                                                                seams
+                                                                []))}]
                            [{:fx/type :button
                              :pref-width width
                              :pref-height height
