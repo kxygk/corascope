@@ -37,7 +37,8 @@
              :pos    0.0
              :visible true
              :label-style {:stroke "none"
-                       :font-family nil}
+                           :fill "dimgray"
+                           :font-family nil}
              :label-dist  (- height 1)
 ;;             :major-size 0
              :major 500
@@ -56,7 +57,8 @@
              :major-size 5
              :minor-size 5
              :label-style {:stroke "none"
-                       :font-family nil} ;; axis line attributes
+                           :fill "dimgray"
+                           :font-family nil}
             ;; :label-style {:fill "red" :text-anchor "start"}
              })
              
