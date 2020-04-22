@@ -680,7 +680,7 @@
                                                      :start-y 0
                                                      :end-x (- width
                                                                crop-right-pix)
-                                                     :end-y height
+                                                     :end-y (dec height) ;; this is inclusive!
                                                      :stroke "red"})
                                                   (if (pos? crop-right-pix)
                                                     {:fx/type :rectangle
@@ -697,7 +697,7 @@
                                                      :start-x crop-left-pix
                                                      :start-y 0
                                                      :end-x crop-left-pix
-                                                     :end-y height
+                                                     :end-y (dec height) ;; this is inclusive!
                                                      :stroke "red"})
                                                   (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
                                                     {:fx/type :rectangle
@@ -717,7 +717,7 @@
                                                        :start-x left-width
                                                        :start-y 0
                                                        :end-x left-width
-                                                       :end-y height
+                                                       :end-y (dec height) ;; this is inclusive!
                                                        :stroke "brown"}))
                                                   (if (and (not (nil? (:unscanned-left-pix optical)))
                                                            (pos? (:unscanned-left-pix optical)))
@@ -743,7 +743,7 @@
                                                        :start-y 0
                                                        :end-x (- width
                                                                  right-width);;right-width
-                                                       :end-y height
+                                                       :end-y (dec height) ;; this is inclusive!
                                                        :stroke "brown"}))
                                                   (if (and (not (nil? (:unscanned-left-pix optical)))
                                                            (pos? (:unscanned-right-pix optical)))
