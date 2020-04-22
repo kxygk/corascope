@@ -380,7 +380,7 @@
            (update-core-length core
                                (-> @*state
                                    :mm-per-pixel))))
-  (event-handler {:event/type ::sort-cores}))
+  (event-dispatcher {:event/type ::sort-cores}))
 
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
@@ -403,16 +403,16 @@
                          :optical
                          :image]
                optical-image)
-        (event-handler {:event/type ::update-display-image
+        (event-dispatcher {:event/type ::update-display-image
                         :core-number core-number})
-        (event-handler {:event/type ::update-core-length
+        (event-dispatcher {:event/type ::update-core-length
                         :core-number core-number})
 
         (if (-> @*state
                 :cores
                 (.get core-number)
                 :xrf-scan)
-          (event-handler {:event/type ::update-unscanned-areas
+          (event-dispatcher {:event/type ::update-unscanned-areas
                           :core-number core-number}))))))
 
 (defn element-counts
@@ -500,14 +500,14 @@
                          core-number
                          :xrf-scan]
                xrf-scan)
-        (event-handler {:event/type ::update-core-length
+        (event-dispatcher {:event/type ::update-core-length
                         :core-number core-number})
-        (event-handler {:event/type ::update-max-element-count})
+        (event-dispatcher {:event/type ::update-max-element-count})
         (if (-> @*state
                 :cores
                 (.get core-number)
                 :optical)
-          (event-handler {:event/type ::update-unscanned-areas
+          (event-dispatcher {:event/type ::update-unscanned-areas
                           :core-number core-number})
           (swap! *state
                  assoc-in [:cores
@@ -531,7 +531,7 @@
             :crop-right 0
             :length-mm fixed-default-core-length
             :seams []})
-    (event-handler {:event/type ::sort-cores})))
+    (event-dispatcher {:event/type ::sort-cores})))
 
 (defmethod event-handler ::remove-core [event]
   (let [core-number (:core-number event)]
@@ -544,8 +544,8 @@
              #(vec (concat (subvec % 0 (:core-number event))
                            (subvec % (inc (:core-number event))))))))
   (if (empty? (:cores @*state))
-    (event-handler {:event/type ::add-core}) ;; already does sorting
-    (event-handler {:event/type ::sort-cores})))
+    (event-dispatcher {:event/type ::add-core}) ;; already does sorting
+    (event-dispatcher {:event/type ::sort-cores})))
 
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
@@ -594,9 +594,9 @@
                       (get 0))
                   (rest (-> @*state
                             :cores)))])
-  (event-handler {:event/type ::update-display-image
+  (event-dispatcher {:event/type ::update-display-image
                   :core-number 0})
-  (event-handler {:event/type ::update-core-length
+  (event-dispatcher {:event/type ::update-core-length
                   :core-number 0}))
 
 (defn workspace-settings-display
@@ -877,9 +877,9 @@
             core-number) ;; shift the merge seams
       (swap! *state update-in [:cores 0 :seams] #(map (partial + (- crop-left-mm)) %)))
 
-    (event-handler {:event/type ::update-core-length
+    (event-dispatcher {:event/type ::update-core-length
                     :core-number core-number})
-    (event-handler {:event/type ::update-display-image
+    (event-dispatcher {:event/type ::update-display-image
                     :core-number core-number})
     (swap! *state
            assoc-in [:cores
@@ -964,7 +964,7 @@
              corrected-start-mm))
     (catch Exception ex
       (println "Invalid core-start input")))
-  (event-handler {:event/type ::sort-cores}))
+  (event-dispatcher {:event/type ::sort-cores}))
 
 (defn core-header-display
   "The options bar at the top of every core"
@@ -1103,7 +1103,7 @@
           (:display-number event)
           :element]
          (:element event))
-  (event-handler {:event/type ::update-max-element-count}))
+  (event-dispatcher {:event/type ::update-max-element-count}))
 
 (defn periodic-buttons
   "Periodic table as a grid of buttons
@@ -1250,7 +1250,7 @@
                    :merge-seams? true
                    :element :Mn
                    :max-count 1000})))
-  (event-handler {:event/type ::update-max-element-count}))
+  (event-dispatcher {:event/type ::update-max-element-count}))
 
 (defn add-display-options
   [_]
@@ -1377,7 +1377,7 @@
 (defn -main [& args]
   ;; Add a first empty core
   ;; The UI paradigm doesn't make much sense with zero cores
-  (event-handler {:event/type ::add-core})
+  (event-dispatcher {:event/type ::add-core})
   (fx/mount-renderer
    *state
    renderer))
