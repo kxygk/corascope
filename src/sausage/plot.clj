@@ -115,7 +115,7 @@
                   [{:values (into [] (map (fn [pos] (vector pos
                                                             plot-height))
                                           seams))
-                    :attribs {:fill "#bfbfbf" :stroke "grey" :stroke-dasharray "1 5"}
+                    :attribs {:fill "#bfbfbf" :stroke "dimgray" :stroke-dasharray "1 5"}
 ;;                    :bar-width 100
                     :interleave 1
                     :layout  viz/svg-bar-plot}]))))
