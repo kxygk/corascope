@@ -101,15 +101,18 @@
   :event/type)
 
 (defmethod event-handler ::width-changed
-  [event]
-  (swap! *state assoc :width (:fx/event event)))
+  [{:keys [fx/event
+           snapshot]}]
+  (reset! *state (assoc snapshot :width event)))
 
 (defmethod event-handler ::height-changed
-  [event]
-  (swap! *state assoc :height (:fx/event event)))
+  [{:keys [fx/event
+           snapshot]}]
+  (reset! *state (assoc snapshot :height event)))
 
 ;; TODO Get this all hooked up properly
-(defmethod event-handler ::set-working-directory [_]
+(defmethod event-handler ::set-working-directory
+    [{:keys [snapshot]}]
   @(fx/on-fx-thread
     (let [file (-> (doto (DirectoryChooser.)
                      (.setTitle "Set a working directory")
@@ -118,7 +121,7 @@
                    (.showDialog (Stage.)))
           path (.getCanonicalPath file)]
       (.mkdirs file) ;; maybe should be moved to the save-workspace method
-      (swap! *state assoc :working-directory path))))
+      (reset! *state (assoc snapshot :working-directory path)))))
 
 
 ;;## Example:
@@ -157,16 +160,18 @@
 ;; unscanned-right-pix:1 pixel
 ;;
 ;;# Method annotated from example
-(defmethod event-handler ::update-unscanned-areas [event]
-  (let [core-number (:core-number event)
-        image-width-pix (-> @*state
+(defmethod event-handler ::update-unscanned-areas
+  [{:keys [fx/event
+           core-number
+           snapshot]}] ;; TODO: can destructure further
+  (let [image-width-pix (-> snapshot
                             :cores
                             (.get core-number)
                             :optical
                             :image
                             .getWidth) ;; 9 Pixels
-        mm-per-pixel (:mm-per-pixel @*state) ;; 0.5 mm/pixel
-        scan (-> @*state
+        mm-per-pixel (:mm-per-pixel snapshot) ;; 0.5 mm/pixel
+        scan (-> snapshot
                  :cores
                  (.get core-number)
                  :xrf-scan
@@ -180,21 +185,21 @@
                         :position
                         read-string)  ;; 3.75mm
         ]
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :optical
-                     :unscanned-left-pix]
-           (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
-                               mm-per-pixel)))) ;; 2 Pixels entirely unscanned
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :optical
-                     :unscanned-right-pix]
-           (- image-width-pix
-              (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
-                                 mm-per-pixel))))))) ;; 9-8 = 1 Pixel entirely unscanned
+    (reset! *state (-> snapshot
+                       (assoc-in  [:cores
+                                   core-number
+                                   :optical
+                                   :unscanned-left-pix]
+                                  (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
+                                                      mm-per-pixel)))) ;; 2 Pixels entirely unscanned
+
+                       (assoc-in [:cores
+                                  core-number
+                                  :optical
+                                  :unscanned-right-pix]
+                                 (- image-width-pix
+                                    (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
+                                                       mm-per-pixel))))))))) ;; 9-8 = 1 Pixel entirely unscanned
 
 ;; Updates the core's 'display image' based on
 ;; the internally stored 'optical image'
@@ -202,20 +207,21 @@
 ;; NOTE: This is done because we want to avoid
 ;; operations on the underlying 'optical image'
 (defmethod event-handler ::update-display-image
-  [event]
-  (let [core-number (:core-number event)
-        optical (-> @*state
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
+  (let [optical (-> snapshot
                     :cores
                     (get core-number)
                     :optical
                     :image)]
-    (swap! *state assoc-in [:cores
-                            core-number
-                            :optical
-                            :display]
-           (-> optical
-               sausage.optical/flip-image
-               sausage.optical/to-fx-image))))
+    (reset! *state (assoc-in snapshot [:cores
+                                       core-number
+                                       :optical
+                                       :display]
+                             (-> optical
+                                 sausage.optical/flip-image
+                                 sausage.optical/to-fx-image)))))
 
 (defn overlap?
   "Check if CORE-A and CORE-B overlap in any way
@@ -308,20 +314,20 @@
 ;; Adjusts the CORE list so that the cores are in order based on :start-mm
 ;; Then (re)generates a pyramid/stacked layout so we can then look up which
 ;; core shows up on which level
-(defmethod event-handler ::sort-cores [event]
+(defmethod event-handler ::sort-cores
+    [{:keys [fx/event
+             snapshot]}] ;; TODO structure more
   (println "Sorting Cores")
-  (swap! *state
-         update
-         :cores
-         sort-cores)
-  (swap! *state
-         assoc
-         :layout
-         (-> @*state
-             :cores
-             inject-index
-             pyramid-stack
-             reduce-to-indeces)))
+  (reset! *state
+          (-> snapshot
+              (update :cores
+                      sort-cores)
+              (assoc :layout
+                     (-> snapshot
+                         :cores
+                         inject-index
+                         pyramid-stack
+                         reduce-to-indeces)))))
 
 (defn- does-vector-contain-value
   "Local helper - Checks if a VECTOR contains a VALUE
@@ -369,17 +375,20 @@
 
 ;; Makes sure the :length-mm is set properly based on the
 ;; :optical scan and the :xrf-scan
-(defmethod event-handler ::update-core-length [event]
-  (let [core-number (:core-number event)
-        core (-> @*state
+(defmethod event-handler ::update-core-length
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
+  (let [core (-> snapshot
                  :cores
                  (get core-number))]
-    (swap! *state
-           assoc-in [:cores
-                     core-number]
-           (update-core-length core
-                               (-> @*state
-                                   :mm-per-pixel))))
+    (reset! *state
+            (-> snapshot
+                (assoc-in [:cores
+                           core-number]
+                          (update-core-length core
+                                              (-> snapshot
+                                                  :mm-per-pixel))))))
   (event-dispatcher {:event/type ::sort-cores}))
 
 ;; File Picker copied from here:
@@ -387,33 +396,34 @@
 ;;
 ;; User has opted to load a new project. Use FileChooser so they can select the file.
 ;; Then trigger the central project loading event, passing in the selected file.
-(defmethod event-handler ::load-optical-image [event]
-  ;;  @(fx/on-fx-thread
+(defmethod event-handler ::load-optical-image
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
   (let [file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))]
     (if (some? file)
-      (let[optical-image (sausage.optical/load-image file)
-           core-number (:core-number event)]
-        (swap! *state
-               assoc-in [:cores
-                         core-number
-                         :optical
-                         :image]
-               optical-image)
+      (let[optical-image (sausage.optical/load-image file)]
+        (reset! *state (-> snapshot
+                           (assoc-in [:cores
+                                      core-number
+                                      :optical
+                                      :image]
+                                     optical-image)))
         (event-dispatcher {:event/type ::update-display-image
-                        :core-number core-number})
+                           :core-number core-number})
         (event-dispatcher {:event/type ::update-core-length
-                        :core-number core-number})
+                           :core-number core-number})
 
-        (if (-> @*state
+        (if (-> snapshot
                 :cores
                 (.get core-number)
                 :xrf-scan)
           (event-dispatcher {:event/type ::update-unscanned-areas
-                          :core-number core-number}))))))
+                             :core-number core-number}))))))
 
 (defn element-counts
   "Given an XRF-SCAN and a ELEMENT (keyword)
@@ -451,15 +461,6 @@
                                                        element)
               cores)))
 
-(defn update-selection
-  [selection]
-  (let [element (:element selection)
-        cores (-> @*state
-                  :cores)]
-    {:element element
-     :max-count (get-max-count-for-element-in-cores cores
-                                                    element)}))
-
 (defn- update-max-element-in-display
   [cores
    display]
@@ -471,15 +472,19 @@
                                                (:element display)))
     display))
 
-(defmethod event-handler ::update-max-element-count [event]
-  (swap! *state
-         update
-         :displays
-         #(mapv (partial update-max-element-in-display (-> @*state
-                                                           :cores))
-                %)))
+(defmethod event-handler ::update-max-element-count
+  [{:keys [fx/event
+           snapshot]}]
+  (reset! *state (-> snapshot
+                     (update :displays
+                             #(mapv (partial update-max-element-in-display (-> snapshot
+                                                                               :cores))
+                                    %)))))
 
-(defmethod event-handler ::load-xrf-scan [event]
+(defmethod event-handler ::load-xrf-scan
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
   ;;  @(fx/on-fx-thread
   (let [file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
@@ -487,65 +492,74 @@
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))]
     (if (some? file)
-      (let [core-number (:core-number event)
-            xrf-scan (sausage.xrf/load-xrf-scan-file file)
+      (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
             columns (:columns xrf-scan)]
-        (swap! *state
-               update
-               :columns
-               clojure.set/union
-               columns)
-        (swap! *state
-               assoc-in [:cores
-                         core-number
-                         :xrf-scan]
-               xrf-scan)
+        (reset! *state (-> snapshot
+                           (update :columns
+                                   clojure.set/union
+                                   columns)
+                           (assoc-in [:cores
+                                      core-number
+                                      :xrf-scan]
+                                     xrf-scan)))
         (event-dispatcher {:event/type ::update-core-length
                         :core-number core-number})
         (event-dispatcher {:event/type ::update-max-element-count})
-        (if (-> @*state
+        (if (-> snapshot
                 :cores
                 (.get core-number)
                 :optical)
           (event-dispatcher {:event/type ::update-unscanned-areas
                           :core-number core-number})
-          (swap! *state
+          #_(swap! *state
                  assoc-in [:cores
                            core-number
                            :length-mm]
                  (sausage.xrf/end-position xrf-scan)))))))
 
-(defmethod event-handler ::add-core [event]
-  (let [num-cores (-> @*state
+(defmethod event-handler ::add-core
+  [{:keys [snapshot]}]
+  (let [num-cores (-> snapshot
                       :cores
                       count)]
-    (swap! *state assoc-in [:cores
-                            num-cores]
-           {:start-mm (if (nil? (-> @*state :cores last))
-                        0.0 ;; if no core to tack on to, then set to zero
-                        (+ (-> @*state :cores last :start-mm)
-                           (-> @*state :cores last :length-mm)))
-            :optical nil
-            :xrf-scan nil
-            :crop-left 0
-            :crop-right 0
-            :length-mm fixed-default-core-length
-            :seams []})
+    (reset! *state (-> snapshot
+                       (assoc-in [:cores
+                                  num-cores]
+                                 {:start-mm (if (nil? (-> snapshot
+                                                          :cores
+                                                          last))
+                                              0.0 ;; if no core to tack on to, then set to zero
+                                              (+ (-> snapshot
+                                                     :cores
+                                                     last
+                                                     :start-mm)
+                                                 (-> snapshot
+                                                     :cores
+                                                     last
+                                                     :length-mm)))
+                                  :optical nil
+                                  :xrf-scan nil
+                                  :crop-left 0
+                                  :crop-right 0
+                                  :length-mm fixed-default-core-length
+                                  :seams []})))
     (event-dispatcher {:event/type ::sort-cores})))
 
-(defmethod event-handler ::remove-core [event]
-  (let [core-number (:core-number event)]
-    (if (nil? core-number)
-      (swap! *state assoc :cores
-             (pop (:cores @*state)))
-      (swap! *state
-             update
-             :cores
-             #(vec (concat (subvec % 0 (:core-number event))
-                           (subvec % (inc (:core-number event))))))))
-  (if (empty? (:cores @*state))
-    (event-dispatcher {:event/type ::add-core}) ;; already does sorting
-    (event-dispatcher {:event/type ::sort-cores})))
+(defmethod event-handler ::remove-core
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
+  (if (nil? core-number)
+    (reset! *state (-> snapshot
+                       (assoc :cores
+                              (pop (:cores snapshot)))
+                       (update
+                        :cores
+                        #(vec (concat (subvec % 0 (:core-number event))
+                                      (subvec % (inc (:core-number event))))))))
+    (if (empty? (:cores snapshot))
+      (event-dispatcher {:event/type ::add-core}) ;; already does sorting
+      (event-dispatcher {:event/type ::sort-cores}))))
 
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
@@ -584,20 +598,21 @@
 
 ;; TODO: Make sure this doesn't get called when cores overlap
 (defmethod event-handler ::merge-all-cores
-  [event]
-  (swap! *state
-         assoc
-         :cores
-         [(reduce (partial merge-cores (-> @*state :mm-per-pixel))
-                  (-> @*state
-                      :cores
-                      (get 0))
-                  (rest (-> @*state
-                            :cores)))])
+  [{:keys [snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (assoc
+               :cores
+               [(reduce (partial merge-cores (:mm-per-pixel snapshot))
+                        (-> snapshot
+                            :cores
+                            (get 0))
+                        (rest (-> snapshot
+                                  :cores)))])))
   (event-dispatcher {:event/type ::update-display-image
-                  :core-number 0})
+                     :core-number 0})
   (event-dispatcher {:event/type ::update-core-length
-                  :core-number 0}))
+                     :core-number 0}))
 
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
@@ -798,27 +813,35 @@
                              :text "Load XRF Scan"}])}]})
 
 (defmethod event-handler ::adjust-right-crop
-  [event]
-  (swap! *state assoc-in [:cores
-                          (:core-number event)
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
+  (reset! *state (-> snapshot
+                     (assoc-in [:cores
+                          core-number
                           :crop-right]
-         (- 1 (:fx/event event))))
+                               (- 1 event)))))
 
 (defmethod event-handler ::adjust-left-crop
-  [event]
-  (swap! *state assoc-in [:cores
-                          (:core-number event)
-                          :crop-left]
-         (:fx/event event)))
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (assoc-in [:cores
+                         core-number
+                         :crop-left]
+                        event))))
 
 ;; Crop both :optical and :xrf-data
 ;; 1 - always crop areas that are optically scanned but have no xrf data
 ;; 2 - optionally crop more based on the slider positions
 ;; TODO: Simplify this .. with some destructuring or something
 (defmethod event-handler ::crop
-  [event]
-  (let [core-number (:core-number event)
-        core (-> @*state
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
+  (let [core (-> snapshot
                  :cores
                  (get core-number))
         xrf-scan-element-counts (-> core
@@ -851,58 +874,59 @@
                               crop-slider-right-pix)
                          unscanned-right-pix
                          crop-slider-right-pix)
-        mm-per-pixel (-> @*state
+        mm-per-pixel (-> snapshot
                          :mm-per-pixel)
         crop-left-mm (* crop-left-pix
                         mm-per-pixel)
         crop-right-mm (* crop-right-pix
                          mm-per-pixel)]
-    (swap! *state assoc-in [:cores
-                            core-number
-                            :optical
-                            :image]
-           (sausage.optical/crop image
-                                 crop-left-pix
-                                 crop-right-pix))
-    (swap! *state assoc-in [:cores
-                            core-number
-                            :xrf-scan
-                            :element-counts]
-           (sausage.xrf/crop xrf-scan-element-counts
-                             (-> core
-                                 :length-mm)
-                             crop-left-mm
-                             crop-right-mm))
-    (if (== 0
-            core-number) ;; shift the merge seams
-      (swap! *state update-in [:cores 0 :seams] #(map (partial + (- crop-left-mm)) %)))
-
-    (event-dispatcher {:event/type ::update-core-length
-                    :core-number core-number})
-    (event-dispatcher {:event/type ::update-display-image
-                    :core-number core-number})
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :optical
-                     :unscanned-left-pix]
-           0.0)
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :optical
-                     :unscanned-right-pix]
-           0.0)
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :crop-left]
-           0.0)
-    (swap! *state
-           assoc-in [:cores
-                     core-number
-                     :crop-right]
-           0.0)))
+    (reset! *state
+            (-> snapshot
+                (assoc-in [:cores
+                           core-number
+                           :optical
+                           :image]
+                          (sausage.optical/crop image
+                                                crop-left-pix
+                                                crop-right-pix))
+                (assoc-in [:cores
+                           core-number
+                           :xrf-scan
+                           :element-counts]
+                          (sausage.xrf/crop xrf-scan-element-counts
+                                            (-> core
+                                                :length-mm)
+                                            crop-left-mm
+                                            crop-right-mm))
+                (assoc-in [:cores
+                           core-number
+                           :optical
+                           :unscanned-left-pix]
+                          0.0)
+                (assoc-in [:cores
+                           core-number
+                           :optical
+                           :unscanned-right-pix]
+                          0.0)
+                (assoc-in [:cores
+                           core-number
+                           :crop-left]
+                          0.0)
+                (assoc-in [:cores
+                           core-number
+                           :crop-right]
+                          0.0)
+                ;; seams only happen in core=0
+                ;; but inserting a conditional in a threading macro is messy
+                (update-in
+                 [:cores
+                  core-number
+                  :seams]
+                 #(map (partial + (- crop-left-mm)) %)))))
+  (event-dispatcher {:event/type ::update-core-length
+                     :core-number core-number})
+  (event-dispatcher {:event/type ::update-display-image
+                     :core-number core-number}))
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
@@ -946,22 +970,25 @@
                                   :core-number core-number}}]})
 
 ;; Update :start-mm based on user input and then resorts/lays-out the cores
-(defmethod event-handler ::update-core-start [event]
+(defmethod event-handler ::update-core-start
+  [{:keys [fx/event
+           core-number
+           snapshot]}]
   (try
-    (let [core-number (:core-number event)
-          input-value-mm (:fx/event event)
-          mm-per-pixel (-> @*state
+    (let [input-value-mm event
+          mm-per-pixel (-> snapshot
                            :mm-per-pixel)
           rounded-to-pixel (Math/round (/ input-value-mm
                                           mm-per-pixel))
           corrected-start-mm (* rounded-to-pixel
                                 mm-per-pixel)]
       (println "corrected" corrected-start-mm)
-      (swap! *state
-             assoc-in [:cores
-                       core-number
-                       :start-mm]
-             corrected-start-mm))
+      (reset! *state
+              (-> snapshot
+                  (assoc-in [:cores
+                             core-number
+                             :start-mm]
+                            corrected-start-mm))))
     (catch Exception ex
       (println "Invalid core-start input")))
   (event-dispatcher {:event/type ::sort-cores}))
@@ -1065,26 +1092,35 @@
                           displays))}))
 
 (defmethod event-handler ::toggle-full-width
-  [event]
-  (swap! *state assoc :full-width? (:fx/event event)))
+  [{:keys [fx/event
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (assoc :full-width? event))))
 
 (defmethod event-handler ::toggle-scan-line
-  [event]
-  (swap! *state
-         assoc-in
-         [:displays
-          (:display-number event)
-          :scan-line?]
-         (:fx/event event)))
+  [{:keys [fx/event
+           display-number
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (assoc-in
+               [:displays
+                display-number
+                :scan-line?]
+               event))))
 
 (defmethod event-handler ::toggle-merge-seams
-  [event]
-  (swap! *state
-         assoc-in
-         [:displays
-          (:display-number event)
-          :merge-seams?]
-         (:fx/event event)))
+  [{:keys [fx/event
+           display-number
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (assoc-in
+               [:displays
+                 display-number
+                :merge-seams?]
+               event))))
 
 (def periodic-table
   [[:H  nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil :He]
@@ -1096,13 +1132,18 @@
    [:Fr :Ra :Ac :Rf :Db :Sg :Bh :Hs :Mt :Ds :Rg :Cn :Nh :Fl :Mc :Lv :Ts :Og]
    [:.. :Th :.. :U]])
 
-(defmethod event-handler ::update-selected-element [event]
-  (swap! *state
-         assoc-in
-         [:displays
-          (:display-number event)
-          :element]
-         (:element event))
+(defmethod event-handler ::update-selected-element
+  [{:keys [fx/event
+           display-number
+           element
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (assoc-in
+               [:displays
+                display-number
+                :element]
+               element )))
   (event-dispatcher {:event/type ::update-max-element-count}))
 
 (defn periodic-buttons
@@ -1110,7 +1151,7 @@
   Excess  columns in the xrf-scan file are then appended at the end"
   [{:keys [columns
            display-number]}]
-  (let [non-elements (clojure.set/difference  (set (-> @*state :columns))
+  (let [non-elements (clojure.set/difference  (set columns)
                                               (set (flatten periodic-table)))]
     {:fx/type :grid-pane
      :children
@@ -1206,13 +1247,15 @@
                :on-selected-changed {:event/type ::toggle-merge-seams
                                      :display-number display-number}}]})
 
-(defmethod event-handler ::remove-display [event]
-  (swap! *state
-         update
-         :displays
-         #(vec (concat (subvec % 0 (:display-number event))
-                       (subvec % (inc (:display-number event))))))
-  )
+(defmethod event-handler ::remove-display
+  [{:keys [display-number
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (update
+               :displays
+               #(vec (concat (subvec % 0 display-number)
+                             (subvec % (inc display-number))))))))
 
 (defn display-options-header
   [{:keys [display-number
@@ -1234,22 +1277,25 @@
                                        :display-number display-number}}]}]})
 
 
-(defmethod event-handler ::add-display [event]
-  (swap! *state
-         update
-         :displays
-         #(conj %
-                (case (:display-type event)
-                  :optical
-                  {:type :optical
-                   :height fixed-optical-scan-height
-                   :scan-line? true}
-                  :element-count
-                  {:type :element-count
-                   :height fixed-element-count-height
-                   :merge-seams? true
-                   :element :Mn
-                   :max-count 1000})))
+(defmethod event-handler ::add-display
+  [{:keys [display-type
+           snapshot]}]
+  (reset! *state
+          (-> snapshot
+              (update
+               :displays
+               #(conj %
+                      (case display-type
+                        :optical
+                        {:type :optical
+                         :height fixed-optical-scan-height
+                         :scan-line? true}
+                        :element-count
+                        {:type :element-count
+                         :height fixed-element-count-height
+                         :merge-seams? true
+                         :element :Mn
+                         :max-count 1000})))))
   (event-dispatcher {:event/type ::update-max-element-count}))
 
 (defn add-display-options
@@ -1317,8 +1363,8 @@
   (let [horizontal-zoom-factor (if full-width?
                                  1
                                  (/ (- width fixed-margin-width)
-                                    (+ (-> @*state :cores last :start-mm)
-                                       (-> @*state :cores last :length-mm))))
+                                    (+ (-> cores last :start-mm)
+                                       (-> cores last :length-mm))))
         core-display-height (reduce #(+ %1 (:height %2))
                                     (+ fixed-core-header-height
                                        fixed-slider-height)
@@ -1365,7 +1411,7 @@
       ;; adds the current state to every processed event
       ;; the event handler can then operate on the current state
       ;; and doesn't need to do it own dereferencing
-      (fx/wrap-co-effects {:state #(deref *state)})
+      (fx/wrap-co-effects {:snapshot #(deref *state)})
       ))
 
 (def renderer
