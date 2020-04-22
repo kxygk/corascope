@@ -1360,10 +1360,13 @@
                                            :displays displays}
                                           ]}]}}}))
 
+(def event-dispatcher
+  event-handler)
+
 (def renderer
   (fx/create-renderer
    :middleware (fx/wrap-map-desc assoc :fx/type root)
-   :opts {:fx.opt/map-event-handler event-handler}))
+   :opts {:fx.opt/map-event-handler event-dispatcher}))
 
 
 (defn -main [& args]
@@ -1373,3 +1376,4 @@
   (fx/mount-renderer
    *state
    renderer))
+
