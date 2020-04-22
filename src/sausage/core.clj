@@ -1361,7 +1361,12 @@
                                           ]}]}}}))
 
 (def event-dispatcher
-  event-handler)
+  (-> event-handler
+      ;; adds the current state to every processed event
+      ;; the event handler can then operate on the current state
+      ;; and doesn't need to do it own dereferencing
+      (fx/wrap-co-effects {:state #(deref *state)})
+      ))
 
 (def renderer
   (fx/create-renderer
