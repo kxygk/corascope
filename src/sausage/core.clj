@@ -821,27 +821,6 @@
                                          :core-number core-number}
                              :text "Load XRF Scan"}])}]})
 
-(defmethod event-handler ::adjust-right-crop
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
-  (reset! *state (-> snapshot
-                     (assoc-in [:cores
-                          core-number
-                          :crop-right]
-                               (- 1 event)))))
-
-(defmethod event-handler ::adjust-left-crop
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (assoc-in [:cores
-                         core-number
-                         :crop-left]
-                        event))))
-
 ;; Crop both :optical and :xrf-data
 ;; 1 - always crop areas that are optically scanned but have no xrf data
 ;; 2 - optionally crop more based on the slider positions
@@ -963,8 +942,14 @@
                :pref-height height
                :min-height height
                :value crop-left
-               :on-value-changed {:event/type ::adjust-left-crop
-                                  :core-number core-number}}
+               :on-value-changed {:core-number core-number
+                                  :effect (fn [snapshot
+                                               event]
+                                            (-> snapshot
+                                                (assoc-in [:cores
+                                                           (:core-number event)
+                                                           :crop-left]
+                                                          (:fx/event event))))}}
               {:fx/type :slider
                :max 1.0
                :min 0.5
@@ -975,8 +960,15 @@
                :pref-height height
                :min-height height
                :value (- 1 crop-right)
-               :on-value-changed {:event/type ::adjust-right-crop
-                                  :core-number core-number}}]})
+               :on-value-changed {:core-number core-number
+                                  :effect (fn [snapshot
+                                               event]
+                                            (-> snapshot
+                                                (assoc-in [:cores
+                                                           (:core-number event)
+                                                           :crop-right]
+                                                          (- 1
+                                                             (:fx/event event)))))}}]})
 
 ;; Update :start-mm based on user input and then resorts/lays-out the cores
 (defmethod event-handler ::update-core-start
@@ -1100,37 +1092,6 @@
                                              :seams (:seams core)})
                           displays))}))
 
-(defmethod event-handler ::toggle-full-width
-  [{:keys [fx/event
-           snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (assoc :full-width? event))))
-
-(defmethod event-handler ::toggle-scan-line
-  [{:keys [fx/event
-           display-number
-           snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (assoc-in
-               [:displays
-                display-number
-                :scan-line?]
-               event))))
-
-(defmethod event-handler ::toggle-merge-seams
-  [{:keys [fx/event
-           display-number
-           snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (assoc-in
-               [:displays
-                 display-number
-                :merge-seams?]
-               event))))
-
 (def periodic-table
   [[:H  nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil :He]
    [:Li :Be nil nil nil nil nil nil nil nil nil nil :B  :C  :N  :O  :F  :Ne]
@@ -1226,7 +1187,10 @@
                :text ">> Merge"}
               {:fx/type :check-box
                :text "Full Width"
-               :on-selected-changed {:event/type ::toggle-full-width}}]})
+               :on-selected-changed {:effect (fn [snapshot
+                                                  event]
+                                               (-> snapshot
+                                                   (assoc :full-width? (:fx/event event))))}}]})
 
 (defn optical-image-options
   ""
@@ -1237,8 +1201,14 @@
    :children [{:fx/type :check-box
                :text "Scan Line"
                :selected scan-line?
-               :on-selected-changed {:event/type ::toggle-scan-line
-                                     :display-number display-number}}]})
+               :on-selected-changed {:display-number display-number
+                                     :effect (fn [snapshot
+                                                  event]
+                                               (-> snapshot
+                                                   (assoc-in [:displays
+                                                              (:display-number event)
+                                                              :scan-line?]
+                                                             (:fx/event event))))}}]})
 
 (defn xrf-scan-options
   ""
@@ -1253,18 +1223,14 @@
               {:fx/type :check-box
                :text "Merge Seams"
                :selected merge-seams?
-               :on-selected-changed {:event/type ::toggle-merge-seams
-                                     :display-number display-number}}]})
-
-(defmethod event-handler ::remove-display
-  [{:keys [display-number
-           snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (update
-               :displays
-               #(vec (concat (subvec % 0 display-number)
-                             (subvec % (inc display-number))))))))
+               :on-selected-changed {:display-number display-number
+                                     :effect (fn [snapshot
+                                                  event]
+                                               (-> snapshot
+                                                   (assoc-in [:displays
+                                                              (:display-number event)
+                                                              :merge-seams?]
+                                                             (:fx/event event))))}}]})
 
 (defn display-options-header
   [{:keys [display-number
@@ -1282,9 +1248,14 @@
                            :h-box/hgrow :always}
                           {:fx/type :button
                            :text "X"
-                           :on-action {:event/type ::remove-display
-                                       :display-number display-number}}]}]})
-
+                           :on-action {:display-number display-number
+                                       :effect (fn [snapshot
+                                                    event]
+                                                 (-> snapshot
+                                                     (update
+                                                      :displays
+                                                      #(vec (concat (subvec % 0 display-number)
+                                                                    (subvec % (inc display-number)))))))}}]}]})
 
 (defmethod event-handler ::add-display
   [{:keys [display-type
@@ -1382,8 +1353,12 @@
      :title "Sausage Scanner"
      :showing true
      :scene {:fx/type :scene
-             :on-width-changed {:event/type ::width-changed}
-             :on-height-changed {:event/type ::height-changed}
+             :on-width-changed {:effect (fn [snapshot
+                                             event]
+                                          (assoc snapshot :width (:fx/event event)))}
+             :on-height-changed {:effect (fn [snapshot
+                                              event]
+                                          (assoc snapshot :height (:fx/event event)))}
              :root {:fx/type :v-box
                     :children[{:fx/type workspace-settings-display
                                :working-directory working-directory
