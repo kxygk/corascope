@@ -100,28 +100,37 @@
   Then we simply switch on the `event/type`"
   :event/type)
 
-(defmethod event-handler ::width-changed
-  [{:keys [fx/event
-           snapshot]}]
-  (reset! *state (assoc snapshot :width event)))
+(defn event-handler-wrapper [event]
+  (if (nil? (:event/type event))
+    {:updated-state (event-handler event)}
+    {:updated-state (do (event-handler event)
+                        nil)}))
 
-(defmethod event-handler ::height-changed
-  [{:keys [fx/event
-           snapshot]}]
-  (reset! *state (assoc snapshot :height event)))
+(def event-dispatcher
+  (-> event-handler-wrapper
+      ;; adds the current state to every processed event
+      ;; the event handler can then operate on the current state
+      ;; and doesn't need to do it own dereferencing
+      (fx/wrap-co-effects {:snapshot #(deref *state)})
+      ;; wrap-effects will take:
+      ;; - a key where it will some data
+      ;; - a side-effect function of what to do with the data
+      ;; in our case the data will be an updated state
+      ;; and it will update the global state with this updated state
+      (fx/wrap-effects {:updated-state (fn [our-updated-state _]
+                                         (if (some? our-updated-state)
+                                           (reset! *state
+                                                   our-updated-state)))})))
 
-;; TODO Get this all hooked up properly
-(defmethod event-handler ::set-working-directory
-    [{:keys [snapshot]}]
-  @(fx/on-fx-thread
-    (let [file (-> (doto (DirectoryChooser.)
-                     (.setTitle "Set a working directory")
-                     #_(.setInitialDirectory (File. "/home/")))
-                   ;; Could also grab primary stage instance to make this dialog blocking
-                   (.showDialog (Stage.)))
-          path (.getCanonicalPath file)]
-      (.mkdirs file) ;; maybe should be moved to the save-workspace method
-      (reset! *state (assoc snapshot :working-directory path)))))
+(defmethod event-handler :default
+  [{:keys [snapshot
+           effect] :as event}] ;; the event may have other keywords that will get forwarded to the 'effect'
+  (assert (fn? effect)
+          "You need to either specify a global event handler or provide an effect function")
+  (effect snapshot
+          (dissoc event
+                  :effect
+                  :fx/context)))
 
 
 ;;## Example:
@@ -1405,14 +1414,6 @@
                                                            empty?)
                                            :displays displays}
                                           ]}]}}}))
-
-(def event-dispatcher
-  (-> event-handler
-      ;; adds the current state to every processed event
-      ;; the event handler can then operate on the current state
-      ;; and doesn't need to do it own dereferencing
-      (fx/wrap-co-effects {:snapshot #(deref *state)})
-      ))
 
 (def renderer
   (fx/create-renderer
