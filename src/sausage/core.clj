@@ -101,10 +101,7 @@
   :event/type)
 
 (defn event-handler-wrapper [event]
-  (if (nil? (:event/type event))
-    {:updated-state (event-handler event)}
-    {:updated-state (do (event-handler event)
-                        nil)}))
+  {:updated-state (event-handler event)})
 
 (def event-dispatcher
   (-> event-handler-wrapper
@@ -169,10 +166,9 @@
 ;; unscanned-right-pix:1 pixel
 ;;
 ;;# Method annotated from example
-(defmethod event-handler ::update-unscanned-areas
-  [{:keys [fx/event
-           core-number
-           snapshot]}] ;; TODO: can destructure further
+(defn update-unscanned-areas
+  [snapshot
+   core-number]
   (let [image-width-pix (-> snapshot
                             :cores
                             (.get core-number)
@@ -194,43 +190,42 @@
                         :position
                         read-string)  ;; 3.75mm
         ]
-    (reset! *state (-> snapshot
-                       (assoc-in  [:cores
-                                   core-number
-                                   :optical
-                                   :unscanned-left-pix]
-                                  (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
-                                                      mm-per-pixel)))) ;; 2 Pixels entirely unscanned
+    (-> snapshot
+        (assoc-in  [:cores
+                    core-number
+                    :optical
+                    :unscanned-left-pix]
+                   (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
+                                       mm-per-pixel)))) ;; 2 Pixels entirely unscanned
 
-                       (assoc-in [:cores
-                                  core-number
-                                  :optical
-                                  :unscanned-right-pix]
-                                 (- image-width-pix
-                                    (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
-                                                       mm-per-pixel))))))))) ;; 9-8 = 1 Pixel entirely unscanned
+        (assoc-in [:cores
+                   core-number
+                   :optical
+                   :unscanned-right-pix]
+                  (- image-width-pix
+                     (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
+                                        mm-per-pixel)))))))) ;; 9-8 = 1 Pixel entirely unscanned
 
 ;; Updates the core's 'display image' based on
 ;; the internally stored 'optical image'
 ;;
 ;; NOTE: This is done because we want to avoid
 ;; operations on the underlying 'optical image'
-(defmethod event-handler ::update-display-image
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
+(defn update-display-image
+  [snapshot
+   core-number]
   (let [optical (-> snapshot
                     :cores
                     (get core-number)
                     :optical
                     :image)]
-    (reset! *state (assoc-in snapshot [:cores
-                                       core-number
-                                       :optical
-                                       :display]
-                             (-> optical
-                                 sausage.optical/flip-image
-                                 sausage.optical/to-fx-image)))))
+    (assoc-in snapshot [:cores
+                        core-number
+                        :optical
+                        :display]
+              (-> optical
+                  sausage.optical/flip-image
+                  sausage.optical/to-fx-image))))
 
 (defn overlap?
   "Check if CORE-A and CORE-B overlap in any way
@@ -323,20 +318,18 @@
 ;; Adjusts the CORE list so that the cores are in order based on :start-mm
 ;; Then (re)generates a pyramid/stacked layout so we can then look up which
 ;; core shows up on which level
-(defmethod event-handler ::sort-cores
-    [{:keys [fx/event
-             snapshot]}] ;; TODO structure more
-  (println "Sorting Cores")
-  (reset! *state
-          (-> snapshot
-              (update :cores
-                      sort-cores)
-              (assoc :layout
-                     (-> snapshot
-                         :cores
-                         inject-index
-                         pyramid-stack
-                         reduce-to-indeces)))))
+(defn update-core-order
+  [snapshot]
+  (let [with-updated-core-order (-> snapshot
+                                    (update :cores
+                                            sort-cores))]
+    (-> with-updated-core-order
+        (assoc :layout
+               (-> with-updated-core-order
+                   :cores
+                   inject-index
+                   pyramid-stack
+                   reduce-to-indeces)))))
 
 (defn- does-vector-contain-value
   "Local helper - Checks if a VECTOR contains a VALUE
@@ -357,7 +350,7 @@
                                            does-row-have-core?))]
     row-with-core))
 
-(defn update-core-length
+(defn update-core-length-HELPER
   "Given a CORE and the optical image's MM-PER-PIXEL
   RETURN: A core with an updated :length-mm
   NOTE: This is either derived from the optical scan size
@@ -384,22 +377,19 @@
 
 ;; Makes sure the :length-mm is set properly based on the
 ;; :optical scan and the :xrf-scan
-(defmethod event-handler ::update-core-length
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
+(defn update-core-length
+  [snapshot
+   core-number]
   (let [core (-> snapshot
                  :cores
                  (get core-number))]
-    (reset! *state
-            (-> snapshot
-                (assoc-in [:cores
-                           core-number]
-                          (update-core-length core
-                                              (-> snapshot
-                                                  :mm-per-pixel))))))
-  (event-dispatcher {:event/type ::sort-cores}))
-
+    (-> snapshot
+        (assoc-in [:cores
+                   core-number]
+                  (update-core-length-HELPER core
+                                             (-> snapshot
+                                                 :mm-per-pixel)))
+        update-core-order)))
 ;; File Picker copied from here:
 ;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
 ;;
@@ -415,24 +405,23 @@
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))]
     (if (some? file)
-      (let[optical-image (sausage.optical/load-image file)]
-        (reset! *state (-> snapshot
-                           (assoc-in [:cores
-                                      core-number
-                                      :optical
-                                      :image]
-                                     optical-image)))
-        (event-dispatcher {:event/type ::update-display-image
-                           :core-number core-number})
-        (event-dispatcher {:event/type ::update-core-length
-                           :core-number core-number})
-
+      (let[optical-image (sausage.optical/load-image file)
+           updated (-> snapshot
+                       (assoc-in [:cores
+                                  core-number
+                                  :optical
+                                  :image]
+                                 optical-image)
+                       (update-display-image core-number)
+                       (update-core-length core-number))]
         (if (-> snapshot
                 :cores
                 (.get core-number)
                 :xrf-scan)
-          (event-dispatcher {:event/type ::update-unscanned-areas
-                             :core-number core-number}))))))
+          (-> updated
+              (update-unscanned-areas core-number))
+          updated))
+      snapshot)))
 
 (defn element-counts
   "Given an XRF-SCAN and a ELEMENT (keyword)
@@ -481,14 +470,13 @@
                                                (:element display)))
     display))
 
-(defmethod event-handler ::update-max-element-count
-  [{:keys [fx/event
-           snapshot]}]
-  (reset! *state (-> snapshot
-                     (update :displays
-                             #(mapv (partial update-max-element-in-display (-> snapshot
-                                                                               :cores))
-                                    %)))))
+(defn update-max-element-count
+  [snapshot]
+  (-> snapshot
+      (update :displays
+              #(mapv (partial update-max-element-in-display (-> snapshot
+                                                                :cores))
+                     %))))
 
 (defmethod event-handler ::load-xrf-scan
   [{:keys [fx/event
@@ -502,73 +490,70 @@
                  (.showOpenDialog (Stage.)))]
     (if (some? file)
       (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
-            columns (:columns xrf-scan)]
-        (reset! *state (-> snapshot
-                           (update :columns
-                                   clojure.set/union
-                                   columns)
-                           (assoc-in [:cores
-                                      core-number
-                                      :xrf-scan]
-                                     xrf-scan)))
-        (event-dispatcher {:event/type ::update-core-length
-                        :core-number core-number})
-        (event-dispatcher {:event/type ::update-max-element-count})
+            columns (:columns xrf-scan)
+            updated (-> snapshot
+                        (update :columns
+                                clojure.set/union
+                                columns)
+                        (assoc-in [:cores
+                                   core-number
+                                   :xrf-scan]
+                                  xrf-scan)
+                        (update-core-length core-number)
+                        (update-max-element-count))]
         (if (-> snapshot
                 :cores
                 (.get core-number)
                 :optical)
-          (event-dispatcher {:event/type ::update-unscanned-areas
-                          :core-number core-number})
-          #_(swap! *state
-                 assoc-in [:cores
-                           core-number
-                           :length-mm]
-                 (sausage.xrf/end-position xrf-scan)))))))
+          (-> updated
+              (update-unscanned-areas core-number))
+          updated))
+      snapshot)))
 
 (defmethod event-handler ::add-core
   [{:keys [snapshot]}]
   (let [num-cores (-> snapshot
                       :cores
                       count)]
-    (reset! *state (-> snapshot
-                       (assoc-in [:cores
-                                  num-cores]
-                                 {:start-mm (if (nil? (-> snapshot
-                                                          :cores
-                                                          last))
-                                              0.0 ;; if no core to tack on to, then set to zero
-                                              (+ (-> snapshot
-                                                     :cores
-                                                     last
-                                                     :start-mm)
-                                                 (-> snapshot
-                                                     :cores
-                                                     last
-                                                     :length-mm)))
-                                  :optical nil
-                                  :xrf-scan nil
-                                  :crop-left 0
-                                  :crop-right 0
-                                  :length-mm fixed-default-core-length
-                                  :seams []})))
-    (event-dispatcher {:event/type ::sort-cores})))
+    (-> snapshot
+        (assoc-in [:cores
+                   num-cores]
+                  {:start-mm (if (nil? (-> snapshot
+                                           :cores
+                                           last))
+                               0.0 ;; if no core to tack on to, then set to zero
+                               (+ (-> snapshot
+                                      :cores
+                                      last
+                                      :start-mm)
+                                  (-> snapshot
+                                      :cores
+                                      last
+                                      :length-mm)))
+                   :optical nil
+                   :xrf-scan nil
+                   :crop-left 0
+                   :crop-right 0
+                   :length-mm fixed-default-core-length
+                   :seams []})
+        update-core-order)))
 
 (defmethod event-handler ::remove-core
   [{:keys [fx/event
            core-number
            snapshot]}]
   (if (nil? core-number)
-    (reset! *state (-> snapshot
-                       (assoc :cores
-                              (pop (:cores snapshot)))
-                       (update
-                        :cores
-                        #(vec (concat (subvec % 0 (:core-number event))
-                                      (subvec % (inc (:core-number event))))))))
+    (-> snapshot
+        (assoc :cores
+               (pop (:cores snapshot)))
+        (update
+         :cores
+         #(vec (concat (subvec % 0 (:core-number event))
+                       (subvec % (inc (:core-number event)))))))
     (if (empty? (:cores snapshot))
-      (event-dispatcher {:event/type ::add-core}) ;; already does sorting
-      (event-dispatcher {:event/type ::sort-cores}))))
+      (event-dispatcher {:event/type ::add-core
+                         :snapshot snapshot})
+      (update-core-order snapshot))))
 
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
@@ -603,25 +588,22 @@
         (update :seams #(into % [(-> core-a :length-mm)]))
         (assoc-in [:optical :image] merged-image)
         (assoc-in [:xrf-scan] merged-xrf-scan)
-        (update-core-length mm-per-pixel))))
+        (update-core-length-HELPER mm-per-pixel))))
 
 ;; TODO: Make sure this doesn't get called when cores overlap
 (defmethod event-handler ::merge-all-cores
   [{:keys [snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (assoc
-               :cores
-               [(reduce (partial merge-cores (:mm-per-pixel snapshot))
-                        (-> snapshot
-                            :cores
-                            (get 0))
-                        (rest (-> snapshot
-                                  :cores)))])))
-  (event-dispatcher {:event/type ::update-display-image
-                     :core-number 0})
-  (event-dispatcher {:event/type ::update-core-length
-                     :core-number 0}))
+  (-> snapshot
+      (assoc
+       :cores
+       [(reduce (partial merge-cores (:mm-per-pixel snapshot))
+                (-> snapshot
+                    :cores
+                    (get 0))
+                (rest (-> snapshot
+                          :cores)))])
+      (update-display-image  0)
+      (update-core-length 0)))
 
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
@@ -868,53 +850,50 @@
                         mm-per-pixel)
         crop-right-mm (* crop-right-pix
                          mm-per-pixel)]
-    (reset! *state
-            (-> snapshot
-                (assoc-in [:cores
-                           core-number
-                           :optical
-                           :image]
-                          (sausage.optical/crop image
-                                                crop-left-pix
-                                                crop-right-pix))
-                (assoc-in [:cores
-                           core-number
-                           :xrf-scan
-                           :element-counts]
-                          (sausage.xrf/crop xrf-scan-element-counts
-                                            (-> core
-                                                :length-mm)
-                                            crop-left-mm
-                                            crop-right-mm))
-                (assoc-in [:cores
-                           core-number
-                           :optical
-                           :unscanned-left-pix]
-                          0.0)
-                (assoc-in [:cores
-                           core-number
-                           :optical
-                           :unscanned-right-pix]
-                          0.0)
-                (assoc-in [:cores
-                           core-number
-                           :crop-left]
-                          0.0)
-                (assoc-in [:cores
-                           core-number
-                           :crop-right]
-                          0.0)
-                ;; seams only happen in core=0
-                ;; but inserting a conditional in a threading macro is messy
-                (update-in
-                 [:cores
-                  core-number
-                  :seams]
-                 #(map (partial + (- crop-left-mm)) %)))))
-  (event-dispatcher {:event/type ::update-core-length
-                     :core-number core-number})
-  (event-dispatcher {:event/type ::update-display-image
-                     :core-number core-number}))
+    (-> snapshot
+        (assoc-in [:cores
+                   core-number
+                   :optical
+                   :image]
+                  (sausage.optical/crop image
+                                        crop-left-pix
+                                        crop-right-pix))
+        (assoc-in [:cores
+                   core-number
+                   :xrf-scan
+                   :element-counts]
+                  (sausage.xrf/crop xrf-scan-element-counts
+                                    (-> core
+                                        :length-mm)
+                                    crop-left-mm
+                                    crop-right-mm))
+        (assoc-in [:cores
+                   core-number
+                   :optical
+                   :unscanned-left-pix]
+                  0.0)
+        (assoc-in [:cores
+                   core-number
+                   :optical
+                   :unscanned-right-pix]
+                  0.0)
+        (assoc-in [:cores
+                   core-number
+                   :crop-left]
+                  0.0)
+        (assoc-in [:cores
+                   core-number
+                   :crop-right]
+                  0.0)
+        ;; seams only happen in core=0
+        ;; but inserting a conditional in a threading macro is messy
+        (update-in
+         [:cores
+          core-number
+          :seams]
+         #(map (partial + (- crop-left-mm)) %))
+        (update-core-length core-number)
+        (update-display-image core-number))))
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
@@ -984,15 +963,15 @@
           corrected-start-mm (* rounded-to-pixel
                                 mm-per-pixel)]
       (println "corrected" corrected-start-mm)
-      (reset! *state
-              (-> snapshot
-                  (assoc-in [:cores
-                             core-number
-                             :start-mm]
-                            corrected-start-mm))))
+      (-> snapshot
+          (assoc-in [:cores
+                     core-number
+                     :start-mm]
+                    corrected-start-mm)
+          update-core-order))
     (catch Exception ex
-      (println "Invalid core-start input")))
-  (event-dispatcher {:event/type ::sort-cores}))
+      (println "Invalid core-start input")
+      snapshot)))
 
 (defn core-header-display
   "The options bar at the top of every core"
@@ -1107,14 +1086,13 @@
            display-number
            element
            snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (assoc-in
-               [:displays
-                display-number
-                :element]
-               element )))
-  (event-dispatcher {:event/type ::update-max-element-count}))
+  (-> snapshot
+      (assoc-in
+       [:displays
+        display-number
+        :element]
+       element )
+      update-max-element-count))
 
 (defn periodic-buttons
   "Periodic table as a grid of buttons
@@ -1260,23 +1238,22 @@
 (defmethod event-handler ::add-display
   [{:keys [display-type
            snapshot]}]
-  (reset! *state
-          (-> snapshot
-              (update
-               :displays
-               #(conj %
-                      (case display-type
-                        :optical
-                        {:type :optical
-                         :height fixed-optical-scan-height
-                         :scan-line? true}
-                        :element-count
-                        {:type :element-count
-                         :height fixed-element-count-height
-                         :merge-seams? true
-                         :element :Mn
-                         :max-count 1000})))))
-  (event-dispatcher {:event/type ::update-max-element-count}))
+  (-> snapshot
+      (update
+       :displays
+       #(conj %
+              (case display-type
+                :optical
+                {:type :optical
+                 :height fixed-optical-scan-height
+                 :scan-line? true}
+                :element-count
+                {:type :element-count
+                 :height fixed-element-count-height
+                 :merge-seams? true
+                 :element :Mn
+                 :max-count 1000})))
+      update-max-element-count))
 
 (defn add-display-options
   [_]
