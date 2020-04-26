@@ -3,6 +3,9 @@
    [sausage.plot]
    [sausage.optical]
    [sausage.xrf]
+   [sausage.displays.element-count]
+   [sausage.displays.overhead]
+   [sausage.common-effects :as effects]
    [cljfx.api :as fx]
    [cljfx.ext.list-view :as fx.ext.list-view])
   (:import javafx.stage.DirectoryChooser
@@ -17,7 +20,6 @@
 ;; need a "size" so that they can take up space to display properly
 ;; Otherwise nothing shows up and there is no "Load" buttons.
 ;; (TODO: Think of a less goofy UI solution)
-(def fixed-default-core-length 300.0)
 (def fixed-workspace-settings-height 30.0)
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
 (def fixed-core-header-height 48)
@@ -53,764 +55,14 @@
                      :max-count 1000}]}
         ))
 
-(defmulti event-handler
-  "CLJFX -  Event Handlers
-
-  When defining CLJFX event like `on-value-changed` you have two options
-  - 1 You can point to *Function* (or lambda) to run when the event happens
-  ex:
-  ```
-  {:fx/type :check-box
-               :selected done
-               :on-selected-changed #(swap! *state assoc-in [:by-id id :done] %)
-  ```
-  - 2 You can point to a custom *Map Events*
-  ex:
-  ```
-  {:fx/type :check-box
-               :selected done
-               :on-selected-changed {:event/type ::set-done :id id}}
-  ```
-  You will then need to create an event handler function
-  ex:
-  ```
-  (defn map-event-handler [event]
-  (case (:event/type event)
-    ::set-done (swap! *state assoc-in
-                             [:by-id (:id event) :done]
-                             (:fx/event event))))
-  ```
-  And this function will then be registered with the renderer
-  ex:
-  ```
-  (fx/mount-renderer
-  *state
-  (fx/create-renderer
-    :middleware (fx/wrap-map-desc assoc :fx/type root)
-    :opts {:fx.opt/map-event-handler map-event-handler}))
-  ```
-  The map you paired to the event will be passed to the registered event handler
-  It will needs to designate its type with the `event/type` key
-  And the actual even will be passed in under the `fx/event` key
-  Any additional keys you place in the map will also get passed along
-  lik `:id` in the example
-
-  In the simple example we registered a function,
-  however here I register a multimethod
-  Then we simply switch on the `event/type`"
-  :event/type)
-
-(defn event-handler-wrapper [event]
-  {:updated-state (event-handler event)})
-
-(def event-dispatcher
-  (-> event-handler-wrapper
-      ;; adds the current state to every processed event
-      ;; the event handler can then operate on the current state
-      ;; and doesn't need to do it own dereferencing
-      (fx/wrap-co-effects {:snapshot #(deref *state)})
-      ;; wrap-effects will take:
-      ;; - a key where it will some data
-      ;; - a side-effect function of what to do with the data
-      ;; in our case the data will be an updated state
-      ;; and it will update the global state with this updated state
-      (fx/wrap-effects {:updated-state (fn [our-updated-state _]
-                                         (if (some? our-updated-state)
-                                           (reset! *state
-                                                   our-updated-state)))})))
-
-(defmethod event-handler :default
-  [{:keys [snapshot
-           effect] :as event}] ;; the event may have other keywords that will get forwarded to the 'effect'
-  (assert (fn? effect)
-          "You need to either specify a global event handler or provide an effect function")
-  (effect snapshot
-          (dissoc event
-                  :effect
-                  :fx/context)))
-
-
-;;## Example:
-;;Pixel index:  0 1 2 3 4 5 6 7 8
-;;             |-|-|-|-|-|-|-|-|-|
-;;             0mm               4.5mm
-                                        ;                   |~~~~~~~~~|
-;;XRF-Scan          |---------|
-;;                  1.25mm    3.75mm
-;;
-;; Optical scan   : mm/pixel = 0.5mm
-;;
-;; Unscanned Left : 2 Pixels / 1.0mm      ;; Third Pixel overlaps and remains
-;;
-;; Unscanned Right: 1 Pixel  / 0,5mm      ;; Second Pixel overlaps and remains
-;;
-;; Note: Cropping needs to be conservative, so unscanned areas need to be
-;;       /under-selected/ so that when you merge data doesn't overlap
-;;
-;;## Degenerate cases:
-;;# Scan starts on pixel edge
-;; scan-start-mm: 1.0mm
-;; scan-end-mm  : 4.0mm
-;;
-;;Pixel number: 1 2 3 4 5 6 7 8 9
-;;             |-|-|-|-|-|-|-|-|-|
-;;             0mm               4.5mm
-                                        ;                  |~~~~~~~~~~~|
-;;XRF-Scan         |-----------|
-;;                 1.0mm       4.0mm
-;;
-;; scan-start-pix 2nd pixel
-;; scan-end-pix 8th pixel
-;;
-;; unscanned-left-pix: 2 pixel
-;; unscanned-right-pix:1 pixel
-;;
-;;# Method annotated from example
-(defn update-unscanned-areas
-  [snapshot
-   core-number]
-  (let [image-width-pix (-> snapshot
-                            :cores
-                            (.get core-number)
-                            :optical
-                            :image
-                            .getWidth) ;; 9 Pixels
-        mm-per-pixel (:mm-per-pixel snapshot) ;; 0.5 mm/pixel
-        scan (-> snapshot
-                 :cores
-                 (.get core-number)
-                 :xrf-scan
-                 :element-counts)
-        scan-start-mm (-> scan
-                          first
-                          :position
-                          read-string) ;; 1.25mm
-        scan-end-mm (-> scan
-                        last
-                        :position
-                        read-string)  ;; 3.75mm
-        ]
-    (-> snapshot
-        (assoc-in  [:cores
-                    core-number
-                    :optical
-                    :unscanned-left-pix]
-                   (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
-                                       mm-per-pixel)))) ;; 2 Pixels entirely unscanned
-
-        (assoc-in [:cores
-                   core-number
-                   :optical
-                   :unscanned-right-pix]
-                  (- image-width-pix
-                     (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
-                                        mm-per-pixel)))))))) ;; 9-8 = 1 Pixel entirely unscanned
-
-;; Updates the core's 'display image' based on
-;; the internally stored 'optical image'
-;;
-;; NOTE: This is done because we want to avoid
-;; operations on the underlying 'optical image'
-(defn update-display-image
-  [snapshot
-   core-number]
-  (let [optical (-> snapshot
-                    :cores
-                    (get core-number)
-                    :optical
-                    :image)]
-    (assoc-in snapshot [:cores
-                        core-number
-                        :optical
-                        :display]
-              (-> optical
-                  sausage.optical/flip-image
-                  sausage.optical/to-fx-image))))
-
-(defn overlap?
-  "Check if CORE-A and CORE-B overlap in any way
-  RETURN: TRUE/FALSE"
-  [core-a
-   core-b]
-  (if (>= (-> core-b :start-mm)
-          (+ (-> core-a :start-mm)
-             (-> core-a :length-mm))) ;; end-mm
-    false
-    true))
-
-(defn overlapping-cores
-  "Given a vector of CORES, it will check which overlap
-  and gives you two lists:
-  - not-overlapping: a selection of cores that don't overlap (biased towards 0mm)
-  - overlapping: the remaining cores that did overlap (and may mutually overlap)
-  RETURNS: [[not-overlapping][overlapping]]"
-  [cores]
-  (if (empty? cores)
-    [[][]]
-    (let [current-core (first cores)
-          later-cores (rest cores)
-          [overlapping-current-core
-           not-overlapping-current-core] (split-with (partial overlap? current-core)
-                                                     later-cores)
-          [current-level-cores
-           other-level-cores] (overlapping-cores not-overlapping-current-core)]
-      [(into [current-core]
-             current-level-cores)
-       (into (into [] overlapping-current-core)
-             other-level-cores)])))
-
-(defn pyramid-stack
-  "Stacks CORES into a 'pyramid'.
-  Lower rows as tightly as possible - biased to 0mm
-  ie. it takes the first core, then chooses the next core that fits next to it
-  and then the next.. etc.
-  Cores that don't fit on the first row we again try to fit on the next row.
-  This happens recursively.
-  RETURNS:
-  [[core-x core-y core-z] ;; first row
-   [core-a core-b]        ;; second row
-   [core-c]]               ;; third row ... etc.
-  "
-  [cores]
-  (let [[current-level-cores
-         other-cores] (overlapping-cores cores)]
-    (if (empty? other-cores)
-      [current-level-cores
-       other-cores]
-      (into [current-level-cores]
-            (pyramid-stack other-cores)))))
-
-(defn inject-index
-  "Given a VECTOR-OF-MAPS it will add and index key into each map.
-  key is named: :tracking-index
-  After processing the maps you can use the injected index
-  to figure out which one it was"
-  [vector-of-maps]
-  (map #(assoc %1
-               :tracking-index
-               %2)
-       vector-of-maps
-       (range (count vector-of-maps))))
-
-(defn reduce-to-indeces
-  "Given a MAP a tracking :tracking-index
-  RETURN: index
-  Given a VECTOR recursively call this function
-  RETURN: vector of vector of vector... of indeces
-  EXAMPLE OUTPUT:
-  [[0 2 4]
-   [1]
-   [3 5]]"
-  [element]
-  (if (map? element)
-    (:tracking-index element)
-    (map reduce-to-indeces element)))
-
-(defn sort-cores
-  "Given a vector of CORES,
-  RETURN: a vector sorted by :start-mm
-  NOTE: The core-number/index will change"
-  [cores]
-  (into [] (sort #(< (:start-mm %1)
-                     (:start-mm %2))
-                 cores)))
-
-;; Adjusts the CORE list so that the cores are in order based on :start-mm
-;; Then (re)generates a pyramid/stacked layout so we can then look up which
-;; core shows up on which level
-(defn update-core-order
-  [snapshot]
-  (let [with-updated-core-order (-> snapshot
-                                    (update :cores
-                                            sort-cores))]
-    (-> with-updated-core-order
-        (assoc :layout
-               (-> with-updated-core-order
-                   :cores
-                   inject-index
-                   pyramid-stack
-                   reduce-to-indeces)))))
-
-(defn- does-vector-contain-value
-  "Local helper - Checks if a VECTOR contains a VALUE
-  RETURNS: TRUE/FALSE"
-  [value vector]
-  (reduce #(or %1 (= %2 value))
-          false
-          vector))
-
-(defn get-core-row
-  "Give a CORE-NUMBER and LAYOUT
-  RETURN: Which row the core should be displayed on"
-  [core-number layout]
-  (let [does-row-have-core? (map (partial does-vector-contain-value
-                                          core-number)
-                                 layout)
-        row-with-core (first (keep-indexed #(if (true? %2) %1)
-                                           does-row-have-core?))]
-    row-with-core))
-
-(defn update-core-length-HELPER
-  "Given a CORE and the optical image's MM-PER-PIXEL
-  RETURN: A core with an updated :length-mm
-  NOTE: This is either derived from the optical scan size
-        or the xrf-scan size
-  DEGENERATE: If there is no :optical or :xrf-scan then
-              the length is reset to a global default  "
-  [core
-   mm-per-pixel]
-  (if (nil? (-> core :optical))
-    (if (nil? (-> core :xrf-scan))
-      (assoc core :length-mm fixed-default-core-length)
-      (assoc core :length-mm (* mm-per-pixel
-                                (-> core
-                                    :xrf-scan
-                                    :element-counts
-                                    last
-                                    :position
-                                    read-string))))
-    (assoc core :length-mm (* mm-per-pixel
-                              (-> core
-                                  :optical
-                                  :image
-                                  .getWidth)))))
-
-;; Makes sure the :length-mm is set properly based on the
-;; :optical scan and the :xrf-scan
-(defn update-core-length
-  [snapshot
-   core-number]
-  (let [core (-> snapshot
-                 :cores
-                 (get core-number))]
-    (-> snapshot
-        (assoc-in [:cores
-                   core-number]
-                  (update-core-length-HELPER core
-                                             (-> snapshot
-                                                 :mm-per-pixel)))
-        update-core-order)))
-;; File Picker copied from here:
-;; https://github.com/cljfx/cljfx/pull/40#issuecomment-544256262
-;;
-;; User has opted to load a new project. Use FileChooser so they can select the file.
-;; Then trigger the central project loading event, passing in the selected file.
-(defmethod event-handler ::load-optical-image
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
-  (let [file (-> (doto (FileChooser.)
-                   (.setTitle "Open a project")
-                   #_(.setInitialDirectory (File. "/home/")))
-                 ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))]
-    (if (some? file)
-      (let[optical-image (sausage.optical/load-image file)
-           updated (-> snapshot
-                       (assoc-in [:cores
-                                  core-number
-                                  :optical
-                                  :image]
-                                 optical-image)
-                       (update-display-image core-number)
-                       (update-core-length core-number))]
-        (if (-> snapshot
-                :cores
-                (.get core-number)
-                :xrf-scan)
-          (-> updated
-              (update-unscanned-areas core-number))
-          updated))
-      snapshot)))
-
-(defn element-counts
-  "Given an XRF-SCAN and a ELEMENT (keyword)
-  RETURN:
-  [[position element-count]
-   [position element-count]
-   ...
-   [position element-count]]"
-  [xrf-scan
-   element]
-  (map #(vector (read-string (:position %))
-                (read-string (element %)))
-       (:element-counts xrf-scan)))
-
-(defn get-max-count-for-element-in-core-scan
-  "Given a CORE and an ELEMENT
-  Returns the maximum count detected for this element"
-  [core
-   element]
-  (if (nil? (-> core :xrf-scan))
-    0.0
-    (let [pos-count-pairs (element-counts (-> core
-                                              :xrf-scan)
-                                          element)
-          counts (map second pos-count-pairs)]
-      (apply max counts))))
-
-(defn get-max-count-for-element-in-cores ;; TODO Collapse these function into one maybe..
-  "Given a list of CORES and an ELEMENT
-  Returns the maximum count detected for this element"
-  [cores
-   element]
-  (apply max
-         (map #(get-max-count-for-element-in-core-scan %
-                                                       element)
-              cores)))
-
-(defn- update-max-element-in-display
-  [cores
-   display]
-  (if (= :element-count
-         (:type display))
-    (assoc display
-           :max-count
-           (get-max-count-for-element-in-cores cores
-                                               (:element display)))
-    display))
-
-(defn update-max-element-count
-  [snapshot]
-  (-> snapshot
-      (update :displays
-              #(mapv (partial update-max-element-in-display (-> snapshot
-                                                                :cores))
-                     %))))
-
-(defmethod event-handler ::load-xrf-scan
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
-  ;;  @(fx/on-fx-thread
-  (let [file (-> (doto (FileChooser.)
-                   (.setTitle "Open a project")
-                   #_(.setInitialDirectory (File. "/home/")))
-                 ;; Could also grab primary stage instance to make this dialog blocking
-                 (.showOpenDialog (Stage.)))]
-    (if (some? file)
-      (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
-            columns (:columns xrf-scan)
-            updated (-> snapshot
-                        (update :columns
-                                clojure.set/union
-                                columns)
-                        (assoc-in [:cores
-                                   core-number
-                                   :xrf-scan]
-                                  xrf-scan)
-                        (update-core-length core-number)
-                        (update-max-element-count))]
-        (if (-> snapshot
-                :cores
-                (.get core-number)
-                :optical)
-          (-> updated
-              (update-unscanned-areas core-number))
-          updated))
-      snapshot)))
-
-(defmethod event-handler ::add-core
-  [{:keys [snapshot]}]
-  (let [num-cores (-> snapshot
-                      :cores
-                      count)]
-    (-> snapshot
-        (assoc-in [:cores
-                   num-cores]
-                  {:start-mm (if (nil? (-> snapshot
-                                           :cores
-                                           last))
-                               0.0 ;; if no core to tack on to, then set to zero
-                               (+ (-> snapshot
-                                      :cores
-                                      last
-                                      :start-mm)
-                                  (-> snapshot
-                                      :cores
-                                      last
-                                      :length-mm)))
-                   :optical nil
-                   :xrf-scan nil
-                   :crop-left 0
-                   :crop-right 0
-                   :length-mm fixed-default-core-length
-                   :seams []})
-        update-core-order)))
-
-(defmethod event-handler ::remove-core
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
-  (if (nil? core-number)
-    (-> snapshot
-        (assoc :cores
-               (pop (:cores snapshot)))
-        (update
-         :cores
-         #(vec (concat (subvec % 0 (:core-number event))
-                       (subvec % (inc (:core-number event)))))))
-    (if (empty? (:cores snapshot))
-      (event-dispatcher {:event/type ::add-core
-                         :snapshot snapshot})
-      (update-core-order snapshot))))
-
-(defn merge-cores
-  "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
-  RESULT: One core with optical and xrf-scans merged"
-  [mm-per-pixel
-   core-a
-   core-b]
-  (let [gap-pmm (- (-> core-b ;; gap between the end of one core and start of next
-                       :start-mm)
-                   (+ (-> core-a
-                          :start-mm)
-                      (-> core-a
-                          :length-mm)))
-        gap-pix (/ gap-pmm
-                   mm-per-pixel)
-        merged-image (sausage.optical/join-horizontally (-> core-b
-                                                            :optical
-                                                            :image)
-                                                        (-> core-a
-                                                            :optical
-                                                            :image)
-                                                        gap-pix)
-        merged-xrf-scan (sausage.xrf/join-horizontally (-> core-a
-                                                           :xrf-scan)
-                                                       (-> core-b
-                                                           :start-mm)
-                                                       (-> core-b
-                                                           :xrf-scan))]
-
-
-    (-> core-a
-        (update :seams #(into % [(-> core-a :length-mm)]))
-        (assoc-in [:optical :image] merged-image)
-        (assoc-in [:xrf-scan] merged-xrf-scan)
-        (update-core-length-HELPER mm-per-pixel))))
-
-;; TODO: Make sure this doesn't get called when cores overlap
-(defmethod event-handler ::merge-all-cores
-  [{:keys [snapshot]}]
-  (-> snapshot
-      (assoc
-       :cores
-       [(reduce (partial merge-cores (:mm-per-pixel snapshot))
-                (-> snapshot
-                    :cores
-                    (get 0))
-                (rest (-> snapshot
-                          :cores)))])
-      (update-display-image  0)
-      (update-core-length 0)))
-
-(defn workspace-settings-display
-  "Top level settings for the workspace where all data will be stored in"
-  [{:keys [working-directory
-           height]}]
-  {:fx/type :h-box
-   :children [{:fx/type :button
-               :pref-width fixed-margin-width
-               :min-width fixed-margin-width
-               :pref-height height
-               :min-height height
-               :max-height height
-               :on-action {:event/type ::set-working-directory}
-               :text "Set"}
-              {:fx/type :text-field
-               :editable false
-               :pref-height height ;; TODO: What's with all these pref/min dimensions...?
-               :prompt-text "Select a working directory.."
-               :pref-column-count 999
-               :text working-directory}
-              {:fx/type :button
-               :pref-height height
-               :pref-width height ;; make square button
-               :min-width  height
-               :on-action {:event/type ::remove-core}
-               :text "-"}
-              {:fx/type :button
-               :pref-height height
-               :pref-width height ;; make square button
-               :min-width height
-               :on-action {:event/type ::add-core}
-               :text "+"}]})
-
-(defn optical-image-display
-  "display and options for the optical image"
-  [{:keys [core-number
-           scan-line?
-           width
-           height
-           optical
-           crop-left
-           crop-right]}]
-  {:fx/type :h-box
-   :pref-height height
-   :children (if (nil? optical)
-               [{:fx/type :v-box
-                 :children [{:fx/type :button
-                             :pref-width width
-                             :pref-height height
-                             :on-action {:event/type ::load-optical-image
-                                         :core-number core-number}
-                             :text "Load image"}]}]
-               [{:fx/type :group
-                 :children [{:fx/type :pane
-                             :children (filter identity ;; TODO Find way to do conditional GUI elements without filter
-                                               (let [crop-left-pix (* crop-left
-                                                                      width)
-                                                     crop-right-pix (* crop-right
-                                                                       width)]
-                                                 [{:fx/type :image-view
-                                                   :fit-width width
-                                                   :fit-height height
-                                                   :image (:display optical)}
-                                                  ;; Center Line
-                                                  (if (true? scan-line?)
-                                                    {:fx/type :line
-                                                     :start-x 1 ;; pixel offset
-                                                     :start-y (/ height
-                                                                 2.0)
-                                                     :end-x (dec width)
-                                                     :end-y (/ height
-                                                               2.0)
-                                                     :stroke-dash-array [10 10]
-                                                     :stroke "white"})
-                                                  ;; Right Crop
-                                                  (if (pos? crop-right-pix)
-                                                    {:fx/type :line
-                                                     :start-x (- width
-                                                                 crop-right-pix)
-                                                     :start-y 0
-                                                     :end-x (- width
-                                                               crop-right-pix)
-                                                     :end-y (dec height) ;; this is inclusive!
-                                                     :stroke "red"})
-                                                  (if (pos? crop-right-pix)
-                                                    {:fx/type :rectangle
-                                                     :x (- width
-                                                           crop-right-pix)
-                                                     :y 0
-                                                     :height height
-                                                     :width crop-right-pix
-                                                     :opacity 0.10
-                                                     :fill "red"})
-                                                  ;; Left Crop
-                                                  (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
-                                                    {:fx/type :line
-                                                     :start-x crop-left-pix
-                                                     :start-y 0
-                                                     :end-x crop-left-pix
-                                                     :end-y (dec height) ;; this is inclusive!
-                                                     :stroke "red"})
-                                                  (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
-                                                    {:fx/type :rectangle
-                                                     :x 0
-                                                     :y 0
-                                                     :height height
-                                                     :width crop-left-pix
-                                                     :opacity 0.10
-                                                     :fill "red"})
-                                                  ;; Left Unscanned Area
-                                                  (if (and (not (nil? (:unscanned-left-pix optical)))
-                                                           (pos? (:unscanned-left-pix optical)))
-                                                    (let [left-width (* (/ (:unscanned-left-pix optical)
-                                                                           (.getWidth (:image optical)))
-                                                                        width)]
-                                                      {:fx/type :line
-                                                       :start-x left-width
-                                                       :start-y 0
-                                                       :end-x left-width
-                                                       :end-y (dec height) ;; this is inclusive!
-                                                       :stroke "brown"}))
-                                                  (if (and (not (nil? (:unscanned-left-pix optical)))
-                                                           (pos? (:unscanned-left-pix optical)))
-                                                    (let [left-width (* (/ (:unscanned-left-pix optical)
-                                                                           (.getWidth (:image optical)))
-                                                                        width)]
-                                                      {:fx/type :rectangle
-                                                       :x 0
-                                                       :y 0
-                                                       :height height
-                                                       :width left-width
-                                                       :opacity 0.10
-                                                       :fill "yellow"}))
-                                                  ;; Right Unscanned Area
-                                                  (if (and (not (nil? (:unscanned-left-pix optical)))
-                                                           (pos? (:unscanned-right-pix optical)))
-                                                    (let [right-width (* (/ (:unscanned-right-pix optical)
-                                                                            (.getWidth (:image optical)))
-                                                                         width)]
-                                                      {:fx/type :line
-                                                       :start-x (- width
-                                                                   right-width);;right-width
-                                                       :start-y 0
-                                                       :end-x (- width
-                                                                 right-width);;right-width
-                                                       :end-y (dec height) ;; this is inclusive!
-                                                       :stroke "brown"}))
-                                                  (if (and (not (nil? (:unscanned-left-pix optical)))
-                                                           (pos? (:unscanned-right-pix optical)))
-                                                    (let [right-width (* (/ (:unscanned-right-pix optical)
-                                                                            (.getWidth (:image optical)))
-                                                                         width)]
-                                                      {:fx/type :rectangle
-                                                       :x (- width
-                                                             right-width)
-                                                       :y 0
-                                                       :height height
-                                                       :width right-width
-                                                       :opacity 0.10
-                                                       :fill "yellow"}))
-                                                  ]))}]}])})
-
-(defn xrf-scan-display
-  "display and options for XRF scan data"
-  [{:keys [core-number
-           width
-           height
-           xrf-scan
-           selection
-           max-element-count
-           core-length-mm
-           crop-left
-           crop-right
-           merge-seams?
-           seams]}]
-  {:fx/type :h-box
-   :children [{:fx/type :v-box
-               :children (if xrf-scan
-                           [{:fx/type :image-view
-                             :fit-width width
-                             :fit-height height
-                             :image (sausage.plot/plot-points width
-                                                              height
-                                                              (element-counts xrf-scan
-                                                                              (keyword selection))
-                                                              core-length-mm
-                                                              max-element-count
-                                                              crop-left
-                                                              crop-right
-                                                              (if merge-seams?
-                                                                seams
-                                                                []))}]
-                           [{:fx/type :button
-                             :pref-width width
-                             :pref-height height
-                             :on-action {:event/type ::load-xrf-scan
-                                         :core-number core-number}
-                             :text "Load XRF Scan"}])}]})
 
 ;; Crop both :optical and :xrf-data
 ;; 1 - always crop areas that are optically scanned but have no xrf data
 ;; 2 - optionally crop more based on the slider positions
 ;; TODO: Simplify this .. with some destructuring or something
-(defmethod event-handler ::crop
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
+(defn crop
+  [snapshot
+   {:keys [core-number]}]
   (let [core (-> snapshot
                  :cores
                  (get core-number))
@@ -892,8 +144,113 @@
           core-number
           :seams]
          #(map (partial + (- crop-left-mm)) %))
-        (update-core-length core-number)
-        (update-display-image core-number))))
+        (effects/update-core-length core-number)
+        (sausage.optical/update-display-image core-number))))
+
+
+(defn merge-cores
+  "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
+  RESULT: One core with optical and xrf-scans merged"
+  [mm-per-pixel
+   core-a
+   core-b]
+  (let [gap-pmm (- (-> core-b ;; gap between the end of one core and start of next
+                       :start-mm)
+                   (+ (-> core-a
+                          :start-mm)
+                      (-> core-a
+                          :length-mm)))
+        gap-pix (/ gap-pmm
+                   mm-per-pixel)
+        merged-image (sausage.optical/join-horizontally (-> core-b
+                                                            :optical
+                                                            :image)
+                                                        (-> core-a
+                                                            :optical
+                                                            :image)
+                                                        gap-pix)
+        merged-xrf-scan (sausage.xrf/join-horizontally (-> core-a
+                                                           :xrf-scan)
+                                                       (-> core-b
+                                                           :start-mm)
+                                                       (-> core-b
+                                                           :xrf-scan))]
+    (-> core-a
+        (update :seams #(into % [(-> core-a :length-mm)]))
+        (assoc-in [:optical :image] merged-image)
+        (assoc-in [:xrf-scan] merged-xrf-scan)
+        (effects/update-core-length-HELPER mm-per-pixel))))
+
+
+(defn merge-all-cores
+  [snapshot
+   _]
+  (-> snapshot
+      (assoc
+       :cores
+       [(reduce (partial merge-cores (:mm-per-pixel snapshot))
+                (-> snapshot
+                    :cores
+                    (get 0))
+                (rest (-> snapshot
+                          :cores)))])
+      (sausage.optical/update-display-image 0)
+      (effects/update-core-length 0)))
+
+
+(defn add-display
+  [snapshot
+   {:keys [display-type]}]
+  (-> snapshot
+      (update
+       :displays
+       #(conj %
+              (case display-type
+                :optical
+                {:type :optical
+                 :height fixed-optical-scan-height
+                 :scan-line? true}
+                :element-count
+                {:type :element-count
+                 :height fixed-element-count-height
+                 :merge-seams? true
+                 :element :Mn
+                 :max-count 1000})))
+      #_effects/update-max-element-count))
+
+(defn workspace-settings-display
+  "Top level settings for the workspace where all data will be stored in"
+  [{:keys [working-directory
+           height]}]
+  {:fx/type :h-box
+   :children [{:fx/type :button
+               :pref-width fixed-margin-width
+               :min-width fixed-margin-width
+               :pref-height height
+               :min-height height
+               :max-height height
+               :on-action {:event/type ::set-working-directory}
+               :text "Set"}
+              {:fx/type :text-field
+               :editable false
+               :pref-height height ;; TODO: What's with all these pref/min dimensions...?
+               :prompt-text "Select a working directory.."
+               :pref-column-count 999
+               :text working-directory}
+              {:fx/type :button
+               :pref-height height
+               :pref-width height ;; make square button
+               :min-width  height
+               :on-action {:effect effects/remove-core}
+               :text "-"}
+              {:fx/type :button
+               :pref-height height
+               :pref-width height ;; make square button
+               :min-width height
+               :on-action {:effect effects/add-core}
+               :text "+"}]})
+
+
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
@@ -949,30 +306,6 @@
                                                           (- 1
                                                              (:fx/event event)))))}}]})
 
-;; Update :start-mm based on user input and then resorts/lays-out the cores
-(defmethod event-handler ::update-core-start
-  [{:keys [fx/event
-           core-number
-           snapshot]}]
-  (try
-    (let [input-value-mm event
-          mm-per-pixel (-> snapshot
-                           :mm-per-pixel)
-          rounded-to-pixel (Math/round (/ input-value-mm
-                                          mm-per-pixel))
-          corrected-start-mm (* rounded-to-pixel
-                                mm-per-pixel)]
-      (println "corrected" corrected-start-mm)
-      (-> snapshot
-          (assoc-in [:cores
-                     core-number
-                     :start-mm]
-                    corrected-start-mm)
-          update-core-order))
-    (catch Exception ex
-      (println "Invalid core-start input")
-      snapshot)))
-
 (defn core-header-display
   "The options bar at the top of every core"
   [{:keys [core-number
@@ -996,8 +329,8 @@
                                              :min 0.0
                                              :max Double/MAX_VALUE
                                              :value start-mm}
-                              :on-value-changed {:event/type ::update-core-start
-                                                                :core-number core-number}
+                             :on-value-changed {:core-number core-number
+                                                :effect effects/update-core-start}
                              }
                             {:fx/type :separator
                              :orientation :horizontal}
@@ -1007,15 +340,15 @@
                              :pref-width (* 0.10
                                             width)
                              :pref-height height
-                             :on-action {:event/type ::crop
-                                         :core-number core-number}
+                             :on-action {:core-number core-number
+                                         :effect crop}
                              :text "Crop"}
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :button
                              :text "X"
-                             :on-action {:event/type ::remove-core
-                                         :core-number core-number}}
+                             :on-action {:core-number core-number
+                                         :effect effects/remove-core}}
                             ]}
                 {:fx/type crop-slider
                  :core-number core-number
@@ -1049,7 +382,7 @@
                        :crop-left (:crop-left core)
                        :crop-right (:crop-right core)}]
                      (map #(case (:type %)
-                             :optical {:fx/type optical-image-display
+                             :optical {:fx/type sausage.displays.overhead/view
                                        :core-number core-number
                                        :scan-line? (:scan-line? %)
                                        :width width
@@ -1057,7 +390,7 @@
                                        :optical (:optical core)
                                        :crop-left  (:crop-left core)
                                        :crop-right (:crop-right core)}
-                             :element-count {:fx/type xrf-scan-display
+                             :element-count {:fx/type sausage.displays.element-count/view
                                              :core-number core-number
                                              :height (:height %) ;;fixed-optical-scan-height
                                              :width width
@@ -1071,77 +404,6 @@
                                              :seams (:seams core)})
                           displays))}))
 
-(def periodic-table
-  [[:H  nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil :He]
-   [:Li :Be nil nil nil nil nil nil nil nil nil nil :B  :C  :N  :O  :F  :Ne]
-   [:Na :Mg nil nil nil nil nil nil nil nil nil nil :Al :Si :P  :S  :Cl :Ar]
-   [:K  :Ca :Sc :Ti :V  :Cr :Mn :Fe :Co :Ni :Cu :Zn :Ga :Ge :As :Se :Br :Kr]
-   [:Rb :Sr :Y  :Zr :Nb :Mo :Tc :Ru :Rh :Pd :Ag :Cd :In :Sn :Sb :Te :I  :Xe]
-   [:Cs :Ba :La :Hf :Ta :W  :Re :Os :Ir :Pt :Au :Hg :Tl :Pb :Bi :Po :At :Rn]
-   [:Fr :Ra :Ac :Rf :Db :Sg :Bh :Hs :Mt :Ds :Rg :Cn :Nh :Fl :Mc :Lv :Ts :Og]
-   [:.. :Th :.. :U]])
-
-(defmethod event-handler ::update-selected-element
-  [{:keys [fx/event
-           display-number
-           element
-           snapshot]}]
-  (-> snapshot
-      (assoc-in
-       [:displays
-        display-number
-        :element]
-       element )
-      update-max-element-count))
-
-(defn periodic-buttons
-  "Periodic table as a grid of buttons
-  Excess  columns in the xrf-scan file are then appended at the end"
-  [{:keys [columns
-           display-number]}]
-  (let [non-elements (clojure.set/difference  (set columns)
-                                              (set (flatten periodic-table)))]
-    {:fx/type :grid-pane
-     :children
-     (into (filter some?
-                   (apply concat
-                          (map-indexed (fn [valence-electrons period]
-                                         (map-indexed (fn [group element]
-                                                        (if (some? element)
-                                                          {:fx/type :button
-                                                           :padding 2.0
-                                                           :min-width 25
-                                                           :max-height 25
-                                                           :pref-width 25
-                                                           :grid-pane/column group
-                                                           :grid-pane/row valence-electrons
-                                                           :disable (not (contains? columns element))
-                                                           :on-action {:event/type ::update-selected-element
-                                                                       :display-number display-number
-                                                                       :element element}
-                                                           :text (name element)}))
-                                                      period
-                                                      ))
-                                       periodic-table)))
-           (if (some? non-elements)
-             (map-indexed (fn [row-after-table non-element]
-                            (let [columns 6]
-                              {:fx/type :button
-                               :grid-pane/column-span (/ (count (first periodic-table))
-                                                         columns)
-                               :max-height 25
-                               :max-width Double/MAX_VALUE
-                               :grid-pane/column (* (int (mod row-after-table columns))
-                                                    (/ (count (first periodic-table))
-                                                       columns))
-                               :grid-pane/row (+ (count periodic-table)
-                                                 (int (/ row-after-table columns)))
-                               :on-action {:event/type ::update-selected-element
-                                           :display-number display-number
-                                           :element non-element}
-                               :text (name non-element)}))
-                          non-elements)
-             [] ))}))
 
 (defn core-header-options
   ""
@@ -1155,12 +417,12 @@
    :alignment :center-left
    :children [{:fx/type :button
                :max-height Double/MAX_VALUE
-               :on-action {:event/type ::merge-all-cores}
+               :on-action {:effect merge-all-cores}
                :disable true
                :text "Crop"}
               {:fx/type :button
                :max-height Double/MAX_VALUE
-               :on-action {:event/type ::merge-all-cores}
+               :on-action {:effect merge-all-cores}
                :disable (not can-merge?)
                :text ">> Merge"}
               {:fx/type :check-box
@@ -1170,45 +432,6 @@
                                                (-> snapshot
                                                    (assoc :full-width? (:fx/event event))))}}]})
 
-(defn optical-image-options
-  ""
-  [{:keys [display-number
-           height
-           scan-line?]}]
-  {:fx/type :v-box
-   :children [{:fx/type :check-box
-               :text "Scan Line"
-               :selected scan-line?
-               :on-selected-changed {:display-number display-number
-                                     :effect (fn [snapshot
-                                                  event]
-                                               (-> snapshot
-                                                   (assoc-in [:displays
-                                                              (:display-number event)
-                                                              :scan-line?]
-                                                             (:fx/event event))))}}]})
-
-(defn xrf-scan-options
-  ""
-  [{:keys [display-number
-           height
-           columns
-           merge-seams?]}]
-  {:fx/type :v-box
-   :children [{:fx/type periodic-buttons
-               :display-number display-number
-               :columns columns}
-              {:fx/type :check-box
-               :text "Merge Seams"
-               :selected merge-seams?
-               :on-selected-changed {:display-number display-number
-                                     :effect (fn [snapshot
-                                                  event]
-                                               (-> snapshot
-                                                   (assoc-in [:displays
-                                                              (:display-number event)
-                                                              :merge-seams?]
-                                                             (:fx/event event))))}}]})
 
 (defn display-options-header
   [{:keys [display-number
@@ -1235,36 +458,16 @@
                                                       #(vec (concat (subvec % 0 display-number)
                                                                     (subvec % (inc display-number)))))))}}]}]})
 
-(defmethod event-handler ::add-display
-  [{:keys [display-type
-           snapshot]}]
-  (-> snapshot
-      (update
-       :displays
-       #(conj %
-              (case display-type
-                :optical
-                {:type :optical
-                 :height fixed-optical-scan-height
-                 :scan-line? true}
-                :element-count
-                {:type :element-count
-                 :height fixed-element-count-height
-                 :merge-seams? true
-                 :element :Mn
-                 :max-count 1000})))
-      update-max-element-count))
-
 (defn add-display-options
   [_]
   {:fx/type :h-box
    :children [{:fx/type :button
-               :on-action {:event/type ::add-display
-                           :display-type :optical}
+               :on-action {:display-type :optical
+                           :effect add-display}
                :text " + Optical"}
               {:fx/type :button
-               :on-action {:event/type ::add-display
-                           :display-type :element-count}
+               :on-action {:display-type :element-count
+                           :effect add-display}
                :text " +  Element Count"}]})
 
 (defn margin
@@ -1294,11 +497,11 @@
                                                               :display-number display-number
                                                               :display-name (name (:type display))}
                                                              (case (:type display)
-                                                               :optical {:fx/type optical-image-options
+                                                               :optical {:fx/type sausage.displays.overhead/options
                                                                          :display-number display-number
                                                                          :height (:height display)
                                                                          :scan-line? (:scan-line? display)}
-                                                               :element-count {:fx/type xrf-scan-options
+                                                               :element-count {:fx/type sausage.displays.element-count/options
                                                                                :display-number display-number
                                                                                :height (:height display)
                                                                                :columns columns
@@ -1335,7 +538,7 @@
                                           (assoc snapshot :width (:fx/event event)))}
              :on-height-changed {:effect (fn [snapshot
                                               event]
-                                          (assoc snapshot :height (:fx/event event)))}
+                                           (assoc snapshot :height (:fx/event event)))}
              :root {:fx/type :v-box
                     :children[{:fx/type workspace-settings-display
                                :working-directory working-directory
@@ -1352,8 +555,8 @@
                                                                                :horizontal-zoom-factor horizontal-zoom-factor
                                                                                :mm-per-pixel mm-per-pixel
                                                                                :height core-display-height
-                                                                               :display-row (get-core-row index
-                                                                                                          layout)
+                                                                               :display-row (effects/get-core-row index
+                                                                                                                  layout)
                                                                                :core core
                                                                                :displays displays})
                                                                             cores)}}
@@ -1367,6 +570,33 @@
                                            :displays displays}
                                           ]}]}}}))
 
+
+
+
+(defn event-handler-wrapper
+  [{:keys [snapshot
+           effect] :as event}]
+  {:updated-state  (effect snapshot
+                           (dissoc event
+                                   :effect
+                                   :snapshot))})
+(def event-dispatcher
+  (-> event-handler-wrapper
+      ;; adds the current state to every processed event
+      ;; the event handler can then operate on the current state
+      ;; and doesn't need to do it own dereferencing
+      (fx/wrap-co-effects {:snapshot #(deref *state)})
+      ;; wrap-effects will take:
+      ;; - a key where it will some data
+      ;; - a side-effect function of what to do with the data
+      ;; in our case the data will be an updated state
+      ;; and it will update the global state with this updated state
+      (fx/wrap-effects {:updated-state (fn [our-updated-state _]
+                                         (if (some? our-updated-state)
+                                           (reset! *state
+                                                   our-updated-state)))})))
+
+
 (def renderer
   (fx/create-renderer
    :middleware (fx/wrap-map-desc assoc :fx/type root)
@@ -1376,7 +606,7 @@
 (defn -main [& args]
   ;; Add a first empty core
   ;; The UI paradigm doesn't make much sense with zero cores
-  (event-dispatcher {:event/type ::add-core})
+  (event-dispatcher {:effect effects/add-core})
   (fx/mount-renderer
    *state
    renderer))

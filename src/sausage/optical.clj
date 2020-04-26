@@ -1,4 +1,6 @@
 (ns sausage.optical
+  (:require
+   [sausage.common-effects :as effects])
   (:import [javafx.scene.input KeyCode KeyEvent]
            boofcv.io.image.ConvertBufferedImage
            boofcv.io.image.UtilImageIO
@@ -13,27 +15,6 @@
            java.io.FileWriter
            javafx.stage.Stage
            javax.imageio.ImageIO))
-
-(defn load-image
-  [file]
-  (-> file
-      (.getCanonicalPath)
-      (boofcv.io.image.UtilImageIO/loadImage)
-      ;;      (ImageMiscOps/flipHorizontal)
-      (ConvertBufferedImage/convertFrom true
-                                        (ImageType/pl 3
-                                                      GrayU8))))
-
-(defn save-fx-image
-  ""
-  [directory
-   fx-image
-   name]
-  (ImageIO/write (SwingFXUtils/fromFXImage fx-image
-                                           nil)
-                 "tiff"
-                 (File. (str directory
-                             "/" name))))
 
 (defn to-fx-image
   [boofcv-image]
@@ -116,3 +97,68 @@
                      crop-end        ;; exclusive
                      height          ;;exclusive
                      nil))))
+
+(defn update-display-image
+  [snapshot
+   core-number]
+  (let [optical (-> snapshot
+                    :cores
+                    (get core-number)
+                    :optical
+                    :image)]
+    (assoc-in snapshot [:cores
+                        core-number
+                        :optical
+                        :display]
+              (-> optical
+                  flip-image
+                  to-fx-image))))
+
+(defn- load-image
+  [file]
+  (-> file
+      (.getCanonicalPath)
+      (boofcv.io.image.UtilImageIO/loadImage)
+      ;;      (ImageMiscOps/flipHorizontal)
+      (ConvertBufferedImage/convertFrom true
+                                        (ImageType/pl 3
+                                                      GrayU8))))
+
+(defn load-data
+  [snapshot
+   event]
+  (let [core-number (:core-number event)
+        file (-> (doto (FileChooser.)
+                   (.setTitle "Open a project")
+                   #_(.setInitialDirectory (File. "/home/")))
+                 ;; Could also grab primary stage instance to make this dialog blocking
+                 (.showOpenDialog (Stage.)))]
+    (if (some? file)
+      (let[optical-image (sausage.optical/load-image file)
+           updated (-> snapshot
+                       (assoc-in [:cores
+                                  core-number
+                                  :optical
+                                  :image]
+                                 optical-image)
+                       (update-display-image core-number)
+                       (effects/update-core-length core-number))]
+        (if (-> snapshot
+                :cores
+                (.get core-number)
+                :xrf-scan)
+          (-> updated
+              (effects/update-unscanned-areas core-number))
+          updated))
+      snapshot)))
+
+(defn save-fx-image
+  ""
+  [directory
+   fx-image
+   name]
+  (ImageIO/write (SwingFXUtils/fromFXImage fx-image
+                                           nil)
+                 "tiff"
+                 (File. (str directory
+                             "/" name))))
