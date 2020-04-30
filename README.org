@@ -1,0 +1,34 @@
+#+TITLE: Sausage Inspector
+#+DESCRIPTION: none
+
+#+EXPORT_FILE_NAME: index.html
+#+INCLUDE: "../web/config.org"
+
+
+(WIP)
+
+* Software Goals
+** Merge Separate Scans
+
+** Automated
+
+
+* Baked in assumptions
+
+- Optical scan is longer than the XRF scan
+- You can't fuse areas that haven't been scanned with XRF
+- You can have one optical scan per XRF scan
+- Elements/columns are consistent bettwen different scans in one "group"
+- Always fuse on the "right" side
+- One pixel = 0.5mm
+- the equivalent of 0mm on the XRF Scan will match the left side of the first pixel on the optical scan
+- mm/pix is constant between scans
+- scan width is 5mm and constant between scans
+
+
+* Outstanding issue
+
+- Saving to CSV cuts off the data
+- Save the state on a separate thread so the app doesn't lock up saving things to file
+- Get a scanning area pixel intensity average
+- Find a way to display this pixel average under the plot
