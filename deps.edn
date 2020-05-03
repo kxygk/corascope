@@ -1,8 +1,9 @@
 {:deps
  {org.clojure/clojure {:mvn/version "1.10.0"}
+  org.clojure/core.cache {:mvn/version "1.0.207"}
   org.boofcv/boofcv-core {:mvn/version "0.35"
                           :exclusions [org.boofcv/boofcv-recognition]}
-  cljfx {:mvn/version "1.6.8"
+  cljfx {:mvn/version "1.6.9"
          :exclusions [org.openjfx/javafx-web
                       org.openjfx/javafx-media]}
   ;; Dark magic from:
@@ -43,7 +44,7 @@
                :exclusions [org.clojure/clojurescript
                             org.jogamp.jogl/jogl-all]}
   guru.nidi.com.kitfox/svgSalamander {:mvn/version "1.1.3"}
-}
+  }
 
  ;; need to be (re)specified explicitely due to weirdness in cambada
  ;; https://github.com/jdhollis/cambada#caveats
@@ -60,8 +61,8 @@
                           :main-opts ["-m" "cambada.native-image"
                                       "-m" "sausage.core"]}
            :depstar
-              {:extra-deps
-               {seancorfield/depstar {:mvn/version "0.5.2"}}
-               :main-opts ["-m" "hf.depstar.uberjar"
-                           "sausage.jar" "--compile"
-                            "-m" "sausage.core"]}}}
+           {:extra-deps
+            {seancorfield/depstar {:mvn/version "0.5.2"}}
+            :main-opts ["-m" "hf.depstar.uberjar"
+                        "sausage.jar" "--compile"
+                        "-m" "sausage.core"]}}}

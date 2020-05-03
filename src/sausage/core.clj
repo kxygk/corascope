@@ -2,6 +2,7 @@
   (:require
    [sausage.plot]
    [sausage.optical]
+   [sausage.state :as state]
    [sausage.xrf]
    [sausage.displays.element-count]
    [sausage.displays.overhead]
@@ -28,199 +29,10 @@
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
-(def *state
-  ""
-  (atom {:working-directory ""
-         :width 400
-         :full-width? false
-         :height 400
-         :mm-per-pixel 0.5 ;; Common parameter across all cores
-         :mm-xrf-step-size 5 ;; Common parameter across all cores
-         :cores []
-         :displays [{:type :optical
-                     :height fixed-optical-scan-height
-                     :scan-line? true}
-                    {:type :element-count
-                     :height fixed-element-count-height
-                     :merge-seams? true
-                     :element :Mn
-                     :max-count 1000}
-                    {:type :optical
-                     :height fixed-optical-scan-height
-                     :scan-line? true}
-                    {:type :element-count
-                     :height fixed-element-count-height
-                     :merge-seams? true
-                     :element :Mn
-                     :max-count 1000}]}
-        ))
-
-
-;; Crop both :optical and :xrf-data
-;; 1 - always crop areas that are optically scanned but have no xrf data
-;; 2 - optionally crop more based on the slider positions
-;; TODO: Simplify this .. with some destructuring or something
-(defn crop
-  [snapshot
-   {:keys [core-number]}]
-  (let [core (-> snapshot
-                 :cores
-                 (get core-number))
-        xrf-scan-element-counts (-> core
-                                    :xrf-scan
-                                    :element-counts)
-        image (-> core
-                  :optical
-                  :image)
-        image-width-pix (-> image
-                            .getWidth)
-        crop-slider-left (-> core
-                             :crop-left)
-        crop-slider-right (-> core
-                              :crop-right)
-        crop-slider-left-pix (int (Math/floor (* crop-slider-left
-                                                 image-width-pix)))
-        crop-slider-right-pix (int (Math/floor (* crop-slider-right
-                                                  image-width-pix)))
-        unscanned-left-pix (-> core
-                               :optical
-                               :unscanned-left-pix)
-        unscanned-right-pix (-> core
-                                :optical
-                                :unscanned-right-pix)
-        crop-left-pix (if (> unscanned-left-pix
-                             crop-slider-left-pix)
-                        unscanned-left-pix
-                        crop-slider-left-pix)
-        crop-right-pix (if (> unscanned-right-pix
-                              crop-slider-right-pix)
-                         unscanned-right-pix
-                         crop-slider-right-pix)
-        mm-per-pixel (-> snapshot
-                         :mm-per-pixel)
-        crop-left-mm (* crop-left-pix
-                        mm-per-pixel)
-        crop-right-mm (* crop-right-pix
-                         mm-per-pixel)]
-    (-> snapshot
-        (assoc-in [:cores
-                   core-number
-                   :optical
-                   :image]
-                  (sausage.optical/crop image
-                                        crop-left-pix
-                                        crop-right-pix))
-        (assoc-in [:cores
-                   core-number
-                   :xrf-scan
-                   :element-counts]
-                  (sausage.xrf/crop xrf-scan-element-counts
-                                    (-> core
-                                        :length-mm)
-                                    crop-left-mm
-                                    crop-right-mm))
-        (assoc-in [:cores
-                   core-number
-                   :optical
-                   :unscanned-left-pix]
-                  0.0)
-        (assoc-in [:cores
-                   core-number
-                   :optical
-                   :unscanned-right-pix]
-                  0.0)
-        (assoc-in [:cores
-                   core-number
-                   :crop-left]
-                  0.0)
-        (assoc-in [:cores
-                   core-number
-                   :crop-right]
-                  0.0)
-        ;; seams only happen in core=0
-        ;; but inserting a conditional in a threading macro is messy
-        (update-in
-         [:cores
-          core-number
-          :seams]
-         #(map (partial + (- crop-left-mm)) %))
-        (effects/update-core-length core-number)
-        (sausage.optical/update-display-image core-number))))
-
-
-(defn merge-cores
-  "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
-  RESULT: One core with optical and xrf-scans merged"
-  [mm-per-pixel
-   core-a
-   core-b]
-  (let [gap-pmm (- (-> core-b ;; gap between the end of one core and start of next
-                       :start-mm)
-                   (+ (-> core-a
-                          :start-mm)
-                      (-> core-a
-                          :length-mm)))
-        gap-pix (/ gap-pmm
-                   mm-per-pixel)
-        merged-image (sausage.optical/join-horizontally (-> core-b
-                                                            :optical
-                                                            :image)
-                                                        (-> core-a
-                                                            :optical
-                                                            :image)
-                                                        gap-pix)
-        merged-xrf-scan (sausage.xrf/join-horizontally (-> core-a
-                                                           :xrf-scan)
-                                                       (-> core-b
-                                                           :start-mm)
-                                                       (-> core-b
-                                                           :xrf-scan))]
-    (-> core-a
-        (update :seams #(into % [(-> core-a :length-mm)]))
-        (assoc-in [:optical :image] merged-image)
-        (assoc-in [:xrf-scan] merged-xrf-scan)
-        (effects/update-core-length-HELPER mm-per-pixel))))
-
-
-(defn merge-all-cores
-  [snapshot
-   _]
-  (-> snapshot
-      (assoc
-       :cores
-       [(reduce (partial merge-cores (:mm-per-pixel snapshot))
-                (-> snapshot
-                    :cores
-                    (get 0))
-                (rest (-> snapshot
-                          :cores)))])
-      (sausage.optical/update-display-image 0)
-      (effects/update-core-length 0)))
-
-
-(defn add-display
-  [snapshot
-   {:keys [display-type]}]
-  (-> snapshot
-      (update
-       :displays
-       #(conj %
-              (case display-type
-                :optical
-                {:type :optical
-                 :height fixed-optical-scan-height
-                 :scan-line? true}
-                :element-count
-                {:type :element-count
-                 :height fixed-element-count-height
-                 :merge-seams? true
-                 :element :Mn
-                 :max-count 1000})))
-      #_effects/update-max-element-count))
-
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
-  [{:keys [working-directory
+  [{:keys [fx/context
+           working-directory
            height]}]
   {:fx/type :h-box
    :children [{:fx/type :button
@@ -282,10 +94,10 @@
                                   :effect (fn [snapshot
                                                event]
                                             (-> snapshot
-                                                (assoc-in [:cores
-                                                           (:core-number event)
-                                                           :crop-left]
-                                                          (:fx/event event))))}}
+                                                (fx/swap-context assoc-in [:cores
+                                                                           (:core-number event)
+                                                                           :crop-left]
+                                                                 (:fx/event event))))}}
               {:fx/type :slider
                :max 1.0
                :min 0.5
@@ -300,11 +112,11 @@
                                   :effect (fn [snapshot
                                                event]
                                             (-> snapshot
-                                                (assoc-in [:cores
-                                                           (:core-number event)
-                                                           :crop-right]
-                                                          (- 1
-                                                             (:fx/event event)))))}}]})
+                                                (fx/swap-context assoc-in [:cores
+                                                                           (:core-number event)
+                                                                           :crop-right]
+                                                                 (- 1
+                                                                    (:fx/event event)))))}}]})
 
 (defn core-header-display
   "The options bar at the top of every core"
@@ -341,7 +153,7 @@
                                             width)
                              :pref-height height
                              :on-action {:core-number core-number
-                                         :effect crop}
+                                         :effect effects/crop-core}
                              :text "Crop"}
                             {:fx/type :pane
                              :h-box/hgrow :always}
@@ -359,51 +171,54 @@
 
 (defn core-display
   "The cummulative core display"
-  [{:keys [horizontal-zoom-factor
-           mm-per-pixel
+  [{:keys [fx/context
+           horizontal-zoom-factor
            height
-           display-row
-           core-number
-           directory
-           core
-           displays]}]
+           core-number]}]
   (let [width (* horizontal-zoom-factor
-                 (-> core :length-mm))] ;; TODO: Convert to pixels
+                 (fx/sub context
+                         state/length-mm
+                         core-number))] ;; TODO: Convert to pixels
     {:fx/type :v-box
      :layout-x (* horizontal-zoom-factor
-                  (-> core :start-mm))  ;; TODO: Convert to pixels
+                  (fx/sub context
+                          state/start-mm
+                          core-number))  ;; TODO: Convert to pixels
      :layout-y (* height
-                  display-row)  ;; TODO: Convert to pixels
-     :children (into [{:fx/type core-header-display
-                       :core-number core-number
-                       :width width
-                       :start-mm (:start-mm core)
-                       :mm-per-pixel mm-per-pixel
-                       :crop-left (:crop-left core)
-                       :crop-right (:crop-right core)}]
-                     (map #(case (:type %)
-                             :optical {:fx/type sausage.displays.overhead/view
-                                       :core-number core-number
-                                       :scan-line? (:scan-line? %)
-                                       :width width
-                                       :height (:height %) ;;fixed-optical-scan-height
-                                       :optical (:optical core)
-                                       :crop-left  (:crop-left core)
-                                       :crop-right (:crop-right core)}
-                             :element-count {:fx/type sausage.displays.element-count/view
-                                             :core-number core-number
-                                             :height (:height %) ;;fixed-optical-scan-height
-                                             :width width
-                                             :xrf-scan (:xrf-scan core)
-                                             :selection (:element %)
-                                             :max-element-count (:max-count %)
-                                             :core-length-mm (:length-mm core)
-                                             :crop-left  (:crop-left core)
-                                             :crop-right (:crop-right core)
-                                             :merge-seams? (:merge-seams? %)
-                                             :seams (:seams core)})
-                          displays))}))
+                  (fx/sub context
+                          state/core-row
+                          core-number))  ;; TODO: Convert to pixels
+     :children (into
+                [{:fx/type core-header-display
+                  :core-number core-number
+                  :width width
+                  :start-mm (fx/sub context
+                                    state/start-mm
+                                    core-number)
+                  :mm-per-pixel (fx/sub context
+                                        state/mm-per-pixel
+                                        core-number)
+                  :crop-left (fx/sub context
+                                     state/crop-left
+                                     core-number)
+                  :crop-right (fx/sub context
+                                      state/crop-right
+                                      core-number)}]
 
+                (map (fn [display-number]
+                       (case (fx/sub context
+                                     state/display-type
+                                     display-number)
+                         :overhead {:fx/type sausage.displays.overhead/view
+                                    :core-number core-number
+                                    :display-number display-number
+                                    :width width}
+                         :element-count {:fx/type sausage.displays.element-count/view
+                                         :core-number core-number
+                                         :display-number display-number
+                                         :width width}))
+                     (range (fx/sub context
+                                    state/num-displays))))}))
 
 (defn core-header-options
   ""
@@ -417,12 +232,12 @@
    :alignment :center-left
    :children [{:fx/type :button
                :max-height Double/MAX_VALUE
-               :on-action {:effect merge-all-cores}
+               :on-action {:effect effects/merge-all-cores}
                :disable true
                :text "Crop"}
               {:fx/type :button
                :max-height Double/MAX_VALUE
-               :on-action {:effect merge-all-cores}
+               :on-action {:effect effects/merge-all-cores}
                :disable (not can-merge?)
                :text ">> Merge"}
               {:fx/type :check-box
@@ -430,8 +245,9 @@
                :on-selected-changed {:effect (fn [snapshot
                                                   event]
                                                (-> snapshot
-                                                   (assoc :full-width? (:fx/event event))))}}]})
-
+                                                   (fx/swap-context assoc
+                                                                    :full-width?
+                                                                    (:fx/event event))))}}]})
 
 (defn display-options-header
   [{:keys [display-number
@@ -449,20 +265,40 @@
                            :h-box/hgrow :always}
                           {:fx/type :button
                            :text "X"
-                           :on-action {:display-number display-number
-                                       :effect (fn [snapshot
-                                                    event]
-                                                 (-> snapshot
-                                                     (update
-                                                      :displays
-                                                      #(vec (concat (subvec % 0 display-number)
-                                                                    (subvec % (inc display-number)))))))}}]}]})
+                           :on-action
+                           {:display-number display-number
+                            :effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context update
+                                                           :displays
+                                                           #(vec (concat (subvec % 0 display-number)
+                                                                         (subvec % (inc display-number)))))))}}]}]})
+
+(defn add-display
+  "EFFECT: Adds a display of DISPLAY-TYPE to the display list"
+  [snapshot
+   {:keys [display-type]}]
+  (-> snapshot
+      (fx/swap-context update
+                       :displays
+                       #(conj %
+                              (case display-type
+                                :overhead
+                                {:type :overhead
+                                 :height fixed-optical-scan-height
+                                 :scan-line? true}
+                                :element-count
+                                {:type :element-count
+                                 :height fixed-element-count-height
+                                 :merge-seams? true
+                                 :element :Mn})))))
 
 (defn add-display-options
   [_]
   {:fx/type :h-box
    :children [{:fx/type :button
-               :on-action {:display-type :optical
+               :on-action {:display-type :overhead
                            :effect add-display}
                :text " + Optical"}
               {:fx/type :button
@@ -474,101 +310,102 @@
   "The right margin with global options/toggles.
   First come static options
   Followed by per-display options"
-  [{:keys [width
+  [{:keys [fx/context
+           width
            height
-           columns
-           can-merge?
-           displays
            ]}]
   {:fx/type :v-box
    :pref-width width
    :min-width width
    :max-width width
    :children [{:fx/type core-header-options
-               :can-merge? can-merge?}
+               :can-merge? true #_can-merge?}
               {:fx/type :v-box
-               :children (flatten (map-indexed (fn [display-number
-                                                    display]
-                                                 {:fx/type :v-box
-                                                  :pref-height (:height display);; height
-                                                  :min-height (:height display) ;;height
-                                                  :max-height (:height display) ;;height
-                                                  :children [{:fx/type display-options-header
-                                                              :display-number display-number
-                                                              :display-name (name (:type display))}
-                                                             (case (:type display)
-                                                               :optical {:fx/type sausage.displays.overhead/options
-                                                                         :display-number display-number
-                                                                         :height (:height display)
-                                                                         :scan-line? (:scan-line? display)}
-                                                               :element-count {:fx/type sausage.displays.element-count/options
-                                                                               :display-number display-number
-                                                                               :height (:height display)
-                                                                               :columns columns
-                                                                               :merge-seams? (:merge-seams? display)})]})
-                                               displays))}
+               :children (->> (fx/sub context
+                                      state/displays)
+                              (map-indexed (fn [display-number
+                                                display]
+                                             {:fx/type :v-box
+                                              :pref-height (:height display);; height
+                                              :min-height (:height display) ;;height
+                                              :max-height (:height display) ;;height
+                                              :children [{:fx/type display-options-header
+                                                          :display-number display-number
+                                                          :display-name (name (:type display))}
+                                                         (case (:type display)
+                                                           :overhead {:fx/type sausage.displays.overhead/options
+                                                                      :display-number display-number
+                                                                      :height (:height display)
+                                                                      :scan-line? (:scan-line? display)}
+                                                           :element-count {:fx/type sausage.displays.element-count/options
+                                                                           :display-number display-number
+                                                                           :height (:height display)
+                                                                           :columns (fx/sub context
+                                                                                            state/columns)
+                                                                           :merge-seams? (:merge-seams? display)})]}))
+                              flatten)}
               {:fx/type add-display-options}]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
-  [{:keys [width
-           full-width?
-           height
-           working-directory
-           mm-per-pixel
-           layout
-           columns
-           cores
-           displays]}]
-  (let [horizontal-zoom-factor (if full-width?
+  [{:keys [fx/context]}]
+  (let [test "hello"
+        width (fx/sub context
+                      state/width)
+        full-width? (fx/sub context
+                            state/full-width?)
+        cores (fx/sub context
+                      state/cores)
+        displays (fx/sub context
+                         state/displays)
+        horizontal-zoom-factor (if full-width?
                                  1
-                                 (/ (- width fixed-margin-width)
-                                    (+ (-> cores last :start-mm)
-                                       (-> cores last :length-mm))))
-        core-display-height (reduce #(+ %1 (:height %2))
-                                    (+ fixed-core-header-height
-                                       fixed-slider-height)
-                                    displays)]
+                                 (/ (- width
+                                       fixed-margin-width)
+                                    (fx/sub context
+                                            state/end-of-all-scans-mm)))
+        core-display-height (+ (fx/sub context
+                                       state/displays-total-height)
+                               fixed-core-header-height
+                               fixed-slider-height)]
     {:fx/type :stage
      :title "Sausage Scanner"
      :showing true
      :scene {:fx/type :scene
              :on-width-changed {:effect (fn [snapshot
                                              event]
-                                          (assoc snapshot :width (:fx/event event)))}
+                                          (fx/swap-context snapshot assoc :width (:fx/event event)))}
              :on-height-changed {:effect (fn [snapshot
                                               event]
-                                           (assoc snapshot :height (:fx/event event)))}
+                                           (fx/swap-context snapshot assoc :height (:fx/event event)))}
              :root {:fx/type :v-box
-                    :children[{:fx/type workspace-settings-display
-                               :working-directory working-directory
-                               :height fixed-workspace-settings-height}
-                              {:fx/type :h-box
-                               :children [{:fx/type :scroll-pane
-                                           :hbar-policy :never
-                                           :vbar-policy :never
-                                           :pref-viewport-width (- width fixed-margin-width)
-                                           :content {:fx/type :pane
-                                                     :children (map-indexed (fn [index core]
-                                                                              {:fx/type core-display
-                                                                               :core-number index
-                                                                               :horizontal-zoom-factor horizontal-zoom-factor
-                                                                               :mm-per-pixel mm-per-pixel
-                                                                               :height core-display-height
-                                                                               :display-row (effects/get-core-row index
-                                                                                                                  layout)
-                                                                               :core core
-                                                                               :displays displays})
-                                                                            cores)}}
-                                          {:fx/type margin
-                                           :width fixed-margin-width
-                                           :height core-display-height
-                                           :columns columns
-                                           :can-merge? (-> layout
-                                                           second
-                                                           empty?)
-                                           :displays displays}
-                                          ]}]}}}))
+                    :children [{:fx/type workspace-settings-display
+                                :working-directory (fx/sub context
+                                                           state/working-directory)
+                                :height fixed-workspace-settings-height}
+                               {:fx/type :h-box
+                                :children [{:fx/type :scroll-pane
+                                            :hbar-policy :never
+                                            :vbar-policy :never
+                                            :pref-viewport-width (- width fixed-margin-width)
+                                            :content {:fx/type :pane
+                                                      :children (map-indexed (fn [index core]
+                                                                               {:fx/type core-display
+                                                                                :core-number index
+                                                                                :horizontal-zoom-factor horizontal-zoom-factor
+                                                                                :height core-display-height})
+                                                                             cores)}}
+                                           {:fx/type margin
+                                            :width fixed-margin-width
+                                            :height core-display-height
+                                            :columns (fx/sub context
+                                                             state/columns)
+                                            :can-merge? true #_(-> layout
+                                                                   second
+                                                                   empty?)
+                                            :displays (fx/sub context
+                                                              state/displays)}
+                                           ]}]}}}))
 
 
 
@@ -576,31 +413,36 @@
 (defn event-handler-wrapper
   [{:keys [snapshot
            effect] :as event}]
-  {:updated-state  (effect snapshot
-                           (dissoc event
-                                   :effect
-                                   :snapshot))})
+  {:updated-context (effect snapshot
+                            (dissoc event
+                                    :effect
+                                    :snapshot))})
 (def event-dispatcher
   (-> event-handler-wrapper
       ;; adds the current state to every processed event
       ;; the event handler can then operate on the current state
       ;; and doesn't need to do it own dereferencing
-      (fx/wrap-co-effects {:snapshot #(deref *state)})
+      (fx/wrap-co-effects {:snapshot #(deref sausage.state/*context)})
       ;; wrap-effects will take:
       ;; - a key where it will some data
       ;; - a side-effect function of what to do with the data
       ;; in our case the data will be an updated state
       ;; and it will update the global state with this updated state
-      (fx/wrap-effects {:updated-state (fn [our-updated-state _]
-                                         (if (some? our-updated-state)
-                                           (reset! *state
-                                                   our-updated-state)))})))
-
+      (fx/wrap-effects {:updated-context (fn [our-updated-context _]
+                                           (reset! sausage.state/*context ;; feel this should be a `reset-context`
+                                                   our-updated-context))})))
 
 (def renderer
   (fx/create-renderer
-   :middleware (fx/wrap-map-desc assoc :fx/type root)
-   :opts {:fx.opt/map-event-handler event-dispatcher}))
+   :middleware (comp
+                ;; passes the state context to all lifecycles
+                fx/wrap-context-desc
+                (fx/wrap-map-desc (fn [_] {:fx/type root})))
+   :opts {:fx.opt/map-event-handler event-dispatcher
+          :fx.opt/type->lifecycle #(or (fx/keyword->lifecycle %)
+                                       ;; For functions in `:fx/type` values, pass
+                                       ;; context from option map to these functions
+                                       (fx/fn->lifecycle-with-context %))}))
 
 
 (defn -main [& args]
@@ -608,6 +450,6 @@
   ;; The UI paradigm doesn't make much sense with zero cores
   (event-dispatcher {:effect effects/add-core})
   (fx/mount-renderer
-   *state
-   renderer))
-
+   sausage.state/*context
+   renderer)
+  )

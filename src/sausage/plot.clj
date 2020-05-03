@@ -40,11 +40,10 @@
                            :fill "dimgray"
                            :font-family nil}
              :label-dist  (- height 1)
-;;             :major-size 0
+             ;;             :major-size 0
              :major 500
              :attribs {:stroke "none"} ;; axis line attributes
              })
-             
    :y-axis (viz/linear-axis
             {:domain      [-0.01 max-count]
              :range       [height 0]
@@ -59,9 +58,8 @@
              :label-style {:stroke "none"
                            :fill "dimgray"
                            :font-family nil}
-            ;; :label-style {:fill "red" :text-anchor "start"}
+             ;; :label-style {:fill "red" :text-anchor "start"}
              })
-             
    ;; :grid   {;:attribs {:stroke "#caa"}
    ;;          ; :minor-x true
    ;;          ; :major-x true
@@ -78,12 +76,12 @@
   (if (empty? points)
     spec ;; do nothing.. else:
     (assoc spec
-            :data
-            [{:values  points
-              :attribs {:fill "none" :stroke "black" :stroke-width 1.25}
-              ;; :shape   (viz/svg-triangle-down 6)
-              :layout  viz/svg-line-plot}
-              ])))
+           :data
+           [{:values  points
+             :attribs {:fill "none" :stroke "black" :stroke-width 1.25}
+             ;; :shape   (viz/svg-triangle-down 6)
+             :layout  viz/svg-line-plot}
+            ])))
 
 (defn- add-red-overlay
   "Will draw red overlays at the selected points
@@ -93,13 +91,13 @@
   (if (empty? points)
     spec
     (update spec
-           :data
-           #(into %
-                  [{:values  points
-                    :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
-;;                    :bar-width 100
-                    :interleave 1
-                    :layout  viz/svg-bar-plot}]))))
+            :data
+            #(into %
+                   [{:values  points
+                     :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
+                     ;;                    :bar-width 100
+                     :interleave 1
+                     :layout  viz/svg-bar-plot}]))))
 
 (defn- add-seam-marker
   "Will draw red overlays at the selected points
@@ -110,15 +108,15 @@
   (if (empty? seams)
     spec
     (update spec
-           :data
-           #(into %
-                  [{:values (into [] (map (fn [pos] (vector pos
-                                                            plot-height))
-                                          seams))
-                    :attribs {:fill "#bfbfbf" :stroke "dimgray" :stroke-dasharray "1 5"}
-;;                    :bar-width 100
-                    :interleave 1
-                    :layout  viz/svg-bar-plot}]))))
+            :data
+            #(into %
+                   [{:values (into [] (map (fn [pos] (vector pos
+                                                             plot-height))
+                                           seams))
+                     :attribs {:fill "#bfbfbf" :stroke "dimgray" :stroke-dasharray "1 5"}
+                     ;;                    :bar-width 100
+                     :interleave 1
+                     :layout  viz/svg-bar-plot}]))))
 
 (defn plot-points
   ""
@@ -130,15 +128,12 @@
    crop-left
    crop-right
    seams]
-  (let [right-crop-distance (* (- 1 crop-right)
-                               max-position)
-        right-crop-points (filter #(> (first %)
-                                      right-crop-distance)
+  (let [right-crop-points (filter #(> (first %)
+                                      (- max-position
+                                         crop-right))
                                   points)
-        left-crop-distance (* crop-left
-                              max-position)
         left-crop-points (filter #(< (first %)
-                                     left-crop-distance)
+                                     crop-left)
                                  points)
         crop-points (concat right-crop-points
                             left-crop-points)

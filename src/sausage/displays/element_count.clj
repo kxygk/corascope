@@ -1,41 +1,77 @@
-(ns sausage.displays.element-count)
+(ns sausage.displays.element-count
+  (:require
+   [sausage.state :as state]
+   [sausage.xrf]
+   [cljfx.api :as fx]))
+
+(defn- selection
+  [context
+   display-number]
+  (:element (fx/sub context
+                    state/get-display
+                    display-number)))
+
+(defn- merge-seams?
+  [context
+   display-number]
+  (:merge-seams? (fx/sub context
+                      state/seams
+                      display-number)))
 
 (defn view
   "display and options for XRF scan data"
-  [{:keys [core-number
-           width
-           height
-           xrf-scan
-           selection
-           max-element-count
-           core-length-mm
-           crop-left
-           crop-right
-           merge-seams?
-           seams]}]
-  {:fx/type :h-box
-   :children [{:fx/type :v-box
-               :children (if xrf-scan
-                           [{:fx/type :image-view
-                             :fit-width width
-                             :fit-height height
-                             :image (sausage.plot/plot-points width
-                                                              height
-                                                              (sausage.xrf/element-counts xrf-scan
-                                                                                          (keyword selection))
-                                                              core-length-mm
-                                                              max-element-count
-                                                              crop-left
-                                                              crop-right
-                                                              (if merge-seams?
-                                                                seams
-                                                                []))}]
-                           [{:fx/type :button
-                             :pref-width width
-                             :pref-height height
-                             :on-action {:core-number core-number
-                                         :effect sausage.xrf/load-data}
-                             :text "Load XRF Scan"}])}]})
+  [{:keys [fx/context
+           core-number
+           display-number
+           width]}] ;; TODO Make width calculated here
+  (let [xrf-scan (fx/sub context
+                         sausage.state/xrf-scan
+                         core-number)
+        height (fx/sub context
+                       state/display-height
+                       display-number)
+        selected-element (fx/sub context
+                                 selection
+                                 display-number)
+        ]
+    {:fx/type :h-box
+     :children [{:fx/type :v-box
+                 :children (if xrf-scan
+                             [{:fx/type :image-view
+                               :fit-width width
+                               :fit-height height
+                               :image (sausage.plot/plot-points width
+                                                                height
+                                                                (fx/sub context
+                                                                        sausage.xrf/element-counts
+                                                                        core-number
+                                                                        selected-element
+                                                                        )
+                                                                (fx/sub context
+                                                                        state/length-mm
+                                                                        core-number)
+                                                                (fx/sub context
+                                                                        sausage.xrf/max-element-count-all-cores
+                                                                        selected-element)
+                                                                (fx/sub context
+                                                                        state/crop-left-mm
+                                                                        core-number)
+                                                                (fx/sub context
+                                                                        state/crop-right-mm
+                                                                        core-number)
+                                                                (if (fx/sub context
+                                                                            merge-seams?
+                                                                            display-number)
+                                                                  (fx/sub context
+                                                                          state/seams
+                                                                          core-number)
+                                                                  [] ))}]
+                             [{:fx/type :button
+                               :pref-width width
+                               :pref-height height
+                               :on-action {:core-number core-number
+                                           :effect sausage.xrf/load-data}
+                               :text "Load XRF Scan"}])}]}))
 
 
 (def periodic-table
@@ -48,18 +84,18 @@
    [:Fr :Ra :Ac :Rf :Db :Sg :Bh :Hs :Mt :Ds :Rg :Cn :Nh :Fl :Mc :Lv :Ts :Og]
    [:.. :Th :.. :U]])
 
-(defn update-selected-element
+(defn- update-selected-element
   [snapshot
-   event]
+   {:keys [display-number
+           element]}]
   (-> snapshot
-      (assoc-in
-       [:displays
-        (:display-number event)
-        :element]
-       (:element event))
-      sausage.xrf/update-max-element-count))
+      (fx/swap-context assoc-in
+                       [:displays
+                        display-number
+                        :element]
+                       element)))
 
-(defn periodic-buttons
+(defn- periodic-buttons
   "Periodic table as a grid of buttons
   Excess  columns in the xrf-scan file are then appended at the end"
   [{:keys [columns
@@ -101,30 +137,39 @@
                                                        columns))
                                :grid-pane/row (+ (count periodic-table)
                                                  (int (/ row-after-table columns)))
-                               :on-action {:event/type ::update-selected-element
-                                           :display-number display-number
-                                           :element non-element}
-                               :text (name non-element)}))
+                               :text (name non-element)
+                               :on-action {:display-number display-number
+                                           :element non-element
+                                           :effect update-selected-element}}))
                           non-elements)
              [] ))}))
 
+(defn- merge-seams?
+  [context
+   display-number]
+  (:merge-seams? (fx/sub context
+                         state/get-display
+                         display-number)))
+
 (defn options
-  [{:keys [display-number
-           height
-           columns
-           merge-seams?]}]
+  [{:keys [fx/context
+           display-number]}]
   {:fx/type :v-box
    :children [{:fx/type periodic-buttons
                :display-number display-number
-               :columns columns}
+               :columns (fx/sub context
+                                state/columns)}
               {:fx/type :check-box
                :text "Merge Seams"
-               :selected merge-seams?
-               :on-selected-changed {:display-number display-number
-                                     :effect (fn [snapshot
-                                                  event]
-                                               (-> snapshot
-                                                   (assoc-in [:displays
-                                                              (:display-number event)
-                                                              :merge-seams?]
-                                                             (:fx/event event))))}}]})
+               :selected (fx/sub context
+                                 merge-seams?
+                                 display-number)
+               :on-selected-changed
+               {:display-number display-number
+                :effect (fn [snapshot
+                             event]
+                          (-> snapshot
+                              (fx/swap-context assoc-in [:displays
+                                                         (:display-number event)
+                                                         :merge-seams?]
+                                               (:fx/event event))))}}]})

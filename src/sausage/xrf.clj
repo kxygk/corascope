@@ -1,13 +1,11 @@
 (ns sausage.xrf
-    (:require
-     [clojure.data.csv]
-     [clojure.java.io]
-     [sausage.common-effects :as effects])
-    (:import javafx.stage.FileChooser
-             javafx.stage.Stage))
-
-
-
+  (:require
+   [clojure.data.csv]
+   [clojure.java.io]
+   [sausage.state :as state] ;; base XRF subscriptions are here b/c of `length-mm`
+   [cljfx.api :as fx])
+  (:import javafx.stage.FileChooser
+           javafx.stage.Stage))
 
 (defn element-counts
   "Given an XRF-SCAN and a ELEMENT (keyword)
@@ -16,55 +14,38 @@
    [position element-count]
    ...
    [position element-count]]"
-  [xrf-scan
+  [context
+   core-number
    element]
   (map #(vector (read-string (:position %))
                 (read-string (element %)))
-       (:element-counts xrf-scan)))
+       (fx/sub context
+               state/xrf-element-counts
+               core-number)))
 
-(defn- get-max-count-for-element-in-core-scan
-  "Given a CORE and an ELEMENT
-  Returns the maximum count detected for this element"
-  [core
+(defn max-element-count-in-core
+  [context
+   core-number
    element]
-  (if (nil? (-> core :xrf-scan))
-    0.0
-    (let [pos-count-pairs (element-counts (-> core
-                                              :xrf-scan)
+  (if (nil? (fx/sub context
+                    state/xrf-scan
+                    core-number))
+    0.0 ;; skips cores that have no XRF-scan loaded in
+    (apply max (map second
+                    (fx/sub context
+                            element-counts
+                            core-number
+                            element)))))
+
+(defn max-element-count-all-cores
+  [context
+   element]
+  (apply max (filter some? (map #(fx/sub  context
+                                          max-element-count-in-core
+                                          %
                                           element)
-          counts (map second pos-count-pairs)]
-      (apply max counts))))
-
-(defn- get-max-count-for-element-in-cores ;; TODO Collapse these function into one maybe..
-  "Given a list of CORES and an ELEMENT
-  Returns the maximum count detected for this element"
-  [cores
-   element]
-  (apply max
-         (map #(get-max-count-for-element-in-core-scan %
-                                                       element)
-              cores)))
-
-(defn- get-max-element-in-display
-  [cores
-   display]
-  (if (= :element-count
-         (:type display))
-    (assoc display
-           :max-count
-           (get-max-count-for-element-in-cores cores
-                                               (:element display)))
-    display))
-
-(defn update-max-element-count
-  [snapshot]
-  (-> snapshot
-      (update :displays
-              #(mapv (partial get-max-element-in-display (-> snapshot
-                                                                :cores))
-                     %))))
-
-
+                                (range (fx/sub context
+                                               state/num-cores))))))
 
 (defn- load-xrf-scan-file
   [csv-file]  
@@ -97,28 +78,18 @@
                    #_(.setInitialDirectory (File. "/home/")))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))]
-    (if (some? file)
+    (if (nil? file)
+      snapshot ;; if no file was selected ie. file-selection-window was just closed
       (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
-            columns (:columns xrf-scan)
-            updated (-> snapshot
-                        (update :columns
-                                clojure.set/union
-                                columns)
-                        (assoc-in [:cores
-                                   core-number
-                                   :xrf-scan]
-                                  xrf-scan)
-                        (effects/update-core-length core-number)
-                        (update-max-element-count))]
-        (if (-> snapshot
-                :cores
-                (.get core-number)
-                :optical)
-          (-> updated
-              (effects/update-unscanned-areas core-number))
-          updated))
-      snapshot)))
-
+            columns (:columns xrf-scan)]
+        (-> snapshot
+            (fx/swap-context update :columns
+                             clojure.set/union
+                             columns)
+            (fx/swap-context assoc-in [:cores
+                                       core-number
+                                       :xrf-scan]
+                             xrf-scan))))))
 
 (defn- build-csv-row
   "take one measurement data and shove it into a vector or string - for CSV exports"
@@ -139,24 +110,6 @@
                                       (into [] (map #(build-csv-row columns %) data)))
                                 :separator \tab)))
 
-(defn- start-position
-  "End position of the scan - in (mm)"
-  [xrf-scan]
-  (-> xrf-scan
-      :element-counts
-      first
-      :position
-      read-string))
-
-(defn- end-position
-  "End position of the scan - in (mm)"
-  [xrf-scan]
-  (-> xrf-scan
-      :element-counts
-      last
-      :position
-      read-string))
-
 (defn- shift-string-number ;; TODO Make this unnecessary..
   [shift
    string-number]
@@ -168,22 +121,53 @@
    scan-point]
   (update scan-point :position (partial shift-string-number shift)))
 
+;; (defn crop-old
+;;   [xrf-scan-element-counts ;; TODO: Rewrite so it operates on 'xrf-scan'
+;;    length-mm
+;;    crop-left-mm
+;;    crop-right-mm] ;; TODO rewrite as threaded ->
+;;   (filter #(< 0
+;;               (read-string (:position %)))
+;;           (map #(shift-scan-point (- crop-left-mm)
+;;                                   %)
+;;                (filter #(>= (- length-mm
+;;                                crop-right-mm)
+;;                             (read-string (:position %)))
+;;                        xrf-scan-element-counts))))
+
 (defn crop
-  [xrf-scan-element-counts ;; TODO: Rewrite so it operates on 'xrf-scan'
-   length-mm
-   crop-left-mm
-   crop-right-mm] ;; TODO rewrite as threaded ->
-  (filter #(< 0
-              (read-string (:position %)))
-          (map #(shift-scan-point (- crop-left-mm)
-                                  %)
-               (filter #(>= (- length-mm
-                               crop-right-mm)
-                            (read-string (:position %)))
-                       xrf-scan-element-counts))))
+  [snapshot
+   {:keys [core-number
+           crop-left-mm
+           crop-right-mm]}]
+  (if (nil? (fx/sub snapshot
+                    state/xrf-scan
+                    core-number))
+    snapshot
+    (let [length-mm (fx/sub snapshot
+                            state/length-mm
+                            core-number)]
+      (fx/swap-context snapshot
+                       assoc-in ;; Maybe switch to `update-in` ??
+                       [:cores
+                        core-number
+                        :xrf-scan
+                        :element-counts]
+                       (->> (fx/sub snapshot
+                                    state/xrf-element-counts
+                                    core-number)
+                            ;; filter out right pixels
+                            (filter #(<= (read-string (:position %))
+                                         (- length-mm
+                                            crop-right-mm)))
+                            ;; shift all points down by crop
+                            (map #(shift-scan-point (- crop-left-mm)
+                                                    %))
+                            ;; filter out all below zero
+                            (filter #(< 0
+                                        (read-string (:position %)))))))))
 
-
-(defn join-horizontally
+(defn- join-horizontally
   ""
   [xrfA
    xrfB-start-mm
@@ -196,3 +180,35 @@
     (assoc xrfA
            :element-counts
            merged-counts)))
+
+(defn merge-cores
+  "Attach the FROM-CORE-NUMBER xrf-scan horizontally
+  to the right of the INTO-CORE-NUMBER xrf-scan
+  This updates the INTO-CORE-NUMBER image and leaves
+  the FROM-CORE-NUMBER image untouched"
+  [snapshot
+   {:keys [into-core-number
+           from-core-number]}]
+  (-> snapshot
+      (fx/swap-context update-in
+                       [:cores
+                        into-core-number
+                        :seams]
+                       #(conj % (fx/sub snapshot
+                                        state/start-mm
+                                        from-core-number)))
+      (fx/swap-context assoc-in
+                       [:cores
+                        into-core-number
+                        :xrf-scan]
+                       ;; The merge order is backwards here ..
+                       ;; b/c the core images are stored backwards
+                       (join-horizontally (fx/sub snapshot
+                                                  state/xrf-scan
+                                                  into-core-number)
+                                          (fx/sub snapshot
+                                                  state/start-mm
+                                                  from-core-number)
+                                          (fx/sub snapshot
+                                                  state/xrf-scan
+                                                  from-core-number)))))

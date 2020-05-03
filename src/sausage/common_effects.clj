@@ -1,4 +1,8 @@
-(ns sausage.common-effects)
+(ns sausage.common-effects
+  (:require [sausage.xrf]
+            [sausage.optical]
+            [sausage.state :as state]
+            [cljfx.api :as fx]))
 
 ;;## Example:
 ;;Pixel index:  0 1 2 3 4 5 6 7 8
@@ -36,219 +40,44 @@
 ;; unscanned-right-pix:1 pixel
 ;;
 ;;# Method annotated from example
-(defn update-unscanned-areas
-  [snapshot
-   core-number]
-  (let [image-width-pix (-> snapshot
-                            :cores
-                            (.get core-number)
-                            :optical
-                            :image
-                            .getWidth) ;; 9 Pixels
-        mm-per-pixel (:mm-per-pixel snapshot) ;; 0.5 mm/pixel
-        scan (-> snapshot
-                 :cores
-                 (.get core-number)
-                 :xrf-scan
-                 :element-counts)
-        scan-start-mm (-> scan
-                          first
-                          :position
-                          read-string) ;; 1.25mm
-        scan-end-mm (-> scan
-                        last
-                        :position
-                        read-string)  ;; 3.75mm
-        ]
-    (-> snapshot
-        (assoc-in  [:cores
-                    core-number
-                    :optical
-                    :unscanned-left-pix]
-                   (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
-                                       mm-per-pixel)))) ;; 2 Pixels entirely unscanned
-        (assoc-in [:cores
-                   core-number
-                   :optical
-                   :unscanned-right-pix]
-                  (- image-width-pix
-                     (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
-                                        mm-per-pixel)))))))) ;; 9-8 = 1 Pixel entirely unscanned
-
-
-
-;; Updates the core's 'display image' based on
-;; the internally stored 'optical image'
-;;
-;; NOTE: This is done because we want to avoid
-;; operations on the underlying 'optical image'
-
-
-(defn overlap?
-  "Check if CORE-A and CORE-B overlap in any way
-  RETURN: TRUE/FALSE"
-  [core-a
-   core-b]
-  (if (>= (-> core-b :start-mm)
-          (+ (-> core-a :start-mm)
-             (-> core-a :length-mm))) ;; end-mm
-    false
-    true))
-
-(defn overlapping-cores
-  "Given a vector of CORES, it will check which overlap
-  and gives you two lists:
-  - not-overlapping: a selection of cores that don't overlap (biased towards 0mm)
-  - overlapping: the remaining cores that did overlap (and may mutually overlap)
-  RETURNS: [[not-overlapping][overlapping]]"
-  [cores]
-  (if (empty? cores)
-    [[][]]
-    (let [current-core (first cores)
-          later-cores (rest cores)
-          [overlapping-current-core
-           not-overlapping-current-core] (split-with (partial overlap? current-core)
-                                                     later-cores)
-          [current-level-cores
-           other-level-cores] (overlapping-cores not-overlapping-current-core)]
-      [(into [current-core]
-             current-level-cores)
-       (into (into [] overlapping-current-core)
-             other-level-cores)])))
-
-(defn pyramid-stack
-  "Stacks CORES into a 'pyramid'.
-  Lower rows as tightly as possible - biased to 0mm
-  ie. it takes the first core, then chooses the next core that fits next to it
-  and then the next.. etc.
-  Cores that don't fit on the first row we again try to fit on the next row.
-  This happens recursively.
-  RETURNS:
-  [[core-x core-y core-z] ;; first row
-   [core-a core-b]        ;; second row
-   [core-c]]               ;; third row ... etc.
-  "
-  [cores]
-  (let [[current-level-cores
-         other-cores] (overlapping-cores cores)]
-    (if (empty? other-cores)
-      [current-level-cores
-       other-cores]
-      (into [current-level-cores]
-            (pyramid-stack other-cores)))))
-
-(defn inject-index
-  "Given a VECTOR-OF-MAPS it will add and index key into each map.
-  key is named: :tracking-index
-  After processing the maps you can use the injected index
-  to figure out which one it was"
-  [vector-of-maps]
-  (map #(assoc %1
-               :tracking-index
-               %2)
-       vector-of-maps
-       (range (count vector-of-maps))))
-
-(defn reduce-to-indeces
-  "Given a MAP a tracking :tracking-index
-  RETURN: index
-  Given a VECTOR recursively call this function
-  RETURN: vector of vector of vector... of indeces
-  EXAMPLE OUTPUT:
-  [[0 2 4]
-   [1]
-   [3 5]]"
-  [element]
-  (if (map? element)
-    (:tracking-index element)
-    (map reduce-to-indeces element)))
-
-(defn sort-cores
-  "Given a vector of CORES,
-  RETURN: a vector sorted by :start-mm
-  NOTE: The core-number/index will change"
-  [cores]
-  (into [] (sort #(< (:start-mm %1)
-                     (:start-mm %2))
-                 cores)))
-
-;; Adjusts the CORE list so that the cores are in order based on :start-mm
-;; Then (re)generates a pyramid/stacked layout so we can then look up which
-;; core shows up on which level
-(defn update-core-order
-  [snapshot]
-  (let [with-updated-core-order (-> snapshot
-                                    (update :cores
-                                            sort-cores))]
-    (-> with-updated-core-order
-        (assoc :layout
-               (-> with-updated-core-order
-                   :cores
-                   inject-index
-                   pyramid-stack
-                   reduce-to-indeces)))))
-
-
-
-(defn- does-vector-contain-value
-  "Local helper - Checks if a VECTOR contains a VALUE
-  RETURNS: TRUE/FALSE"
-  [value vector]
-  (reduce #(or %1 (= %2 value))
-          false
-          vector))
-
-(defn get-core-row
-  "Give a CORE-NUMBER and LAYOUT
-  RETURN: Which row the core should be displayed on"
-  [core-number layout]
-  (let [does-row-have-core? (map (partial does-vector-contain-value
-                                          core-number)
-                                 layout)
-        row-with-core (first (keep-indexed #(if (true? %2) %1)
-                                           does-row-have-core?))]
-    row-with-core))
-
-(defn update-core-length-HELPER
-  "Given a CORE and the optical image's MM-PER-PIXEL
-  RETURN: A core with an updated :length-mm
-  NOTE: This is either derived from the optical scan size
-        or the xrf-scan size
-  DEGENERATE: If there is no :optical or :xrf-scan then
-              the length is reset to a global default  "
-  [core
-   mm-per-pixel]
-  (if (nil? (-> core :optical))
-    (if (nil? (-> core :xrf-scan))
-      core ;;(assoc core :length-mm fixed-default-core-length)
-      (assoc core :length-mm (* mm-per-pixel
-                                (-> core
-                                    :xrf-scan
-                                    :element-counts
-                                    last
-                                    :position
-                                    read-string))))
-    (assoc core :length-mm (* mm-per-pixel
-                              (-> core
-                                  :optical
-                                  :image
-                                  .getWidth)))))
-
-;; Makes sure the :length-mm is set properly based on the
-;; :optical scan and the :xrf-scan
-(defn update-core-length
-  [snapshot
-   core-number]
-  (let [core (-> snapshot
-                 :cores
-                 (get core-number))]
-    (-> snapshot
-        (assoc-in [:cores
-                   core-number]
-                  (update-core-length-HELPER core
-                                             (-> snapshot
-                                                 :mm-per-pixel)))
-        update-core-order)))
+;; (defn update-unscanned-areas
+;;   [snapshot
+;;    core-number]
+;;   (let [image-width-pix (-> snapshot
+;;                             :cores
+;;                             (.get core-number)
+;;                             :optical
+;;                             :image
+;;                             .getWidth) ;; 9 Pixels
+;;         mm-per-pixel (:mm-per-pixel snapshot) ;; 0.5 mm/pixel
+;;         scan (-> snapshot
+;;                  :cores
+;;                  (.get core-number)
+;;                  :xrf-scan
+;;                  :element-counts)
+;;         scan-start-mm (-> scan
+;;                           first
+;;                           :position
+;;                           read-string) ;; 1.25mm
+;;         scan-end-mm (-> scan
+;;                         last
+;;                         :position
+;;                         read-string)  ;; 3.75mm
+;;         ]
+;;     (-> snapshot
+;;         (assoc-in  [:cores
+;;                     core-number
+;;                     :optical
+;;                     :unscanned-left-pix]
+;;                    (int (Math/floor (/ scan-start-mm    ;; (floor 2.5)
+;;                                        mm-per-pixel)))) ;; 2 Pixels entirely unscanned
+;;         (assoc-in [:cores
+;;                    core-number
+;;                    :optical
+;;                    :unscanned-right-pix]
+;;                   (- image-width-pix
+;;                      (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
+;;                                         mm-per-pixel)))))))) ;; 9-8 = 1 Pixel entirely unscanned
 
 (defn update-core-start
   [snapshot
@@ -256,19 +85,18 @@
            core-number]}]
   (try
     (let [input-value-mm event
-          mm-per-pixel (-> snapshot
-                           :mm-per-pixel)
+          mm-per-pixel (fx/sub snapshot
+                               state/mm-per-pixel
+                               core-number)
           rounded-to-pixel (Math/round (/ input-value-mm
                                           mm-per-pixel))
           corrected-start-mm (* rounded-to-pixel
                                 mm-per-pixel)]
-      (println "corrected" corrected-start-mm)
       (-> snapshot
-          (assoc-in [:cores
-                     core-number
-                     :start-mm]
-                    corrected-start-mm)
-          update-core-order))
+          (fx/swap-context assoc-in [:cores
+                                     core-number
+                                     :start-mm]
+                           corrected-start-mm)))
     (catch Exception ex
       (println "Invalid core-start input")
       snapshot)))
@@ -276,31 +104,20 @@
 (defn add-core
   [snapshot
    _]
-  (let [num-cores (-> snapshot
-                      :cores
-                      count)]
+  (let [num-cores (fx/sub snapshot
+                          state/num-cores)
+        start-mm (fx/sub snapshot
+                         state/end-of-all-scans-mm)]
     (-> snapshot
-        (assoc-in [:cores
-                   num-cores]
-                  {:start-mm (if (nil? (-> snapshot
-                                           :cores
-                                           last))
-                               0.0 ;; if no core to tack on to, then set to zero
-                               (+ (-> snapshot
-                                      :cores
-                                      last
-                                      :start-mm)
-                                  (-> snapshot
-                                      :cores
-                                      last
-                                      :length-mm)))
-                   :optical nil
-                   :xrf-scan nil
-                   :crop-left 0
-                   :crop-right 0
-                   :length-mm 300.0 ;; TODO: FIXED VALUE
-                   :seams []})
-        update-core-order)))
+        (fx/swap-context assoc-in
+                         [:cores
+                          num-cores]
+                         {:start-mm start-mm
+                          :optical nil
+                          :xrf-scan nil
+                          :crop-left 0
+                          :crop-right 0
+                          :seams []}))))
 
 (defn remove-core
   "If the EVENT contains a `:core-number` then that core is deleted
@@ -310,17 +127,113 @@
   (let [
         updated (if (nil? core-number)
                   (-> snapshot
-                      (assoc :cores
-                             (pop (:cores snapshot))))
+                      (fx/swap-context update
+                                       :cores
+                                       pop))
                   (-> snapshot
-                      (update
-                       :cores
-                       #(vec (concat (subvec % 0 core-number )
-                                     (subvec % (inc core-number)))))
-                      update-core-order))]
-    (if (empty? (:cores updated))
+                      (fx/swap-context update
+                                       :cores
+                                       #(vec (concat (subvec % 0 core-number )
+                                                     (subvec % (inc core-number)))))))]
+    (if (zero? (fx/sub updated
+                       state/num-cores))
       (-> updated
           (add-core nil))
       updated)))
 
+;; Crop both :optical and :xrf-data
+;; 1 - always crop areas that are optically scanned but have no xrf data
+;; 2 - optionally crop more based on the slider positions
+;; TODO: Simplify this .. with some destructuring or something
+(defn crop-core
+  [snapshot
+   {:keys [core-number]}]
+  ;; Crop values need to be precalculated
+  ;; Once you crop the XRF then the subscriptions in the optical crop will recalculate
+  ;; It won't give the desired effect
+  (let [crop-left-mm (max (fx/sub snapshot
+                                  state/crop-left-mm
+                                  core-number)
+                          (fx/sub snapshot
+                                  state/unscanned-left-mm
+                                  core-number))
+        crop-right-mm (max (fx/sub snapshot
+                                   state/crop-right-mm
+                                   core-number)
+                           (fx/sub snapshot
+                                   state/unscanned-right-mm
+                                   core-number))
+        crop-left-pix (max (fx/sub snapshot
+                                   state/crop-left-pix
+                                   core-number)
+                           (fx/sub snapshot
+                                   state/unscanned-left-pix
+                                   core-number))
+        crop-right-pix (max (fx/sub snapshot
+                                    state/crop-right-pix
+                                    core-number)
+                            (fx/sub snapshot
+                                    state/unscanned-right-pix
+                                    core-number))]
+    (-> snapshot
+        (sausage.xrf/crop {:core-number core-number
+                           :crop-left-mm crop-left-mm
+                           :crop-right-mm crop-right-mm})
+        (sausage.optical/crop {:core-number core-number
+                               :crop-left-pix crop-left-pix
+                               :crop-right-pix crop-right-pix})
+        (fx/swap-context update
+                         :seams
+                         #(map (partial + (- (fx/sub snapshot
+                                                     state/crop-left-mm
+                                                     core-number)))
+                               %))
+        (fx/swap-context assoc-in
+                         [:cores
+                          core-number
+                          :crop-left]
+                         0.0)
+        (fx/swap-context assoc-in
+                         [:cores
+                          core-number
+                          :crop-right]
+                         0.0))))
 
+
+
+;; ;; seams only happen in core=0
+;;   ;; but inserting a conditional in a threading macro is messy
+;;   (update-in
+;;    [:cores
+;;     core-number
+;;     :seams]
+;;    #(map (partial + (- crop-left-mm)) %)))))
+
+
+(defn merge-cores
+  "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
+  RESULT: One core with optical and xrf-scans merged"
+  [snapshot
+   {:keys [into-core-number
+           from-core-number] :as core-numbers}]
+  (-> snapshot
+      (sausage.optical/merge-cores core-numbers)
+      (sausage.xrf/merge-cores core-numbers)
+      (remove-core {:core-number from-core-number})))
+
+(defn merge-all-cores
+  "Merges the first core and the second core
+  Then the first core with the third core
+  then the fourth.. etc.
+  Each merge makes the first core grow!
+  Stops when there is only one core left"
+  [snapshot
+   _]
+  (if (= 1
+         (fx/sub snapshot
+                 state/num-cores))
+    snapshot
+    (recur (merge-cores snapshot
+                        {:into-core-number 0
+                         :from-core-number 1})
+           nil)))
