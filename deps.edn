@@ -11,22 +11,22 @@
   ;; These are dependencies of `cljfx`
   ;; By default JavaFX will only bundle binaries for the platform you build on
   ;; This forces it to also include linux/mac/win binaries
-  org.openjfx/javafx-base {:mvn/version "14"}
-  org.openjfx/javafx-base$linux {:mvn/version "14"}
-  org.openjfx/javafx-base$mac {:mvn/version "14"}
-  org.openjfx/javafx-base$win {:mvn/version "14"}
-  org.openjfx/javafx-controls {:mvn/version "14"}
-  org.openjfx/javafx-controls$linux {:mvn/version "14"}
-  org.openjfx/javafx-controls$mac {:mvn/version "14"}
-  org.openjfx/javafx-controls$win {:mvn/version "14"}
-  org.openjfx/javafx-graphics {:mvn/version "14"}
-  org.openjfx/javafx-graphics$linux {:mvn/version "14"}
-  org.openjfx/javafx-graphics$mac {:mvn/version "14"}
-  org.openjfx/javafx-graphics$win {:mvn/version "14"}
+  ;; org.openjfx/javafx-base {:mvn/version "14"}
+  ;; org.openjfx/javafx-base$linux {:mvn/version "14"}
+  ;; org.openjfx/javafx-base$mac {:mvn/version "14"}
+  ;; org.openjfx/javafx-base$win {:mvn/version "14"}
+  ;; org.openjfx/javafx-controls {:mvn/version "14"}
+  ;; org.openjfx/javafx-controls$linux {:mvn/version "14"}
+  ;; org.openjfx/javafx-controls$mac {:mvn/version "14"}
+  ;; org.openjfx/javafx-controls$win {:mvn/version "14"}
+  ;; org.openjfx/javafx-graphics {:mvn/version "14"}
+  ;; org.openjfx/javafx-graphics$linux {:mvn/version "14"}
+  ;; org.openjfx/javafx-graphics$mac {:mvn/version "14"}
+  ;; org.openjfx/javafx-graphics$win {:mvn/version "14"}
   org.openjfx/javafx-swing {:mvn/version "14"}
-  org.openjfx/javafx-swing$linux {:mvn/version "14"}
-  org.openjfx/javafx-swing$mac {:mvn/version "14"}
-  org.openjfx/javafx-swing$win {:mvn/version "14"}
+  ;; org.openjfx/javafx-swing$linux {:mvn/version "14"}
+  ;; org.openjfx/javafx-swing$mac {:mvn/version "14"}
+  ;; org.openjfx/javafx-swing$win {:mvn/version "14"}
 
   ;; These libraries are not used. This drastically reduces the file size
   ;; They are also specified as excluded in the `cljfx` call above
@@ -60,9 +60,9 @@
                           {luchiniatwork/cambada {:mvn/version "1.0.0"}}
                           :main-opts ["-m" "cambada.native-image"
                                       "-m" "sausage.core"]}
-           :depstar
+           :github-action
            {:extra-deps
             {seancorfield/depstar {:mvn/version "0.5.2"}}
             :main-opts ["-m" "hf.depstar.uberjar"
-                        "sausage.jar" "--compile"
-                        "-m" "sausage.core"]}}}
+                        "sausage.jar";; "--compile"
+                        "-m" "clojure.main -m sausage.core"]}}}

@@ -12,7 +12,7 @@
   (:import javafx.stage.DirectoryChooser
            javafx.stage.FileChooser
            javafx.stage.Stage)
-  (:gen-class :main true))
+  #_(:gen-class :main true))
 
 ;; GLOBAL CONSTANTS
 ;; Can be freely adjusted to tweak the display
