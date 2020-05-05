@@ -3,7 +3,7 @@
   org.clojure/core.cache {:mvn/version "1.0.207"}
   org.boofcv/boofcv-core {:mvn/version "0.35"
                           :exclusions [org.boofcv/boofcv-recognition]}
-  cljfx {:mvn/version "1.6.9"
+  cljfx {:mvn/version "1.7.0"
          :exclusions [org.openjfx/javafx-web
                       org.openjfx/javafx-media]}
   ;; Dark magic from:
@@ -11,22 +11,22 @@
   ;; These are dependencies of `cljfx`
   ;; By default JavaFX will only bundle binaries for the platform you build on
   ;; This forces it to also include linux/mac/win binaries
-  ;; org.openjfx/javafx-base {:mvn/version "14"}
-  ;; org.openjfx/javafx-base$linux {:mvn/version "14"}
-  ;; org.openjfx/javafx-base$mac {:mvn/version "14"}
-  ;; org.openjfx/javafx-base$win {:mvn/version "14"}
-  ;; org.openjfx/javafx-controls {:mvn/version "14"}
-  ;; org.openjfx/javafx-controls$linux {:mvn/version "14"}
-  ;; org.openjfx/javafx-controls$mac {:mvn/version "14"}
-  ;; org.openjfx/javafx-controls$win {:mvn/version "14"}
-  ;; org.openjfx/javafx-graphics {:mvn/version "14"}
-  ;; org.openjfx/javafx-graphics$linux {:mvn/version "14"}
-  ;; org.openjfx/javafx-graphics$mac {:mvn/version "14"}
-  ;; org.openjfx/javafx-graphics$win {:mvn/version "14"}
+  org.openjfx/javafx-base {:mvn/version "14"}
+  org.openjfx/javafx-base$linux {:mvn/version "14"}
+  org.openjfx/javafx-base$mac {:mvn/version "14"}
+  org.openjfx/javafx-base$win {:mvn/version "14"}
+  org.openjfx/javafx-controls {:mvn/version "14"}
+  org.openjfx/javafx-controls$linux {:mvn/version "14"}
+  org.openjfx/javafx-controls$mac {:mvn/version "14"}
+  org.openjfx/javafx-controls$win {:mvn/version "14"}
+  org.openjfx/javafx-graphics {:mvn/version "14"}
+  org.openjfx/javafx-graphics$linux {:mvn/version "14"}
+  org.openjfx/javafx-graphics$mac {:mvn/version "14"}
+  org.openjfx/javafx-graphics$win {:mvn/version "14"}
   org.openjfx/javafx-swing {:mvn/version "14"}
-  ;; org.openjfx/javafx-swing$linux {:mvn/version "14"}
-  ;; org.openjfx/javafx-swing$mac {:mvn/version "14"}
-  ;; org.openjfx/javafx-swing$win {:mvn/version "14"}
+  org.openjfx/javafx-swing$linux {:mvn/version "14"}
+  org.openjfx/javafx-swing$mac {:mvn/version "14"}
+  org.openjfx/javafx-swing$win {:mvn/version "14"}
 
   ;; These libraries are not used. This drastically reduces the file size
   ;; They are also specified as excluded in the `cljfx` call above
@@ -51,18 +51,28 @@
  :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
              "clojars" {:url "https://repo.clojars.org/"}}
 
- :aliases {;; call 'clj -A:uberjar' to run
-           :uberjar {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.2"}}
-                     :main-opts ["-m" "cambada.uberjar"
-                                 "--aot" "all"
-                                 "-m" "sausage.core"]}
+ :aliases {:uberjar-aot {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.2"}}
+                         ;; This option is necessary to build on a headless machine
+                         ;; ex: Github Actions
+                         ;; see:
+                         ;; https://github.com/cljfx/cljfx/issues/70
+                         :jvm-opts ["-Dcljfx.skip-javafx-initialization=true"]
+                         :main-opts ["-m" "cambada.uberjar"
+                                     ;; Note: `cambada` will not work
+                                     ;; with no AOT compiled `-main`
+                                     "--aot" "all"
+                                     "-m" "sausage.core"]}
            :native-image {:extra-deps
                           {luchiniatwork/cambada {:mvn/version "1.0.0"}}
                           :main-opts ["-m" "cambada.native-image"
                                       "-m" "sausage.core"]}
-           :github-action
-           {:extra-deps
-            {seancorfield/depstar {:mvn/version "0.5.2"}}
-            :main-opts ["-m" "hf.depstar.uberjar"
-                        "sausage.jar";; "--compile"
-                        "-m" "clojure.main -m sausage.core"]}}}
+
+           ;; To have an uberjar with no AOT compilation you need to
+           ;; - Go into `core.clj` and comment out `(:gen-class :main true)`
+           ;; - Launch the app with `java -sausage.jar -m sausage.core`
+           ;; - Launch time is /very/ slow .. ~17 seconds
+           :uberjar-no-aot {:extra-deps
+                            {seancorfield/depstar {:mvn/version "0.5.2"}}
+                            :main-opts ["-m" "hf.depstar.uberjar"
+                                        "sausage.jar";; "--compile"
+                                        "-m" "clojure.main -m sausage.core"]}}}
