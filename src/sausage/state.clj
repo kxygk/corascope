@@ -3,20 +3,9 @@
    [clojure.core.cache :as cache]
    [cljfx.api :as fx]))
 
-;; GLOBAL CONSTANTS
-;; Can be freely adjusted to tweak the display
-
-;; The cores are displayed/scaled based on their lengths so uninitialized cores
-;; need a "size" so that they can take up space to display properly
-;; Otherwise nothing shows up and there is no "Load" buttons.
-;; (TODO: Think of a less goofy UI solution)
-(def fixed-workspace-settings-height 30.0)
-(def fixed-margin-width 456) ;; dialed in to fit the periodic table
-(def fixed-core-header-height 48)
-(def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
-(def fixed-element-count-height 300.0)  ;; needs to be fixed so the core displays line up
-(def fixed-slider-height 18)
-(def fixed-element-selector-width 50)
+;; TODO: Maybe find a way to move this into the displays themselves?
+(def fixed-optical-scan-height 133.0)
+(def fixed-element-count-height 300.0)
 
 (def *context
   ""
