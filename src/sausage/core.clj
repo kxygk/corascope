@@ -118,7 +118,7 @@
                                                                  (- 1
                                                                     (:fx/event event)))))}}]})
 
-(defn core-header-display
+(defn core-header
   "The options bar at the top of every core"
   [{:keys [core-number
            width
@@ -169,8 +169,9 @@
                  :crop-left  crop-left
                  :crop-right crop-right}]}))
 
-(defn core-display
-  "The cummulative core display"
+(defn core-displays
+  "The virtical stack of displays for a core:
+  It consists of the header followed up the current displays, one after another"
   [{:keys [fx/context
            horizontal-zoom-factor
            height
@@ -189,7 +190,7 @@
                           state/core-row
                           core-number))  ;; TODO: Convert to pixels
      :children (into
-                [{:fx/type core-header-display
+                [{:fx/type core-header
                   :core-number core-number
                   :width width
                   :start-mm (fx/sub context
@@ -221,7 +222,8 @@
                                     state/num-displays))))}))
 
 (defn core-header-options
-  ""
+  "Common non display-specific options for all cores.
+  This horizontally matches the `core-header` area"
   [{:keys [;;display-number
            width
            can-merge?]}]
@@ -250,6 +252,9 @@
                                                                     (:fx/event event))))}}]})
 
 (defn display-options-header
+  "Each Display's header
+  With common things like: Name, Button to close the display, etc.
+  This is non display-specific"
   [{:keys [display-number
            display-name]}]
   {:fx/type :v-box
@@ -315,6 +320,8 @@
 
 
 (defn add-display-options
+  "A small set of buttons for adding additional displays
+  By contrast, displays are removed by the `X` button in their headers"
   [_]
   {:fx/type :h-box
    :children [{:fx/type :button
@@ -327,9 +334,7 @@
                :text " +  Element Count"}]})
 
 (defn margin
-  "The right margin with global options/toggles.
-  First come static options
-  Followed by per-display options"
+  "The right margin with global and display specific options"
   [{:keys [fx/context
            width
            height
@@ -384,7 +389,7 @@
                                        fixed-margin-width)
                                     (fx/sub context
                                             state/end-of-all-scans-mm)))
-        core-display-height (+ (fx/sub context
+        core-displays-height (+ (fx/sub context
                                        state/displays-total-height)
                                fixed-core-header-height
                                fixed-slider-height)]
@@ -410,14 +415,14 @@
                                             :pref-viewport-width (- width fixed-margin-width)
                                             :content {:fx/type :pane
                                                       :children (map-indexed (fn [index core]
-                                                                               {:fx/type core-display
+                                                                               {:fx/type core-displays
                                                                                 :core-number index
                                                                                 :horizontal-zoom-factor horizontal-zoom-factor
-                                                                                :height core-display-height})
+                                                                                :height core-displays-height})
                                                                              cores)}}
                                            {:fx/type margin
                                             :width fixed-margin-width
-                                            :height core-display-height
+                                            :height core-displays-height
                                             :columns (fx/sub context
                                                              state/columns)
                                             :can-merge? true #_(-> layout
@@ -471,5 +476,4 @@
   (event-dispatcher {:effect effects/add-core})
   (fx/mount-renderer
    sausage.state/*context
-   renderer)
-  )
+   renderer))
