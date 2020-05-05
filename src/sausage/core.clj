@@ -62,8 +62,6 @@
                :on-action {:effect effects/add-core}
                :text "+"}]})
 
-
-
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
   [{:keys [core-number
@@ -279,7 +277,6 @@
                                                            :displays
                                                            #(vec (concat (subvec % 0 display-number)
                                                                          (subvec % (inc display-number)))))))}}]}]})
-
 (defn add-display
   "EFFECT: Adds a display of DISPLAY-TYPE to the display list"
   [snapshot
@@ -298,26 +295,6 @@
                                  :height fixed-element-count-height
                                  :merge-seams? true
                                  :element :Mn})))))
-
-(defn add-display
-  "EFFECT: Adds a display of DISPLAY-TYPE to the display list"
-  [snapshot
-   {:keys [display-type]}]
-  (-> snapshot
-      (fx/swap-context update
-                       :displays
-                       #(conj %
-                              (case display-type
-                                :overhead
-                                {:type :overhead
-                                 :height fixed-optical-scan-height
-                                 :scan-line? true}
-                                :element-count
-                                {:type :element-count
-                                 :height fixed-element-count-height
-                                 :merge-seams? true
-                                 :element :Mn})))))
-
 
 (defn add-display-options
   "A small set of buttons for adding additional displays
@@ -432,9 +409,6 @@
                                                               state/displays)}
                                            ]}]}}}))
 
-
-
-
 (defn event-handler-wrapper
   [{:keys [snapshot
            effect] :as event}]
@@ -468,7 +442,6 @@
                                        ;; For functions in `:fx/type` values, pass
                                        ;; context from option map to these functions
                                        (fx/fn->lifecycle-with-context %))}))
-
 
 (defn -main [& args]
   ;; Add a first empty core
