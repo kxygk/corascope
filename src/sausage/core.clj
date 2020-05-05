@@ -294,6 +294,26 @@
                                  :merge-seams? true
                                  :element :Mn})))))
 
+(defn add-display
+  "EFFECT: Adds a display of DISPLAY-TYPE to the display list"
+  [snapshot
+   {:keys [display-type]}]
+  (-> snapshot
+      (fx/swap-context update
+                       :displays
+                       #(conj %
+                              (case display-type
+                                :overhead
+                                {:type :overhead
+                                 :height fixed-optical-scan-height
+                                 :scan-line? true}
+                                :element-count
+                                {:type :element-count
+                                 :height fixed-element-count-height
+                                 :merge-seams? true
+                                 :element :Mn})))))
+
+
 (defn add-display-options
   [_]
   {:fx/type :h-box
