@@ -6,6 +6,14 @@
            boofcv.alg.misc.ImageMiscOps
            javafx.embed.swing.SwingFXUtils))
 
+(def fixed-height 133.0)
+
+(defn create
+  []
+  {:type :overhead
+   :height fixed-height
+   :scan-line? true})
+
 (defn- to-fx-image
   [boofcv-image]
   (-> boofcv-image

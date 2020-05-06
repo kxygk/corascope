@@ -4,6 +4,15 @@
    [sausage.xrf]
    [cljfx.api :as fx]))
 
+(def fixed-height 310.0)
+
+(defn create
+  []
+  {:type :element-count
+   :height fixed-height
+   :merge-seams? true
+   :element :Mn})
+
 (defn- selection
   [context
    display-number]

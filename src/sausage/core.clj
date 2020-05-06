@@ -25,8 +25,6 @@
 (def fixed-workspace-settings-height 30.0)
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
 (def fixed-core-header-height 48)
-(def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
-(def fixed-element-count-height 310.0)  ;; needs to be fixed so the core displays line up
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
@@ -280,14 +278,9 @@
                        #(conj %
                               (case display-type
                                 :overhead
-                                {:type :overhead
-                                 :height fixed-optical-scan-height
-                                 :scan-line? true}
+                                (sausage.displays.overhead/create)
                                 :element-count
-                                {:type :element-count
-                                 :height fixed-element-count-height
-                                 :merge-seams? true
-                                 :element :Mn})))))
+                                (sausage.displays.element-count/create))))))
 
 (defn add-display-options
   "A small set of buttons for adding additional displays
