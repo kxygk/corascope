@@ -24,7 +24,7 @@
   [context
    display-number]
   (:merge-seams? (fx/sub context
-                      state/seams
+                      state/get-display
                       display-number)))
 
 (defn view
@@ -152,13 +152,6 @@
                                            :effect update-selected-element}}))
                           non-elements)
              [] ))}))
-
-(defn- merge-seams?
-  [context
-   display-number]
-  (:merge-seams? (fx/sub context
-                         state/get-display
-                         display-number)))
 
 (defn options
   [{:keys [fx/context
