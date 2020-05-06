@@ -430,7 +430,15 @@
 (defn -main [& args]
   ;; Add a first empty core
   ;; The UI paradigm doesn't make much sense with zero cores
-  (event-dispatcher {:effect effects/add-core})
+  (if (zero? (fx/sub @sausage.state/*context
+                     state/num-cores))
+    (event-dispatcher {:effect effects/add-core}))
   (fx/mount-renderer
    sausage.state/*context
-   renderer))
+   renderer)
+  (if (zero? (fx/sub @sausage.state/*context
+                     state/num-displays))
+    (do (event-dispatcher {:effect add-display
+                           :display-type :overhead})
+        (event-dispatcher {:effect add-display
+                           :display-type :element-count}))))
