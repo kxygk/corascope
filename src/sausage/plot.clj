@@ -69,7 +69,7 @@
    })
 
 
-(defn- add-points
+(defn- add-lines
   "Add the points (as little triangles) to the graph"
   [spec
    points]
@@ -82,6 +82,28 @@
              ;; :shape   (viz/svg-triangle-down 6)
              :layout  viz/svg-line-plot}
             ])))
+
+(defn- add-points
+  "Add the points (as little triangles) to the graph"
+  [spec
+   points]
+  (if (empty? points)
+    spec ;; do nothing.. else:
+    (assoc spec
+           :data
+           [{:values  points
+             :attribs {:fill "none" :stroke "black"}
+             :shape   (viz/svg-triangle-down 6)
+             :layout  viz/svg-scatter-plot}
+            ])))
+
+(defn- add-plot
+  [spec
+   points
+   lines?]
+  (if lines?
+    (add-lines spec points)
+    (add-points spec points)))
 
 (defn- add-red-overlay
   "Will draw red overlays at the selected points
@@ -127,7 +149,8 @@
    max-count
    crop-left
    crop-right
-   seams]
+   seams
+   lines?]
   (let [right-crop-points (filter #(> (first %)
                                       (- max-position
                                          crop-right))
@@ -142,7 +165,7 @@
                                                     height
                                                     max-position
                                                     graph-height)
-                                         (add-points points)
+                                         (add-plot points lines?)
                                          (add-red-overlay crop-points)
                                          (add-seam-marker seams
                                                           graph-height)

@@ -11,6 +11,7 @@
   {:type :element-count
    :height fixed-height
    :merge-seams? true
+   :lines? true
    :element :Mn})
 
 (defn- selection
@@ -26,6 +27,13 @@
   (:merge-seams? (fx/sub context
                       state/get-display
                       display-number)))
+
+(defn lines?
+  [context
+   display-number]
+  (:lines? (fx/sub context
+                         state/get-display
+                         display-number)))
 
 (defn view
   "display and options for XRF scan data"
@@ -74,7 +82,10 @@
                                                                   (fx/sub context
                                                                           state/seams
                                                                           core-number)
-                                                                  [] ))}]
+                                                                  [] )
+                                                                (fx/sub context
+                                                                        lines?
+                                                                        display-number))}]
                              [{:fx/type :button
                                :pref-width width
                                :pref-height height
@@ -174,4 +185,18 @@
                               (fx/swap-context assoc-in [:displays
                                                          (:display-number event)
                                                          :merge-seams?]
+                                               (:fx/event event))))}}
+              {:fx/type :check-box
+               :text "Lines"
+               :selected (fx/sub context
+                                 lines?
+                                 display-number)
+               :on-selected-changed
+               {:display-number display-number
+                :effect (fn [snapshot
+                             event]
+                          (-> snapshot
+                              (fx/swap-context assoc-in [:displays
+                                                         (:display-number event)
+                                                         :lines?]
                                                (:fx/event event))))}}]})
