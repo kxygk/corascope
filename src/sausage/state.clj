@@ -3,10 +3,6 @@
    [clojure.core.cache :as cache]
    [cljfx.api :as fx]))
 
-;; TODO: Maybe find a way to move this into the displays themselves?
-(def fixed-optical-scan-height 133.0)
-(def fixed-element-count-height 300.0)
-
 (def *context
   ""
   (atom (fx/create-context {:working-directory ""
@@ -16,22 +12,7 @@
                             :mm-per-pixel 0.5 ;; Common parameter across all cores
                             :mm-xrf-step-size 5 ;; Common parameter across all cores
                             :cores []
-                            :displays [;; {:type :overhead
-                                       ;;  :height fixed-optical-scan-height
-                                       ;;  :scan-line? true}
-                                       {:type :element-count
-                                        :height fixed-element-count-height
-                                        :merge-seams? true
-                                        :element :Mn
-                                        :max-count 1000}
-                                       ;; {:type :overhead
-                                       ;;  :height fixed-optical-scan-height
-                                       ;;  :scan-line? true}
-                                       {:type :element-count
-                                        :height fixed-element-count-height
-                                        :merge-seams? true
-                                        :element :Mn
-                                        :max-count 1000}]}
+                            :displays []}
                            cache/lru-cache-factory)))
 
 ;; BASE SUBSCRIPTIONS
@@ -594,6 +575,11 @@
           pyramid-stack
           (range (fx/sub context
                          num-cores))))
+
+(defn can-merge?
+  [context]
+  (empty? (second (fx/sub context
+                  layout))))
 
 (defn- does-vector-contain-value
   "Local helper - Checks if a VECTOR contains a VALUE

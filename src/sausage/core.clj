@@ -25,7 +25,7 @@
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
 (def fixed-core-header-height 48)
 (def fixed-optical-scan-height 133.0)  ;; needs to be fixed so the core displays line up
-(def fixed-element-count-height 300.0)  ;; needs to be fixed so the core displays line up
+(def fixed-element-count-height 310.0)  ;; needs to be fixed so the core displays line up
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
@@ -35,32 +35,47 @@
            working-directory
            height]}]
   {:fx/type :h-box
-   :children [{:fx/type :button
+   :children [{:fx/type :h-box
                :pref-width fixed-margin-width
-               :min-width fixed-margin-width
-               :pref-height height
-               :min-height height
-               :max-height height
-               :on-action {:event/type ::set-working-directory}
-               :text "Set"}
-              {:fx/type :text-field
-               :editable false
-               :pref-height height ;; TODO: What's with all these pref/min dimensions...?
-               :prompt-text "Select a working directory.."
-               :pref-column-count 999
-               :text working-directory}
-              {:fx/type :button
-               :pref-height height
-               :pref-width height ;; make square button
-               :min-width  height
-               :on-action {:effect effects/remove-core}
-               :text "-"}
-              {:fx/type :button
-               :pref-height height
-               :pref-width height ;; make square button
-               :min-width height
-               :on-action {:effect effects/add-core}
-               :text "+"}]})
+               :alignment :center-left
+               :children [{:fx/type :text
+                           :text " Working Directory: "}
+                          {:fx/type :text-field
+                           :editable false
+                           :pref-height height
+                           :prompt-text "Select a working directory.."
+                           :pref-column-count 999
+                           :text working-directory}]}
+              {:fx/type :h-box
+               :pref-width fixed-margin-width
+               :alignment :center-right
+               :children [{:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :on-action {:effect effects/merge-all-cores}
+                           :disable true
+                           :text "Crop"}
+                          {:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :on-action {:effect effects/merge-all-cores}
+                           :disable (not (fx/sub context
+                                                 state/can-merge?))
+                           :text ">> Merge"}
+                          {:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :on-action {:effect effects/remove-core}
+                           :text "Remove Last Core"}
+                          {:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :on-action {:effect effects/add-core}
+                           :text "Add Core to End"}
+                          {:fx/type :check-box
+                           :text "Full Width"
+                           :on-selected-changed {:effect (fn [snapshot
+                                                              event]
+                                                           (-> snapshot
+                                                               (fx/swap-context assoc
+                                                                                :full-width?
+                                                                                (:fx/event event))))}}]}]})
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
@@ -128,12 +143,14 @@
                   fixed-slider-height)]
     {:fx/type :v-box
      :children [{:fx/type :h-box
+                 :style "-fx-background-color: #d3d3d3;"
                  :pref-height height
                  :min-height height
                  :max-height height
                  :alignment :center-left
                  :children [{:fx/type :spinner
                              :editable true
+                             :pref-width 100
                              :value-factory {:fx/type :double-spinner-value-factory
                                              :amount-to-step-by mm-per-pixel
                                              :min 0.0
@@ -219,36 +236,6 @@
                      (range (fx/sub context
                                     state/num-displays))))}))
 
-(defn core-header-options
-  "Common non display-specific options for all cores.
-  This horizontally matches the `core-header` area"
-  [{:keys [;;display-number
-           width
-           can-merge?]}]
-  {:fx/type :h-box
-   :pref-height fixed-core-header-height
-   :min-height fixed-core-header-height
-   :max-height fixed-core-header-height
-   :alignment :center-left
-   :children [{:fx/type :button
-               :max-height Double/MAX_VALUE
-               :on-action {:effect effects/merge-all-cores}
-               :disable true
-               :text "Crop"}
-              {:fx/type :button
-               :max-height Double/MAX_VALUE
-               :on-action {:effect effects/merge-all-cores}
-               :disable (not can-merge?)
-               :text ">> Merge"}
-              {:fx/type :check-box
-               :text "Full Width"
-               :on-selected-changed {:effect (fn [snapshot
-                                                  event]
-                                               (-> snapshot
-                                                   (fx/swap-context assoc
-                                                                    :full-width?
-                                                                    (:fx/event event))))}}]})
-
 (defn display-options-header
   "Each Display's header
   With common things like: Name, Button to close the display, etc.
@@ -257,10 +244,15 @@
            display-name]}]
   {:fx/type :v-box
    :alignment :center-left
-   :children [{:fx/type :separator
+   :style "-fx-background-color: #d3d3d3;"
+   :children [#_{:fx/type :separator
                :orientation :horizontal}
               {:fx/type :h-box
-               :children [{:fx/type :text
+               :alignment :center-left
+               :children [{:fx/type :separator
+                           :style "-fx-background-color: #a9a9a9;"
+                           :orientation :vertical}
+                          {:fx/type :text
                            :text display-name}
                           {:fx/type :pane
                            :h-box/hgrow :always}
@@ -301,11 +293,16 @@
   By contrast, displays are removed by the `X` button in their headers"
   [_]
   {:fx/type :h-box
+   :pref-height fixed-core-header-height
+   :min-height fixed-core-header-height
+   :max-height fixed-core-header-height
    :children [{:fx/type :button
+               :pref-height Double/MAX_VALUE
                :on-action {:display-type :overhead
                            :effect add-display}
                :text " + Optical"}
               {:fx/type :button
+               :pref-height Double/MAX_VALUE
                :on-action {:display-type :element-count
                            :effect add-display}
                :text " +  Element Count"}]})
@@ -320,8 +317,7 @@
    :pref-width width
    :min-width width
    :max-width width
-   :children [{:fx/type core-header-options
-               :can-merge? true #_can-merge?}
+   :children [{:fx/type add-display-options}
               {:fx/type :v-box
                :children (->> (fx/sub context
                                       state/displays)
@@ -336,17 +332,11 @@
                                                           :display-name (name (:type display))}
                                                          (case (:type display)
                                                            :overhead {:fx/type sausage.displays.overhead/options
-                                                                      :display-number display-number
-                                                                      :height (:height display)
-                                                                      :scan-line? (:scan-line? display)}
+                                                                      :display-number display-number}
                                                            :element-count {:fx/type sausage.displays.element-count/options
-                                                                           :display-number display-number
-                                                                           :height (:height display)
-                                                                           :columns (fx/sub context
-                                                                                            state/columns)
-                                                                           :merge-seams? (:merge-seams? display)})]}))
+                                                                           :display-number display-number})]}))
                               flatten)}
-              {:fx/type add-display-options}]})
+              ]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
@@ -386,7 +376,11 @@
                                                            state/working-directory)
                                 :height fixed-workspace-settings-height}
                                {:fx/type :h-box
-                                :children [{:fx/type :scroll-pane
+                                :children [
+                                           {:fx/type margin
+                                            :width fixed-margin-width
+                                            :height core-displays-height}
+                                           {:fx/type :scroll-pane
                                             :hbar-policy :never
                                             :vbar-policy :never
                                             :pref-viewport-width (- width fixed-margin-width)
@@ -397,16 +391,6 @@
                                                                                 :horizontal-zoom-factor horizontal-zoom-factor
                                                                                 :height core-displays-height})
                                                                              cores)}}
-                                           {:fx/type margin
-                                            :width fixed-margin-width
-                                            :height core-displays-height
-                                            :columns (fx/sub context
-                                                             state/columns)
-                                            :can-merge? true #_(-> layout
-                                                                   second
-                                                                   empty?)
-                                            :displays (fx/sub context
-                                                              state/displays)}
                                            ]}]}}}))
 
 (defn event-handler-wrapper
