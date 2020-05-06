@@ -11,6 +11,7 @@
    [cljfx.ext.list-view :as fx.ext.list-view])
   (:import javafx.stage.DirectoryChooser
            javafx.stage.FileChooser
+           javafx.application.Platform
            javafx.stage.Stage)
   (:gen-class :main true))
 
@@ -428,6 +429,8 @@
                                        (fx/fn->lifecycle-with-context %))}))
 
 (defn -main [& args]
+  ;; Make the application exit when you close all the windows
+  (Platform/setImplicitExit true)
   ;; Add a first empty core
   ;; The UI paradigm doesn't make much sense with zero cores
   (if (zero? (fx/sub @sausage.state/*context
@@ -436,6 +439,7 @@
   (fx/mount-renderer
    sausage.state/*context
    renderer)
+  ;; Add 2 displays so that there is something to look at
   (if (zero? (fx/sub @sausage.state/*context
                      state/num-displays))
     (do (event-dispatcher {:effect add-display
