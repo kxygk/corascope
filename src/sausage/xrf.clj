@@ -120,21 +120,7 @@
 (defn- shift-scan-point
   [shift
    scan-point]
-  (update scan-point :position (partial shift-string-number shift)))
-
-;; (defn crop-old
-;;   [xrf-scan-element-counts ;; TODO: Rewrite so it operates on 'xrf-scan'
-;;    length-mm
-;;    crop-left-mm
-;;    crop-right-mm] ;; TODO rewrite as threaded ->
-;;   (filter #(< 0
-;;               (read-string (:position %)))
-;;           (map #(shift-scan-point (- crop-left-mm)
-;;                                   %)
-;;                (filter #(>= (- length-mm
-;;                                crop-right-mm)
-;;                             (read-string (:position %)))
-;;                        xrf-scan-element-counts))))
+  (update scan-point :position-mm (partial shift-string-number shift)))
 
 (defn crop
   [snapshot
