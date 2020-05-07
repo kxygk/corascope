@@ -33,11 +33,6 @@
   (fx/sub context
           :full-width?))
 
-(defn columns
-  [context]
-  (fx/sub context
-          :columns))
-
 (defn displays
   [context]
   (fx/sub context
@@ -111,6 +106,13 @@
                            xrf-scan
                            core-number)))
 
+(defn xrf-columns
+  [context
+   core-number]
+  (:columns (fx/sub context
+                           xrf-scan
+                           core-number)))
+
 (defn xrf-last-scan-point
   [context
    core-number]
@@ -156,7 +158,7 @@
                  display-number)))
 
 ;; DERIVED
-
+;;
 ;; Other
 (defn num-cores
   [context]
@@ -180,6 +182,15 @@
           0
           (fx/sub context
                   displays)))
+
+(defn xrf-all-columns
+  [context]
+  (->> (range (fx/sub context
+                      num-cores))
+       (map #(fx/sub context
+                     xrf-columns
+                     %))
+       (reduce clojure.set/union)))
 
 ;; Lengths
 (defn optical-scan-length-mm

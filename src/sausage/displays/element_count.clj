@@ -1,5 +1,6 @@
 (ns sausage.displays.element-count
   (:require
+   [sausage.plot]
    [sausage.state :as state]
    [sausage.xrf]
    [cljfx.api :as fx]))
@@ -54,38 +55,47 @@
     {:fx/type :h-box
      :children [{:fx/type :v-box
                  :children (if xrf-scan
-                             [{:fx/type :image-view
-                               :fit-width width
-                               :fit-height height
-                               :image (sausage.plot/plot-points width
-                                                                height
-                                                                (fx/sub context
-                                                                        sausage.xrf/element-counts
-                                                                        core-number
-                                                                        selected-element
-                                                                        )
-                                                                (fx/sub context
-                                                                        state/length-mm
-                                                                        core-number)
-                                                                (fx/sub context
-                                                                        sausage.xrf/max-element-count-all-cores
-                                                                        selected-element)
-                                                                (fx/sub context
-                                                                        state/crop-left-mm
-                                                                        core-number)
-                                                                (fx/sub context
-                                                                        state/crop-right-mm
-                                                                        core-number)
-                                                                (if (fx/sub context
-                                                                            merge-seams?
-                                                                            display-number)
+                             (if (nil? (selected-element (fx/sub context
+                                                                 state/xrf-columns
+                                                                 core-number)))
+                               ;;No element counts to display for this selection on this core
+                               [{:fx/type :text
+                                 :text-alignment :center
+                                 :text (str "No ["
+                                            (name selected-element)
+                                            "] in this core")}]
+                               [{:fx/type :image-view
+                                 :fit-width width
+                                 :fit-height height
+                                 :image (sausage.plot/plot-points width
+                                                                  height
                                                                   (fx/sub context
-                                                                          state/seams
+                                                                          sausage.xrf/element-counts
+                                                                          core-number
+                                                                          selected-element
+                                                                          )
+                                                                  (fx/sub context
+                                                                          state/length-mm
                                                                           core-number)
-                                                                  [] )
-                                                                (fx/sub context
-                                                                        lines?
-                                                                        display-number))}]
+                                                                  (fx/sub context
+                                                                          sausage.xrf/max-element-count-all-cores
+                                                                          selected-element)
+                                                                  (fx/sub context
+                                                                          state/crop-left-mm
+                                                                          core-number)
+                                                                  (fx/sub context
+                                                                          state/crop-right-mm
+                                                                          core-number)
+                                                                  (if (fx/sub context
+                                                                              merge-seams?
+                                                                              display-number)
+                                                                    (fx/sub context
+                                                                            state/seams
+                                                                            core-number)
+                                                                    [] )
+                                                                  (fx/sub context
+                                                                          lines?
+                                                                          display-number))}])
                              [{:fx/type :button
                                :pref-width width
                                :pref-height height
@@ -171,7 +181,7 @@
    :children [{:fx/type periodic-buttons
                :display-number display-number
                :columns (fx/sub context
-                                state/columns)}
+                                state/xrf-all-columns)}
               {:fx/type :check-box
                :text "Merge Seams"
                :selected (fx/sub context

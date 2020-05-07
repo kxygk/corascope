@@ -27,9 +27,12 @@
   [context
    core-number
    element]
-  (if (nil? (fx/sub context
-                    state/xrf-scan
-                    core-number))
+  (if (or (nil? (fx/sub context
+                        state/xrf-scan
+                        core-number))
+          (nil? (element (fx/sub context
+                                 state/xrf-columns
+                                 core-number))))
     0.0 ;; skips cores that have no XRF-scan loaded in
     (apply max (map second
                     (fx/sub context
@@ -40,12 +43,12 @@
 (defn max-element-count-all-cores
   [context
    element]
-  (apply max (filter some? (map #(fx/sub  context
-                                          max-element-count-in-core
-                                          %
-                                          element)
-                                (range (fx/sub context
-                                               state/num-cores))))))
+  (apply max 0 (filter some? (map #(fx/sub  context
+                                            max-element-count-in-core
+                                            %
+                                            element)
+                                  (range (fx/sub context
+                                                 state/num-cores))))))
 
 (defn- load-xrf-scan-file
   [csv-file]  
@@ -84,9 +87,6 @@
       (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
             columns (:columns xrf-scan)]
         (-> snapshot
-            (fx/swap-context update :columns
-                             clojure.set/union
-                             columns)
             (fx/swap-context assoc-in [:cores
                                        core-number
                                        :xrf-scan]
