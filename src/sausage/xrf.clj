@@ -17,7 +17,7 @@
   [context
    core-number
    element]
-  (map #(vector (read-string (:position %))
+  (map #(vector (read-string (:position-mm %))
                 (read-string (element %)))
        (fx/sub context
                state/xrf-element-counts
@@ -55,8 +55,9 @@
                            (clojure.data.csv/read-csv :separator \tab))
         header (into [] (take 2 full-csv-table))
         columns (map #(-> %
-                          (clojure.string/split #" ")
-                          (first)
+                          (clojure.string/replace " " "-")
+                          (clojure.string/replace "(" "")
+                          (clojure.string/replace ")" "")
                           keyword)
                      (first (drop 2 full-csv-table)))
         count-table (drop 3 full-csv-table)
@@ -157,7 +158,7 @@
                                     state/xrf-element-counts
                                     core-number)
                             ;; filter out right pixels
-                            (filter #(<= (read-string (:position %))
+                            (filter #(<= (read-string (:position-mm %))
                                          (- length-mm
                                             crop-right-mm)))
                             ;; shift all points down by crop
@@ -165,7 +166,7 @@
                                                     %))
                             ;; filter out all below zero
                             (filter #(< 0
-                                        (read-string (:position %)))))))))
+                                        (read-string (:position-mm %)))))))))
 
 (defn- join-horizontally
   ""
