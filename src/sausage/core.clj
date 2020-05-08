@@ -350,6 +350,8 @@
     {:fx/type :stage
      :title "Sausage Scanner"
      :showing true
+     :min-height 400
+     :min-width 600
      :scene {:fx/type :scene
              :on-width-changed {:effect (fn [snapshot
                                              event]
