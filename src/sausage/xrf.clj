@@ -80,7 +80,8 @@
   (let [core-number (:core-number event)
         file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
-                   #_(.setInitialDirectory (File. "/home/")))
+                   (.setInitialDirectory (fx/sub snapshot
+                                                 state/last-used-path)))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showOpenDialog (Stage.)))]
     (if (nil? file)
@@ -88,9 +89,13 @@
       (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
             columns (:columns xrf-scan)]
         (-> snapshot
-            (fx/swap-context assoc-in [:cores
-                                       core-number
-                                       :xrf-scan]
+            (fx/swap-context assoc
+                             :last-used-path
+                             (.getParentFile file))
+            (fx/swap-context assoc-in
+                             [:cores
+                              core-number
+                              :xrf-scan]
                              xrf-scan))))))
 
 (defn- build-csv-row

@@ -43,6 +43,11 @@
   (fx/sub context
           :working-directory))
 
+(defn last-used-path
+  [context]
+  (fx/sub context
+          :last-used-path))
+
 ;; DEEPER SUBSCRIPTIONS
 
 ;; Cores
