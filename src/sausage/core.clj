@@ -162,19 +162,23 @@
                              :on-value-changed {:core-number core-number
                                                 :effect effects/update-core-start}
                              }
-                            {:fx/type :separator
-                             :orientation :horizontal}
                             {:fx/type :text
-                             :text "(mm)"}
+                             :text " (mm)"}
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
+                            {:fx/type :text
+                             :text (fx/sub context
+                                           state/core-name
+                                           core-number)}
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
                             {:fx/type :button
+                             :text "Crop"
                              :pref-width (* 0.10
                                             width)
                              :pref-height height
                              :on-action {:core-number core-number
-                                         :effect effects/crop-core}
-                             :text "Crop"}
-                            {:fx/type :pane
-                             :h-box/hgrow :always}
+                                         :effect effects/crop-core}}
                             {:fx/type :button
                              :text "X"
                              :on-action {:core-number core-number

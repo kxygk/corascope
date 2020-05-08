@@ -99,6 +99,14 @@
                      get-core
                      core-number)))
 
+
+(defn xrf-file-name
+  [context
+   core-number]
+  (:file-name (fx/sub context
+                      xrf-scan
+                      core-number)))
+
 (defn xrf-element-counts
   [context
    core-number]
@@ -160,6 +168,16 @@
 ;; DERIVED
 ;;
 ;; Other
+(defn core-name
+  [context
+   core-number]
+  (let [xrf-file-name (fx/sub context
+                              xrf-file-name
+                              core-number)]
+    (if (nil? xrf-file-name)
+      (str "Core Number: " core-number)
+      (clojure.string/replace xrf-file-name ".txt" ""))))
+
 (defn num-cores
   [context]
   (count (fx/sub context

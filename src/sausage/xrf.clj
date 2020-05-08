@@ -68,7 +68,8 @@
     (assert (= (count columns)
                (count (set columns)))
             "BAD NEWS: Your XRF scan has non-unique columns names. This isn't supported!")
-    {:header header
+    {:file-name (.getName csv-file)
+     :header header
      :columns (set columns)
      :element-counts data}))
 
