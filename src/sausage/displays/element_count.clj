@@ -178,7 +178,16 @@
   [{:keys [fx/context
            display-number]}]
   {:fx/type :v-box
-   :children [{:fx/type periodic-buttons
+   :children [{:fx/type :h-box
+               :children [{:fx/type :pane
+                           :h-box/hgrow :always}
+                          {:fx/type :text
+                           :text (str "Displaying: " (name (fx/sub context
+                                                                   selection
+                                                                   display-number)))}
+                          {:fx/type :pane
+                           :h-box/hgrow :always}]}
+              {:fx/type periodic-buttons
                :display-number display-number
                :columns (fx/sub context
                                 state/xrf-all-columns)}
