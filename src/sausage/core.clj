@@ -78,11 +78,10 @@
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
-  [{:keys [core-number
+  [{:keys [fx/context
+           core-number
            width
-           height
-           crop-left
-           crop-right]}]
+           height]}]
   {:fx/type :h-box
    :pref-height height
    :min-height height
@@ -101,7 +100,9 @@
                              width)
                :pref-height height
                :min-height height
-               :value crop-left
+               :value (fx/sub context
+                              state/crop-left
+                              core-number)
                :on-value-changed {:core-number core-number
                                   :effect (fn [snapshot
                                                event]
@@ -119,7 +120,9 @@
                :min-width (* 0.5 width)
                :pref-height height
                :min-height height
-               :value (- 1 crop-right)
+               :value (- 1 (fx/sub context
+                                   state/crop-right
+                                   core-number))
                :on-value-changed {:core-number core-number
                                   :effect (fn [snapshot
                                                event]
@@ -132,12 +135,9 @@
 
 (defn core-header
   "The options bar at the top of every core"
-  [{:keys [core-number
-           width
-           start-mm
-           mm-per-pixel
-           crop-left
-           crop-right]}]
+  [{:keys [fx/context
+           core-number
+           width]}]
   (let [height (- fixed-core-header-height
                   fixed-slider-height)]
     {:fx/type :v-box
@@ -151,10 +151,14 @@
                              :editable true
                              :pref-width 100
                              :value-factory {:fx/type :double-spinner-value-factory
-                                             :amount-to-step-by mm-per-pixel
+                                             :amount-to-step-by (fx/sub context
+                                                                        state/mm-per-pixel
+                                                                        core-number)
                                              :min 0.0
                                              :max Double/MAX_VALUE
-                                             :value start-mm}
+                                             :value (fx/sub context
+                                                            state/start-mm
+                                                            core-number)}
                              :on-value-changed {:core-number core-number
                                                 :effect effects/update-core-start}
                              }
@@ -179,9 +183,7 @@
                 {:fx/type crop-slider
                  :core-number core-number
                  :width width
-                 :height fixed-slider-height
-                 :crop-left  crop-left
-                 :crop-right crop-right}]}))
+                 :height fixed-slider-height}]}))
 
 (defn core-displays
   "The virtical stack of displays for a core:
@@ -206,20 +208,7 @@
      :children (into
                 [{:fx/type core-header
                   :core-number core-number
-                  :width width
-                  :start-mm (fx/sub context
-                                    state/start-mm
-                                    core-number)
-                  :mm-per-pixel (fx/sub context
-                                        state/mm-per-pixel
-                                        core-number)
-                  :crop-left (fx/sub context
-                                     state/crop-left
-                                     core-number)
-                  :crop-right (fx/sub context
-                                      state/crop-right
-                                      core-number)}]
-
+                  :width width}]
                 (map (fn [display-number]
                        (case (fx/sub context
                                      state/display-type
