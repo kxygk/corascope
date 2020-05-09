@@ -79,6 +79,18 @@
 ;;                      (int (Math/ceil (/ scan-end-mm         ;; 9 - (ceil 7.5)
 ;;                                         mm-per-pixel)))))))) ;; 9-8 = 1 Pixel entirely unscanned
 
+(defn sort-cores
+  [snapshot
+   _]
+  (-> snapshot
+      (fx/swap-context update
+                       :cores
+                       (fn [cores] ;; can be rewritten with no `fn` ?
+                         (->> cores
+                              (sort #(< (:start-mm %1)
+                                        (:start-mm %2)))
+                              (into []))))))
+
 (defn update-core-start
   [snapshot
    {:keys [fx/event
@@ -96,7 +108,8 @@
           (fx/swap-context assoc-in [:cores
                                      core-number
                                      :start-mm]
-                           corrected-start-mm)))
+                           corrected-start-mm)
+          (sort-cores nil)))
     (catch Exception ex
       (println "Invalid core-start input")
       snapshot)))
