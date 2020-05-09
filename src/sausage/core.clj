@@ -328,15 +328,10 @@
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [fx/context]}]
-  (let [test "hello"
-        width (fx/sub context
+  (let [width (fx/sub context
                       state/width)
         full-width? (fx/sub context
                             state/full-width?)
-        cores (fx/sub context
-                      state/cores)
-        displays (fx/sub context
-                         state/displays)
         horizontal-zoom-factor (if full-width?
                                  1
                                  (/ (- width
@@ -374,12 +369,19 @@
                                             :vbar-policy :never
                                             :pref-viewport-width (- width fixed-margin-width)
                                             :content {:fx/type :pane
-                                                      :children (map-indexed (fn [index core]
-                                                                               {:fx/type core-displays
-                                                                                :core-number index
-                                                                                :horizontal-zoom-factor horizontal-zoom-factor
-                                                                                :height core-displays-height})
-                                                                             cores)}}
+                                                      :children (->> (fx/sub context
+                                                                            state/num-cores)
+                                                                    range
+                                                                    (map (fn [core-index]
+                                                                           {:fx/type core-displays
+                                                                            :fx/key (fx/sub context
+                                                                                            state/creation-time
+                                                                                            core-index)
+                                                                            :core-number core-index
+                                                                            :horizontal-zoom-factor horizontal-zoom-factor
+                                                                            :height core-displays-height}))
+                                                                    (into []))
+                                                                         }}
                                            ]}]}}}))
 
 (defn event-handler-wrapper

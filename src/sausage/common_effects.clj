@@ -126,6 +126,7 @@
                          [:cores
                           num-cores]
                          {:start-mm start-mm
+                          :creation-time (System/currentTimeMillis)
                           :optical nil
                           :xrf-scan nil
                           :crop-left 0

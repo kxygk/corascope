@@ -64,6 +64,14 @@
                      get-core
                      core-number)))
 
+(defn creation-time
+  "The core's creation time (in milliseconds since the epoch)"
+  [context
+   core-number]
+  (:creation-time (fx/sub context
+                          get-core
+                          core-number)))
+
 ;; Optical
 
 (defn mm-per-pixel
