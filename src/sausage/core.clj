@@ -232,8 +232,8 @@
   "Each Display's header
   With common things like: Name, Button to close the display, etc.
   This is non display-specific"
-  [{:keys [display-number
-           display-name]}]
+  [{:keys [fx/context
+           display-number]}]
   {:fx/type :v-box
    :alignment :center-left
    :style "-fx-background-color: #d3d3d3;"
@@ -245,7 +245,9 @@
                            :style "-fx-background-color: #a9a9a9;"
                            :orientation :vertical}
                           {:fx/type :text
-                           :text display-name}
+                           :text (name (fx/sub context
+                                               state/display-type
+                                               display-number))}
                           {:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :pane
@@ -302,23 +304,27 @@
    :children [{:fx/type add-display-options}
               {:fx/type :v-box
                :children (->> (fx/sub context
-                                      state/displays)
-                              (map-indexed (fn [display-number
-                                                display]
-                                             {:fx/type :v-box
-                                              :pref-height (:height display);; height
-                                              :min-height (:height display) ;;height
-                                              :max-height (:height display) ;;height
-                                              :children [{:fx/type display-options-header
-                                                          :display-number display-number
-                                                          :display-name (name (:type display))}
-                                                         (case (:type display)
-                                                           :overhead {:fx/type sausage.displays.overhead/options
-                                                                      :display-number display-number}
-                                                           :element-count {:fx/type sausage.displays.element-count/options
-                                                                           :display-number display-number})]}))
-                              flatten)}
-              ]})
+                                      state/num-displays)
+                              range
+                              (map (fn [display-number]
+                                     (let [display-height (fx/sub context
+                                                                  state/display-height
+                                                                  display-number)]
+                                       {:fx/type :v-box
+                                        :pref-height display-height
+                                        :min-height display-height
+                                        :max-height display-height
+                                        :children [{:fx/type display-options-header
+                                                    :display-number display-number}
+                                                   (case (fx/sub context
+                                                                 state/display-type
+                                                                 display-number)
+                                                     :overhead {:fx/type sausage.displays.overhead/options
+                                                                :display-number display-number}
+                                                     :element-count {:fx/type sausage.displays.element-count/options
+                                                                     :display-number display-number})]})))
+                                   flatten)}
+               ]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
