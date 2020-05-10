@@ -282,6 +282,9 @@
   By contrast, displays are removed by the `X` button in their headers"
   [_]
   {:fx/type :h-box
+   :pref-height fixed-core-header-height
+   :min-height fixed-core-header-height
+   :max-height fixed-core-header-height
    :children [{:fx/type :button
                :pref-height Double/MAX_VALUE
                :on-action {:display-type :overhead
