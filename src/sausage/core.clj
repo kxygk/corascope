@@ -280,9 +280,6 @@
   By contrast, displays are removed by the `X` button in their headers"
   [_]
   {:fx/type :h-box
-   :pref-height fixed-core-header-height
-   :min-height fixed-core-header-height
-   :max-height fixed-core-header-height
    :children [{:fx/type :button
                :pref-height Double/MAX_VALUE
                :on-action {:display-type :overhead
@@ -297,9 +294,7 @@
 (defn margin
   "The right margin with global and display specific options"
   [{:keys [fx/context
-           width
-           height
-           ]}]
+           width]}]
   {:fx/type :v-box
    :pref-width width
    :min-width width
@@ -362,8 +357,7 @@
                                {:fx/type :h-box
                                 :children [
                                            {:fx/type margin
-                                            :width fixed-margin-width
-                                            :height core-displays-height}
+                                            :width fixed-margin-width}
                                            {:fx/type :scroll-pane
                                             :hbar-policy :never
                                             :vbar-policy :never
