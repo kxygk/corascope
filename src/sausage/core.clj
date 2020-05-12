@@ -368,9 +368,9 @@
            :on-width-changed {:effect (fn [snapshot
                                            event]
                                         (fx/swap-context snapshot assoc :width (:fx/event event)))}
-           ;; :on-height-changed {:effect (fn [snapshot
-           ;;                                  event]
-           ;;                               (fx/swap-context snapshot assoc :height (:fx/event event)))}
+           :on-height-changed {:effect (fn [snapshot
+                                            event]
+                                         (fx/swap-context snapshot assoc :height (:fx/event event)))}
            :on-scroll {:effect (fn [snapshot
                                     event]
                                  (let [delta-y (.getDeltaY (:fx/event event))]
@@ -406,6 +406,10 @@
                                           :pref-viewport-width (- (fx/sub context
                                                                           state/width)
                                                                   fixed-margin-width)
+                                          :min-viewport-height (- (fx/sub context
+                                                                          :height)
+                                                                  fixed-core-header-height)
+                                          :pannable true
                                           :content {:fx/type :pane
                                                     :children (->> (fx/sub context
                                                                            state/num-cores)
