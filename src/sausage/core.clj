@@ -46,7 +46,6 @@
                            :pref-column-count 999
                            :text working-directory}]}
               {:fx/type :h-box
-               :pref-width fixed-margin-width
                :alignment :center-right
                :children [{:fx/type :button
                            :max-height Double/MAX_VALUE
@@ -67,14 +66,35 @@
                            :max-height Double/MAX_VALUE
                            :on-action {:effect effects/add-core}
                            :text "Add Core to End"}
-                          {:fx/type :check-box
+                          {:fx/type :pane
+                           :h-box/hgrow :always}
+                          {:fx/type :button
                            :text "Full Width"
-                           :on-selected-changed {:effect (fn [snapshot
-                                                              event]
-                                                           (-> snapshot
-                                                               (fx/swap-context assoc
-                                                                                :full-width?
-                                                                                (:fx/event event))))}}]}]})
+                           :max-height Double/MAX_VALUE
+                           :on-action
+                           {:effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context assoc
+                                                           :zoom
+                                                           1.0)))}}
+                          {:fx/type :button
+                           :text "Fit to Screen"
+                           :max-height Double/MAX_VALUE
+                           :on-action
+                           {:effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context assoc
+                                                           :zoom
+                                                           (/ (- (fx/sub snapshot
+                                                                         state/width)
+                                                                 fixed-margin-width)
+                                                              (* (fx/sub snapshot
+                                                                         state/end-of-all-scans-mm)
+                                                                 (fx/sub snapshot
+                                                                         state/pixels-per-mm
+                                                                         0))))))}}]}]})
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"
@@ -198,17 +218,23 @@
            core-number]}]
   (let [width (* horizontal-zoom-factor
                  (fx/sub context
+                         state/pixels-per-mm
+                         core-number)
+                 (fx/sub context
                          state/length-mm
-                         core-number))] ;; TODO: Convert to pixels
+                         core-number))]
     {:fx/type :v-box
      :layout-x (* horizontal-zoom-factor
                   (fx/sub context
+                          state/pixels-per-mm
+                          core-number)
+                  (fx/sub context
                           state/start-mm
-                          core-number))  ;; TODO: Convert to pixels
+                          core-number))
      :layout-y (* height
                   (fx/sub context
                           state/core-row
-                          core-number))  ;; TODO: Convert to pixels
+                          core-number))
      :children (into
                 [{:fx/type core-header
                   :core-number core-number
@@ -332,60 +358,72 @@
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [fx/context]}]
-  (let [width (fx/sub context
-                      state/width)
-        full-width? (fx/sub context
-                            state/full-width?)
-        horizontal-zoom-factor (if full-width?
-                                 1
-                                 (/ (- width
-                                       fixed-margin-width)
-                                    (fx/sub context
-                                            state/end-of-all-scans-mm)))
-        core-displays-height (+ (fx/sub context
-                                       state/displays-total-height)
-                               fixed-core-header-height
-                               fixed-slider-height)]
-    {:fx/type :stage
-     :title "Sausage Scanner"
-     :showing true
-     :min-height 400
-     :min-width 600
-     :scene {:fx/type :scene
-             :on-width-changed {:effect (fn [snapshot
-                                             event]
-                                          (fx/swap-context snapshot assoc :width (:fx/event event)))}
-             :on-height-changed {:effect (fn [snapshot
-                                              event]
-                                           (fx/swap-context snapshot assoc :height (:fx/event event)))}
-             :root {:fx/type :v-box
-                    :children [{:fx/type workspace-settings-display
-                                :working-directory (fx/sub context
-                                                           state/working-directory)
-                                :height fixed-workspace-settings-height}
-                               {:fx/type :h-box
-                                :children [
-                                           {:fx/type margin
-                                            :width fixed-margin-width}
-                                           {:fx/type :scroll-pane
-                                            :hbar-policy :never
-                                            :vbar-policy :never
-                                            :pref-viewport-width (- width fixed-margin-width)
-                                            :content {:fx/type :pane
-                                                      :children (->> (fx/sub context
-                                                                            state/num-cores)
-                                                                    range
-                                                                    (map (fn [core-index]
-                                                                           {:fx/type core-displays
-                                                                            :fx/key (fx/sub context
-                                                                                            state/creation-time
-                                                                                            core-index)
-                                                                            :core-number core-index
-                                                                            :horizontal-zoom-factor horizontal-zoom-factor
-                                                                            :height core-displays-height}))
-                                                                    (into []))
-                                                                         }}
-                                           ]}]}}}))
+  {:fx/type :stage
+   :title "Sausage Scanner"
+   :showing true
+   :min-height 400
+   :min-width (+ fixed-margin-width
+                 100)
+   :scene {:fx/type :scene
+           :on-width-changed {:effect (fn [snapshot
+                                           event]
+                                        (fx/swap-context snapshot assoc :width (:fx/event event)))}
+           ;; :on-height-changed {:effect (fn [snapshot
+           ;;                                  event]
+           ;;                               (fx/swap-context snapshot assoc :height (:fx/event event)))}
+           :on-scroll {:effect (fn [snapshot
+                                    event]
+                                 (let [delta-y (.getDeltaY (:fx/event event))]
+                                   (if (zero? delta-y)
+                                     snapshot
+                                     (if (pos? delta-y) ;; Maybe there is some simpler way to do this..?
+                                       (fx/swap-context snapshot
+                                                        update
+                                                        :zoom
+                                                        #( * %
+                                                          (+ 1
+                                                             (/ (Math/log delta-y)
+                                                                40))))
+                                       (fx/swap-context snapshot
+                                                        update
+                                                        :zoom
+                                                        #( / %
+                                                          (+ 1
+                                                             (/ (Math/log (Math/abs delta-y))
+                                                                40))))))))}
+           :root {:fx/type :v-box
+                  :children [{:fx/type workspace-settings-display
+                              :working-directory (fx/sub context
+                                                         state/working-directory)
+                              :height fixed-workspace-settings-height}
+                             {:fx/type :h-box
+                              :children [
+                                         {:fx/type margin
+                                          :width fixed-margin-width}
+                                         {:fx/type :scroll-pane
+                                          :hbar-policy :always
+                                          :vbar-policy :always
+                                          :pref-viewport-width (- (fx/sub context
+                                                                          state/width)
+                                                                  fixed-margin-width)
+                                          :content {:fx/type :pane
+                                                    :children (->> (fx/sub context
+                                                                           state/num-cores)
+                                                                   range
+                                                                   (map (fn [core-index]
+                                                                          {:fx/type core-displays
+                                                                           :fx/key (fx/sub context
+                                                                                           state/creation-time
+                                                                                           core-index)
+                                                                           :core-number core-index
+                                                                           :horizontal-zoom-factor (fx/sub context
+                                                                                                           state/zoom)
+                                                                           :height (+ (fx/sub context
+                                                                                              state/displays-total-height)
+                                                                                      fixed-core-header-height)}))
+                                                                   (into []))
+                                                    }}
+                                         ]}]}}})
 
 (defn event-handler-wrapper
   [{:keys [snapshot

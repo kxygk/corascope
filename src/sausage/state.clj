@@ -6,9 +6,9 @@
 (def *context
   ""
   (atom (fx/create-context {:working-directory ""
-                            :width 400
-                            :full-width? false
-                            :height 400
+                            :width 1000
+                            :height 600
+                            :zoom 1.0
                             :mm-per-pixel 0.5 ;; Common parameter across all cores
                             :mm-xrf-step-size 5 ;; Common parameter across all cores
                             :cores []
@@ -28,11 +28,6 @@
    (fx/sub context
            :width))
 
-(defn full-width?
-  [context]
-  (fx/sub context
-          :full-width?))
-
 (defn displays
   [context]
   (fx/sub context
@@ -47,6 +42,11 @@
   [context]
   (fx/sub context
           :last-used-path))
+
+(defn zoom
+  [context]
+  (fx/sub context
+          :zoom))
 
 ;; DEEPER SUBSCRIPTIONS
 
@@ -224,6 +224,17 @@
        (reduce clojure.set/union)))
 
 ;; Lengths
+(defn pixels-per-mm
+  "Get the mm-per-pixel of the optical scan
+  NOTE: Right now this is one global value across all scans
+  It may be relatively easy to update this later to be a per-core-value. TBD.."
+  [context
+   core-number] ;; Unused - currently a global value
+  (/ 1
+     (fx/sub context
+             mm-per-pixel
+             core-number)))
+
 (defn optical-scan-length-mm
   [context
    core-number]
