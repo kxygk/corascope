@@ -120,13 +120,6 @@
                       xrf-scan
                       core-number)))
 
-(defn xrf-element-counts
-  [context
-   core-number]
-  (:element-counts (fx/sub context
-                           xrf-scan
-                           core-number)))
-
 (defn xrf-header
   [context
    core-number]
@@ -138,6 +131,13 @@
   [context
    core-number]
   (:columns (fx/sub context
+                    xrf-scan
+                    core-number)))
+
+(defn xrf-element-counts
+  [context
+   core-number]
+  (:element-counts (fx/sub context
                            xrf-scan
                            core-number)))
 
