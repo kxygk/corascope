@@ -90,6 +90,8 @@
                                            state/unscanned-right-pix
                                            core-number))]
         {:fx/type :group
+         :on-mouse-clicked {:core-number core-number
+                            :effect sausage.optical/save-data}
          :children [{:fx/type :pane
                      :children (filter identity
                                        [{:fx/type :image-view

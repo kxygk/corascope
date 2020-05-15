@@ -163,13 +163,19 @@
                              optical-image)
             #_(fx/swap-context update-display-image
                                core-number))))))
-(defn save-fx-image
+(defn save-data
   ""
-  [directory
-   fx-image
-   name]
-  (ImageIO/write (SwingFXUtils/fromFXImage fx-image
-                                           nil)
-                 "tiff"
-                 (File. (str directory
-                             "/" name))))
+  [snapshot
+   {:keys [core-number]}]
+  ;; Side Effect
+  (boofcv.io.image.UtilImageIO/saveImage (fx/sub snapshot
+                                                 state/optical-image
+                                                 core-number)
+                                         (str (str (java.time.LocalDate/now))
+                                              "--"
+                                              (fx/sub snapshot
+                                                      state/core-name
+                                                      core-number)
+                                              ".tif"))
+  ;; return state unchanged
+  snapshot)
