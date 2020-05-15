@@ -53,11 +53,13 @@
                                  display-number)
         ]
     {:fx/type :h-box
+     :on-mouse-clicked {:core-number core-number
+                        :effect sausage.xrf/save-data}
      :children [{:fx/type :v-box
                  :children (if xrf-scan
-                             (if (nil? (selected-element (fx/sub context
-                                                                 state/xrf-columns
-                                                                 core-number)))
+                             (if (nil? (selected-element (set (fx/sub context
+                                                                      state/xrf-columns
+                                                                      core-number))))
                                ;;No element counts to display for this selection on this core
                                [{:fx/type :text
                                  :text-alignment :center
@@ -146,7 +148,7 @@
                                                            :pref-width 25
                                                            :grid-pane/column group
                                                            :grid-pane/row valence-electrons
-                                                           :disable (not (contains? columns element))
+                                                           :disable (not (contains? (set columns) element))
                                                            :on-action {:display-number display-number
                                                                        :element element
                                                                        :effect update-selected-element}

@@ -127,6 +127,13 @@
                            xrf-scan
                            core-number)))
 
+(defn xrf-header
+  [context
+   core-number]
+  (:header (fx/sub context
+                   xrf-scan
+                   core-number)))
+
 (defn xrf-columns
   [context
    core-number]

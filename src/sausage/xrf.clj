@@ -30,9 +30,9 @@
   (if (or (nil? (fx/sub context
                         state/xrf-scan
                         core-number))
-          (nil? (element (fx/sub context
+          (nil? (element (set (fx/sub context
                                  state/xrf-columns
-                                 core-number))))
+                                 core-number)))))
     0.0 ;; skips cores that have no XRF-scan loaded in
     (apply max (map second
                     (fx/sub context
@@ -70,7 +70,7 @@
             "BAD NEWS: Your XRF scan has non-unique columns names. This isn't supported!")
     {:file-name (.getName csv-file)
      :header header
-     :columns (set columns)
+     :columns (into [] columns)
      :element-counts data}))
 
 (defn load-data
@@ -98,24 +98,46 @@
                               :xrf-scan]
                              xrf-scan))))))
 
-(defn- build-csv-row
+(defn build-csv-row
   "take one measurement data and shove it into a vector or string - for CSV exports"
   [columns
    measurement-data]
   (into [] (map #(% measurement-data) columns)))
 
-(defn- save-xrf-scan
+(defn save-data
   ""
-  [directory
-   xrf-scan
-   file-name]
-  (let [header (:header xrf-scan)
-        columns (:columns xrf-scan)
-        data (:element-counts xrf-scan)]
-    (clojure.data.csv/write-csv (clojure.java.io/writer (str directory "/" file-name))
-                                (into (merge header (into [] (map name columns)))
-                                      (into [] (map #(build-csv-row columns %) data)))
-                                :separator \tab)))
+  [snapshot
+   {:keys [core-number]}]
+  (println "Saving XRF Data")
+  ;; Side Effect
+  (let [header (fx/sub snapshot
+                       state/xrf-header
+                       core-number)
+        columns (fx/sub snapshot
+                        state/xrf-columns
+                        core-number)
+        element-counts-csv (->> (fx/sub snapshot
+                                        state/xrf-element-counts
+                                        core-number)
+                                (map #(build-csv-row columns %))
+                                (into []))
+        columns-csv (->> columns
+                         (map name)
+                         (into []))]
+    (with-open [csv-writer (clojure.java.io/writer (str (str (java.time.LocalDate/now))
+                                                        "--"
+                                                        (fx/sub snapshot
+                                                                state/core-name
+                                                                core-number)
+                                                        ".txt"))]
+      (clojure.data.csv/write-csv csv-writer
+                                  (concat []
+                                          header
+                                          [columns-csv]
+                                          element-counts-csv)
+                                  :separator \tab)))
+    ;; return state unchanged
+    snapshot)
 
 (defn- shift-string-number ;; TODO Make this unnecessary..
   [shift
