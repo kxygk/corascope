@@ -251,3 +251,15 @@
                         {:into-core-number 0
                          :from-core-number 1})
            nil)))
+
+(defn update-display-height
+  [snapshot
+   {:keys [fx/event
+           display-number
+           display-height]}]
+  (-> snapshot
+      (fx/swap-context assoc-in
+                       [:displays
+                        display-number
+                        :height]
+                       display-height)))

@@ -1,11 +1,12 @@
 (ns sausage.displays.element-count
   (:require
    [sausage.plot]
+   [sausage.common-effects :as effects]
    [sausage.state :as state]
    [sausage.xrf]
    [cljfx.api :as fx]))
 
-(def fixed-height 310.0)
+(def fixed-height 360.0)
 
 (defn create
   []
@@ -176,6 +177,38 @@
                           non-elements)
              [] ))}))
 
+(defn- column-list
+  "Periodic table as a grid of buttons
+  Excess  columns in the xrf-scan file are then appended at the end"
+  [{:keys [fx/context
+           display-number]}]
+  {:fx/type :choice-box
+   :items (map name (fx/sub context
+                            state/xrf-all-columns))
+   :value (name (fx/sub context
+                        selection
+                        display-number))
+   :on-value-changed {:display-number display-number
+                      :effect (fn [snapshot
+                                   event]
+                                (update-selected-element snapshot
+                                                         (assoc event
+                                                                :element
+                                                                (keyword (:fx/event event)))))}})
+
+(defn- toggle-height
+  [snapshot
+   event]
+  (if (:fx/event event)
+    (effects/update-display-height snapshot
+                                   (assoc event
+                                          :display-height
+                                          133.0)) ; vertical size of optical
+    (effects/update-display-height snapshot
+                                   (assoc event
+                                          :display-height
+                                          fixed-height))))
+
 (defn options
   [{:keys [fx/context
            display-number]}]
@@ -184,40 +217,57 @@
                :children [{:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :text
-                           :text (str "Displaying: " (name (fx/sub context
-                                                                   selection
-                                                                   display-number)))}
+                           :text (str "Displaying: "
+                                      (name (fx/sub context
+                                                    selection
+                                                    display-number)))}
                           {:fx/type :pane
-                           :h-box/hgrow :always}]}
-              {:fx/type periodic-buttons
-               :display-number display-number
-               :columns (fx/sub context
-                                state/xrf-all-columns)}
-              {:fx/type :check-box
-               :text "Merge Seams"
-               :selected (fx/sub context
-                                 merge-seams?
-                                 display-number)
-               :on-selected-changed
-               {:display-number display-number
-                :effect (fn [snapshot
-                             event]
-                          (-> snapshot
-                              (fx/swap-context assoc-in [:displays
-                                                         (:display-number event)
-                                                         :merge-seams?]
-                                               (:fx/event event))))}}
-              {:fx/type :check-box
-               :text "Lines"
-               :selected (fx/sub context
-                                 lines?
-                                 display-number)
-               :on-selected-changed
-               {:display-number display-number
-                :effect (fn [snapshot
-                             event]
-                          (-> snapshot
-                              (fx/swap-context assoc-in [:displays
-                                                         (:display-number event)
-                                                         :lines?]
-                                               (:fx/event event))))}}]})
+                           :h-box/hgrow :always}
+                          {:fx/type :toggle-button
+                           :text "Compact"
+                           :selected (fx/sub context
+                                             lines?
+                                             display-number)
+                           :on-selected-changed {:display-number display-number
+                                                 :effect toggle-height}}]}
+              (if (<= fixed-height
+                     (fx/sub context
+                             state/display-height
+                             display-number))
+                {:fx/type periodic-buttons
+                 :display-number display-number
+                 :columns (fx/sub context
+                                  state/xrf-all-columns)}
+                {:fx/type column-list
+                 :display-number display-number})
+              {:fx/type :h-box
+               :children [{:fx/type :pane
+                           :h-box/hgrow :always}
+                          {:fx/type :toggle-button
+                           :text "Merge Seams"
+                           :selected (fx/sub context
+                                             merge-seams?
+                                             display-number)
+                           :on-selected-changed
+                           {:display-number display-number
+                            :effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context assoc-in [:displays
+                                                                     (:display-number event)
+                                                                     :merge-seams?]
+                                                           (:fx/event event))))}}
+                          {:fx/type :toggle-button
+                           :text "Lines"
+                           :selected (fx/sub context
+                                             lines?
+                                             display-number)
+                           :on-selected-changed
+                           {:display-number display-number
+                            :effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context assoc-in [:displays
+                                                                     (:display-number event)
+                                                                     :lines?]
+                                                           (:fx/event event))))}}]}]})
