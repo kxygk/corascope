@@ -236,9 +236,10 @@
                            :h-box/hgrow :always}
                           {:fx/type :toggle-button
                            :text "Compact"
-                           :selected (fx/sub context
-                                             lines?
-                                             display-number)
+                           :selected (not= fixed-height
+                                        (fx/sub context
+                                                state/display-height
+                                                display-number))
                            :on-selected-changed {:display-number display-number
                                                  :effect toggle-height}}]}
               (if (<= fixed-height
