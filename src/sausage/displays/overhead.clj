@@ -66,6 +66,7 @@
        :children [{:fx/type :button
                    :pref-width width
                    :pref-height height
+                   :alignment :center-left
                    :on-action {:core-number core-number
                                :effect sausage.optical/load-data}
                    :text "Load image"}]}

@@ -102,6 +102,7 @@
                              [{:fx/type :button
                                :pref-width width
                                :pref-height height
+                               :alignment :center-left
                                :on-action {:core-number core-number
                                            :effect sausage.xrf/load-data}
                                :text "Load XRF Scan"}])}]}))
