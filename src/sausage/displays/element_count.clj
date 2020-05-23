@@ -132,10 +132,15 @@
 (defn- periodic-buttons
   "Periodic table as a grid of buttons
   Excess  columns in the xrf-scan file are then appended at the end"
-  [{:keys [columns
+  [{:keys [fx/context
            display-number]}]
-  (let [non-elements (clojure.set/difference  (set columns)
-                                              (set (flatten periodic-table)))]
+  (let [xrf-columns (fx/sub context
+                             state/xrf-all-columns)
+        non-elements (clojure.set/difference  (set xrf-columns)
+                                              (set (flatten periodic-table)))
+        current-selection (fx/sub context
+                                  selection
+                                  display-number)]
     {:fx/type :grid-pane
      :children
      (into (filter some?
@@ -143,14 +148,17 @@
                           (map-indexed (fn [valence-electrons period]
                                          (map-indexed (fn [group element]
                                                         (if (some? element)
-                                                          {:fx/type :button
+                                                          {:fx/type :toggle-button
                                                            :padding 2.0
                                                            :min-width 25
                                                            :max-height 25
                                                            :pref-width 25
+                                                           :selected (= element
+                                                                        current-selection)
                                                            :grid-pane/column group
                                                            :grid-pane/row valence-electrons
-                                                           :disable (not (contains? (set columns) element))
+                                                           :disable (not (contains? (set xrf-columns)
+                                                                                    element))
                                                            :on-action {:display-number display-number
                                                                        :element element
                                                                        :effect update-selected-element}
@@ -161,9 +169,11 @@
            (if (some? non-elements)
              (map-indexed (fn [row-after-table non-element]
                             (let [columns 6]
-                              {:fx/type :button
+                              {:fx/type :toggle-button
                                :grid-pane/column-span (/ (count (first periodic-table))
                                                          columns)
+                               :selected (= non-element
+                                            current-selection)
                                :max-height 25
                                :max-width Double/MAX_VALUE
                                :grid-pane/column (* (int (mod row-after-table columns))
@@ -236,9 +246,7 @@
                              state/display-height
                              display-number))
                 {:fx/type periodic-buttons
-                 :display-number display-number
-                 :columns (fx/sub context
-                                  state/xrf-all-columns)}
+                 :display-number display-number}
                 {:fx/type column-list
                  :display-number display-number})
               {:fx/type :h-box
