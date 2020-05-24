@@ -267,17 +267,18 @@
                                                                      (:display-number event)
                                                                      :merge-seams?]
                                                            (:fx/event event))))}}
-                          {:fx/type :toggle-button
-                           :text "Lines"
-                           :selected (fx/sub context
+                          {:fx/type :button
+                           :text (if (fx/sub context
                                              lines?
                                              display-number)
-                           :on-selected-changed
+                                   "Lines "
+                                   "Points")
+                           :on-action
                            {:display-number display-number
                             :effect (fn [snapshot
                                          event]
                                       (-> snapshot
-                                          (fx/swap-context assoc-in [:displays
+                                          (fx/swap-context update-in [:displays
                                                                      (:display-number event)
                                                                      :lines?]
-                                                           (:fx/event event))))}}]}]})
+                                                           not)))}}]}]})
