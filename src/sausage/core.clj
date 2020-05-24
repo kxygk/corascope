@@ -161,15 +161,35 @@
   (let [height (- fixed-core-header-height
                   fixed-slider-height)]
     {:fx/type :v-box
+     :style "-fx-background-color: #d3d3d3;"
+     :max-width width
      :children [{:fx/type :h-box
-                 :style "-fx-background-color: #d3d3d3;"
+                 :pref-height height
+                 :min-height height
+                 :max-height height
+                 :alignment :center-left
+                 :children [
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
+                            {:fx/type :label
+                             :ellipsis-string ".."
+                             :text (fx/sub context
+                                           state/core-name
+                                           core-number)}
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
+                            {:fx/type :button
+                             :text "X"
+                             :on-action {:core-number core-number
+                                         :effect effects/remove-core}}]}
+                {:fx/type :h-box
                  :pref-height height
                  :min-height height
                  :max-height height
                  :alignment :center-left
                  :children [{:fx/type :spinner
                              :editable true
-                             :pref-width 100
+                             :pref-width 90
                              :value-factory {:fx/type :double-spinner-value-factory
                                              :amount-to-step-by (fx/sub context
                                                                         state/mm-per-pixel
@@ -180,16 +200,7 @@
                                                             state/start-mm
                                                             core-number)}
                              :on-value-changed {:core-number core-number
-                                                :effect effects/update-core-start}
-                             }
-                            {:fx/type :text
-                             :text " (mm)"}
-                            {:fx/type :pane
-                             :h-box/hgrow :always}
-                            {:fx/type :text
-                             :text (fx/sub context
-                                           state/core-name
-                                           core-number)}
+                                                :effect effects/update-core-start}}
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :button
@@ -199,11 +210,15 @@
                              :pref-height height
                              :on-action {:core-number core-number
                                          :effect effects/crop-core}}
-                            {:fx/type :button
-                             :text "X"
-                             :on-action {:core-number core-number
-                                         :effect effects/remove-core}}
-                            ]}
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
+                            {:fx/type :text-field
+                             :disable true
+                             :pref-width 90
+                             :text (str (fx/sub context
+                                                state/end-mm
+                                                core-number))
+                             }]}
                 {:fx/type crop-slider
                  :core-number core-number
                  :width width
