@@ -121,7 +121,7 @@
                :pref-height height
                :min-height height
                :value (fx/sub context
-                              state/crop-left
+                              state/crop-slider-left
                               core-number)
                :on-value-changed {:core-number core-number
                                   :effect (fn [snapshot
@@ -129,7 +129,7 @@
                                             (-> snapshot
                                                 (fx/swap-context assoc-in [:cores
                                                                            (:core-number event)
-                                                                           :crop-left]
+                                                                           :crop-slider-left]
                                                                  (:fx/event event))))}}
               {:fx/type :slider
                :max 1.0
@@ -141,7 +141,7 @@
                :pref-height height
                :min-height height
                :value (- 1 (fx/sub context
-                                   state/crop-right
+                                   state/crop-slider-right
                                    core-number))
                :on-value-changed {:core-number core-number
                                   :effect (fn [snapshot
@@ -149,7 +149,7 @@
                                             (-> snapshot
                                                 (fx/swap-context assoc-in [:cores
                                                                            (:core-number event)
-                                                                           :crop-right]
+                                                                           :crop-slider-right]
                                                                  (- 1
                                                                     (:fx/event event)))))}}]})
 

@@ -129,8 +129,8 @@
                           :creation-time (System/currentTimeMillis)
                           :optical nil
                           :xrf-scan nil
-                          :crop-left 0
-                          :crop-right 0
+                          :crop-slider-left 0
+                          :crop-slider-right 0
                           :seams []}))))
 
 (defn remove-core
@@ -165,53 +165,37 @@
   ;; Crop values need to be precalculated
   ;; Once you crop the XRF then the subscriptions in the optical crop will recalculate
   ;; It won't give the desired effect
-  (let [crop-left-mm (max (fx/sub snapshot
-                                  state/crop-left-mm
-                                  core-number)
-                          (fx/sub snapshot
-                                  state/unscanned-left-mm
-                                  core-number))
-        crop-right-mm (max (fx/sub snapshot
-                                   state/crop-right-mm
-                                   core-number)
-                           (fx/sub snapshot
-                                   state/unscanned-right-mm
-                                   core-number))
-        crop-left-pix (max (fx/sub snapshot
-                                   state/crop-left-pix
-                                   core-number)
-                           (fx/sub snapshot
-                                   state/unscanned-left-pix
-                                   core-number))
-        crop-right-pix (max (fx/sub snapshot
-                                    state/crop-right-pix
-                                    core-number)
-                            (fx/sub snapshot
-                                    state/unscanned-right-pix
-                                    core-number))]
-    (-> snapshot
-        (sausage.xrf/crop {:core-number core-number
-                           :crop-left-mm crop-left-mm
-                           :crop-right-mm crop-right-mm})
-        (sausage.optical/crop {:core-number core-number
-                               :crop-left-pix crop-left-pix
-                               :crop-right-pix crop-right-pix})
-        (fx/swap-context update
-                         :seams
-                         #(map (partial + (- (fx/sub snapshot
-                                                     state/crop-left-mm
-                                                     core-number)))
-                               %))
-        (fx/swap-context assoc-in
-                         [:cores
-                          core-number
-                          :crop-left]
-                         0.0)
-        (fx/swap-context assoc-in
-                         [:cores
-                          core-number
-                          :crop-right]
-                         0.0))))
+  (-> snapshot
+      (sausage.xrf/crop {:core-number core-number
+                         :crop-left-mm (fx/sub snapshot
+                                               state/crop-left-mm
+                                               core-number)
+                         :crop-right-mm  (fx/sub snapshot
+                                                 state/crop-right-mm
+                                                 core-number)})
+      (sausage.optical/crop {:core-number core-number
+                             :crop-left-pix (fx/sub snapshot
+                                                    state/crop-left-pix
+                                                    core-number)
+                             :crop-right-pix (fx/sub snapshot
+                                                     state/crop-right-pix
+                                                     core-number)})
+      (fx/swap-context update
+                       :seams
+                       #(map (partial + (- (fx/sub snapshot
+                                                   state/crop-left-mm
+                                                   core-number)))
+                             %))
+      (fx/swap-context assoc-in
+                       [:cores
+                        core-number
+                        :crop-slider-left]
+                       0.0)
+      (fx/swap-context assoc-in
+                       [:cores
+                        core-number
+                        :crop-slider-right]
+                       0.0)))
 
 
 
