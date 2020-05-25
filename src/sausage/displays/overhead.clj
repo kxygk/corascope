@@ -60,7 +60,7 @@
                        state/display-height
                        display-number)]
     (if (nil? (fx/sub context
-                      state/optical-scan
+                      state/optical-image
                       core-number))
       {:fx/type :v-box
        :children [{:fx/type :button

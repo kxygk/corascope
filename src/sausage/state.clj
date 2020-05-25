@@ -270,7 +270,7 @@
   [context
    core-number]
   (if (some? (fx/sub context
-                     optical-scan
+                     optical-image
                      core-number))
     (fx/sub context
             optical-scan-length-mm
