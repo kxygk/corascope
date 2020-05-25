@@ -34,7 +34,7 @@
                                  state/xrf-columns
                                  core-number)))))
     0.0 ;; skips cores that have no XRF-scan loaded in
-    (apply max (map second
+    (apply max (mapv second
                     (fx/sub context
                             element-counts
                             core-number
