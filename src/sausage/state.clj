@@ -198,12 +198,37 @@
 (defn core-name
   [context
    core-number]
-  (let [xrf-file-name (fx/sub context
-                              xrf-file-name
-                              core-number)]
-    (if (nil? xrf-file-name)
-      (str "Core Number: " core-number)
-      (clojure.string/replace xrf-file-name ".txt" ""))))
+  (if (nil? (fx/sub context
+                    xrf-scan
+                    core-number))
+    (str "Core Number: " core-number)
+    (let [xrf-file-name-first-point (-> (fx/sub context
+                                                xrf-first-scan-point
+                                                core-number)
+                                        :pre-merge-file-source
+                                        (clojure.string/replace ".txt" ""))
+          xrf-file-name-last-point (-> (fx/sub context
+                                               xrf-last-scan-point
+                                               core-number)
+                                       :pre-merge-file-source
+                                       (clojure.string/replace  ".txt" ""))]
+      (if (= xrf-file-name-first-point
+             xrf-file-name-last-point)
+        xrf-file-name-first-point
+        (str "From: -"
+             xrf-file-name-first-point
+             "- To: -"
+             xrf-file-name-last-point
+             "-")))))
+
+(defn autosave-filename
+  [context
+   core-number]
+  (str (str (java.time.LocalDate/now))
+       "--"
+       (fx/sub context
+               core-name
+               core-number)))
 
 (defn num-cores
   [context]
