@@ -17,7 +17,7 @@
   [context
    core-number
    element]
-  (map #(vector (read-string (:position-mm %))
+  (mapv #(vector (read-string (:position-mm %))
                 (read-string (element %)))
        (fx/sub context
                state/xrf-element-counts
