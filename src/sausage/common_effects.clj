@@ -210,17 +210,14 @@
                        [:cores
                         core-number
                         :crop-slider-right]
-                       0.0)))
-
-
-
-;; ;; seams only happen in core=0
-;;   ;; but inserting a conditional in a threading macro is messy
-;;   (update-in
-;;    [:cores
-;;     core-number
-;;     :seams]
-;;    #(map (partial + (- crop-left-mm)) %)))))
+                       0.0)
+      (fx/swap-context assoc-in
+                       [:cores
+                        core-number
+                        :start-mm]
+                       (fx/sub snapshot
+                               state/start-mm-after-crop
+                               core-number))))
 
 
 (defn merge-cores
