@@ -114,6 +114,16 @@
       (println "Invalid core-start input")
       snapshot)))
 
+(defn update-core-end
+  [snapshot
+   event]
+  (-> snapshot
+      (update-core-start (assoc event
+                                :offset
+                                (- (fx/sub snapshot
+                                           state/length-mm
+                                           (:core-number event)))))))
+
 (defn add-core
   [snapshot
    _]
