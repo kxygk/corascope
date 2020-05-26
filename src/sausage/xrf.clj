@@ -49,6 +49,16 @@
                                             element)
                                   (range (fx/sub context
                                                  state/num-cores))))))
+(defn add-column-with-filename
+  [element-counts
+   file-name]
+  (map (fn [data-point]
+         (update data-point     ;; save file name to column
+                 :pre-merge-file-source
+                 #(if (nil? %) ;; unless it's already there
+                    file-name
+                    %)))
+       element-counts))
 
 (defn- load-xrf-scan-file
   [csv-file]  
@@ -56,6 +66,7 @@
                            (.getCanonicalPath)
                            (clojure.java.io/reader)
                            (clojure.data.csv/read-csv :separator \tab))
+        file-name (.getName csv-file)
         header (into [] (take 2 full-csv-table))
         columns (map #(-> %
                           (clojure.string/replace " " "-")
@@ -67,11 +78,12 @@
         data (map #(zipmap columns %) count-table)]
     (assert (= (count columns)
                (count (set columns)))
-            "BAD NEWS: Your XRF scan has non-unique columns names. This isn't supported!")
-    {:file-name (.getName csv-file)
+            "BAD NEWS: Your XRF scan has non-unique columns names")
+    {:file-name file-name
      :header header
-     :columns (into [] columns)
-     :element-counts data}))
+     :columns (into [:pre-merge-file-source] columns)
+     :element-counts (-> data
+                         (add-column-with-filename file-name))}))
 
 (defn load-data
   [snapshot
