@@ -94,6 +94,7 @@
 (defn update-core-start
   [snapshot
    {:keys [fx/event
+           offset ;; Optional
            core-number]}]
   (try
     (let [input-value-mm event
@@ -108,7 +109,10 @@
           (fx/swap-context assoc-in [:cores
                                      core-number
                                      :start-mm]
-                           corrected-start-mm)
+                           (if (nil? offset)
+                             corrected-start-mm
+                             (+ corrected-start-mm
+                                offset)))
           (sort-cores nil)))
     (catch Exception ex
       (println "Invalid core-start input")
