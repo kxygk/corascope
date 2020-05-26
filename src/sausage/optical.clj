@@ -141,7 +141,7 @@
 (defn load-data
   [snapshot
    event]
-  (let [core-number (:core-number event)
+  (let [core-number (:core-number event) ;; TODO: Destructure
         file (-> (doto (FileChooser.)
                    (.setTitle "Open a project")
                    (.setInitialDirectory (fx/sub snapshot

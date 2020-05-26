@@ -431,15 +431,15 @@
                           xrf-scan
                           core-number)))
     (int (Math/floor (/ (read-string (:position-mm (fx/sub context
-                                                        xrf-first-scan-point
-                                                        core-number)))
+                                                           xrf-first-scan-point
+                                                           core-number)))
                         (fx/sub context
                                 mm-per-pixel
                                 core-number))))
     ;; if both `optical` and `xrf` aren't present
     ;; then we say nothing is unscanned
     0))
-  
+
 (defn unscanned-left-mm
   "See the `docstring` for crop..
   But this isn't just equal to `start-mm`
@@ -468,15 +468,15 @@
                                    length-mm
                                    core-number)
                            (read-string (:position-mm (fx/sub context
-                                                           xrf-last-scan-point
-                                                           core-number))))
+                                                              xrf-last-scan-point
+                                                              core-number))))
                         (fx/sub context
                                 mm-per-pixel
                                 core-number))))
     ;; if both `optical` and `xrf` aren't present
     ;; then we say nothing is unscanned
     0))
-  
+
 (defn unscanned-right-mm
   "See the `docstring` for crop..
   But this isn't just equal to `start-mm`
