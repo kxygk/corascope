@@ -24,7 +24,7 @@
 ;; (TODO: Think of a less goofy UI solution)
 (def fixed-workspace-settings-height 30.0)
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
-(def fixed-core-header-height 48)
+(def fixed-core-header-height 76)
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
@@ -158,8 +158,9 @@
   [{:keys [fx/context
            core-number
            width]}]
-  (let [height (- fixed-core-header-height
-                  fixed-slider-height)]
+  (let [height (/ (- fixed-core-header-height
+                     fixed-slider-height)
+                  2)]
     {:fx/type :v-box
      :style "-fx-background-color: #d3d3d3;"
      :max-width width
@@ -187,38 +188,92 @@
                  :min-height height
                  :max-height height
                  :alignment :center-left
-                 :children [{:fx/type :spinner
-                             :editable true
+                 :children [{:fx/type :text-field
+                             :disable (not= :left
+                                            (fx/sub context
+                                                    state/fixed-side
+                                                    core-number))
                              :pref-width 90
-                             :value-factory {:fx/type :double-spinner-value-factory
-                                             :amount-to-step-by (fx/sub context
-                                                                        state/mm-per-pixel
-                                                                        core-number)
-                                             :min 0.0
-                                             :max Double/MAX_VALUE
-                                             :value (fx/sub context
-                                                            state/start-mm
-                                                            core-number)}
-                             :on-value-changed {:core-number core-number
-                                                :effect effects/update-core-start}}
+                             :style (if (= (fx/sub context
+                                                state/start-mm
+                                                core-number)
+                                           (fx/sub context
+                                                   state/start-mm-after-crop
+                                                   core-number))
+                                      "-fx-text-fill: black;"
+                                      "-fx-text-fill: red;")
+                             :text-formatter {:fx/type :text-formatter
+                                              :value-converter :double
+                                              :value (fx/sub context
+                                                             state/start-mm-after-crop
+                                                             core-number)
+                                              :on-value-changed {:core-number core-number
+                                                                 :effect effects/update-core-start}}}
+                            {:fx/type :check-box ;; Pin core to left side
+                             :selected (= :left
+                                          (fx/sub context
+                                                  state/fixed-side
+                                                  core-number))
+                             :on-selected-changed
+                             {:core-number core-number
+                              :effect (fn [snapshot
+                                           event]
+                                        (fx/swap-context snapshot
+                                                         assoc-in [:cores
+                                                                   (:core-number event)
+                                                                   :fixed-side]
+                                                         (if (:fx/event event)
+                                                           :left
+                                                           nil)))}}
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :button
                              :text "Crop"
-                             :pref-width (* 0.10
-                                            width)
+                             :pref-width 80
                              :pref-height height
                              :on-action {:core-number core-number
                                          :effect effects/crop-core}}
                             {:fx/type :pane
                              :h-box/hgrow :always}
+                            {:fx/type :check-box ;; Pin core to right side
+                             :selected (= :right
+                                          (fx/sub context
+                                                  state/fixed-side
+                                                  core-number))
+                             :on-selected-changed
+                             {:core-number core-number
+                              :effect (fn [snapshot
+                                           event]
+                                        (fx/swap-context snapshot
+                                                         assoc-in [:cores
+                                                                   (:core-number event)
+                                                                   :fixed-side]
+                                                         (if (:fx/event event)
+                                                           :right
+                                                           nil)))}}
                             {:fx/type :text-field
-                             :disable true
+                             :alignment :center-right
+                             :disable (not= :right
+                                            (fx/sub context
+                                                    state/fixed-side
+                                                    core-number))
                              :pref-width 90
-                             :text (str (fx/sub context
-                                                state/end-mm
-                                                core-number))
-                             }]}
+                             :style (if (= (fx/sub context
+                                                   state/end-mm
+                                                   core-number)
+                                           (fx/sub context
+                                                   state/end-mm-after-crop
+                                                   core-number))
+                                      "-fx-text-fill: black;"
+                                      "-fx-text-fill: red;")
+                             :text-formatter {:fx/type :text-formatter
+                                              :value-converter :double
+                                              :value (fx/sub context
+                                                             state/end-mm-after-crop
+                                                             core-number)
+                                              :on-value-changed {:core-number core-number
+                                                                 :effect effects/update-core-end}}}
+                            ]}
                 {:fx/type crop-slider
                  :core-number core-number
                  :width width

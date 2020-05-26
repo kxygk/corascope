@@ -72,6 +72,13 @@
                           get-core
                           core-number)))
 
+(defn fixed-side
+  [context
+   core-number]
+  (:fixed-side (fx/sub context
+                       get-core
+                       core-number)))
+
 ;; Optical
 
 (defn mm-per-pixel
@@ -565,7 +572,50 @@
                  length-mm
                  core-number))))
 
-  
+(defn start-mm-after-crop
+  [context
+   core-number]
+  (let [current-start-mm (fx/sub context
+                                 start-mm
+                                 core-number)]
+    (case (fx/sub context
+                  fixed-side
+                  core-number)
+      :left current-start-mm
+      nil  (+ current-start-mm
+              (fx/sub context
+                      crop-left-mm
+                      core-number))
+      :right (+ current-start-mm
+                (fx/sub context
+                        crop-left-mm
+                        core-number)
+                (fx/sub context
+                        crop-right-mm
+                        core-number)))))
+
+(defn end-mm-after-crop
+  [context
+   core-number]
+  (let [current-end-mm (fx/sub context
+                                 end-mm
+                                 core-number)]
+    (case (fx/sub context
+                  fixed-side
+                  core-number)
+      :right current-end-mm
+      nil  (- current-end-mm
+              (fx/sub context
+                      crop-right-mm
+                      core-number))
+      :left (- current-end-mm
+                (fx/sub context
+                        crop-left-mm
+                        core-number)
+                (fx/sub context
+                        crop-right-mm
+                        core-number)))))
+
 ;; Core Row
 
 (defn- overlap?
