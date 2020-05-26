@@ -136,6 +136,7 @@
                          [:cores
                           num-cores]
                          {:start-mm start-mm
+                          :fixed-side :left
                           :creation-time (System/currentTimeMillis)
                           :optical nil
                           :xrf-scan nil
