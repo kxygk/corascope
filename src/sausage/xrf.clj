@@ -136,10 +136,8 @@
         columns-csv (->> columns
                          (map name)
                          (into []))]
-    (with-open [csv-writer (clojure.java.io/writer (str (str (java.time.LocalDate/now))
-                                                        "--"
-                                                        (fx/sub snapshot
-                                                                state/core-name
+    (with-open [csv-writer (clojure.java.io/writer (str (fx/sub snapshot
+                                                                state/autosave-filename
                                                                 core-number)
                                                         ".txt"))]
       (clojure.data.csv/write-csv csv-writer

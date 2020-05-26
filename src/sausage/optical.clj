@@ -171,10 +171,8 @@
   (boofcv.io.image.UtilImageIO/saveImage (fx/sub snapshot
                                                  state/optical-image
                                                  core-number)
-                                         (str (str (java.time.LocalDate/now))
-                                              "--"
-                                              (fx/sub snapshot
-                                                      state/core-name
+                                         (str (fx/sub snapshot
+                                                      state/autosave-filename
                                                       core-number)
                                               ".tif"))
   ;; return state unchanged
