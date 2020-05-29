@@ -64,7 +64,7 @@
                      get-core
                      core-number)))
 
-(defn creation-time
+(defn core-creation-time
   "The core's creation time (in milliseconds since the epoch)"
   [context
    core-number]
@@ -177,6 +177,14 @@
   (get (fx/sub context
                displays)
        display-number))
+
+(defn display-creation-time
+  "The display's creation time (in milliseconds since the epoch)"
+  [context
+   display-number]
+  (:creation-time (fx/sub context
+                          get-display
+                          display-number)))
 
 (defn display-height
   [context

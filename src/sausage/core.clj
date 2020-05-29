@@ -362,11 +362,12 @@
       (fx/swap-context update
                        :displays
                        #(conj %
-                              (case display-type
-                                :overhead
-                                (sausage.displays.overhead/create)
-                                :element-count
-                                (sausage.displays.element-count/create))))))
+                              (-> (case display-type
+                                    :overhead
+                                    (sausage.displays.overhead/create)
+                                    :element-count
+                                    (sausage.displays.element-count/create))
+                                  (assoc :creation-time (System/currentTimeMillis)))))))
 
 (defn add-display-options
   "A small set of buttons for adding additional displays
@@ -405,6 +406,9 @@
                                                                   state/display-height
                                                                   display-number)]
                                        {:fx/type :v-box
+                                        :fx/key (fx/sub context
+                                                        state/display-creation-time
+                                                        display-number)
                                         :pref-height display-height
                                         :min-height display-height
                                         :max-height display-height
@@ -482,7 +486,7 @@
                                                                    (map (fn [core-index]
                                                                           {:fx/type core-displays
                                                                            :fx/key (fx/sub context
-                                                                                           state/creation-time
+                                                                                           state/core-creation-time
                                                                                            core-index)
                                                                            :core-number core-index
                                                                            :horizontal-zoom-factor (fx/sub context
