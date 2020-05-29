@@ -344,6 +344,40 @@
                           {:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :disable (zero? display-number)
+                           :text "↑"
+                           :on-action
+                           {:display-number display-number
+                            :effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context update
+                                                           :displays
+                                                           #(assoc %
+                                                                   (dec display-number)
+                                                                   (% display-number)
+                                                                   display-number
+                                                                   (% (dec display-number))))))}}
+                          {:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :disable (= display-number
+                                       (dec (fx/sub context
+                                                    state/num-displays)))
+                           :text "↓"
+                           :on-action
+                           {:display-number display-number
+                            :effect (fn [snapshot
+                                         event]
+                                      (-> snapshot
+                                          (fx/swap-context update
+                                                           :displays
+                                                           #(assoc %
+                                                                   (inc display-number)
+                                                                   (% display-number)
+                                                                   display-number
+                                                                   (% (inc display-number))))))}}
+                          {:fx/type :button
                            :text "X"
                            :on-action
                            {:display-number display-number
@@ -354,6 +388,7 @@
                                                            :displays
                                                            #(vec (concat (subvec % 0 display-number)
                                                                          (subvec % (inc display-number)))))))}}]}]})
+
 (defn add-display
   "EFFECT: Adds a display of DISPLAY-TYPE to the display list"
   [snapshot
