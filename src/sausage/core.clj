@@ -50,11 +50,6 @@
                :children [{:fx/type :button
                            :max-height Double/MAX_VALUE
                            :on-action {:effect effects/merge-all-cores}
-                           :disable true
-                           :text "Crop"}
-                          {:fx/type :button
-                           :max-height Double/MAX_VALUE
-                           :on-action {:effect effects/merge-all-cores}
                            :disable (not (fx/sub context
                                                  state/can-merge?))
                            :text ">> Merge"}
