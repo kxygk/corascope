@@ -61,6 +61,9 @@
        element-counts))
 
 (defn- load-xrf-scan-file
+  "Note: XRF files are tab separated CSV files
+  with an extrenious tab at the end
+  Hence the `butlast` in there.."
   [csv-file]  
   (let [full-csv-table (-> csv-file
                            (.getCanonicalPath)
@@ -73,7 +76,7 @@
                           (clojure.string/replace "(" "")
                           (clojure.string/replace ")" "")
                           keyword)
-                     (first (drop 2 full-csv-table)))
+                     (butlast (first (drop 2 full-csv-table))))
         count-table (drop 3 full-csv-table)
         data (map #(zipmap columns %) count-table)]
     (assert (= (count columns)
