@@ -77,19 +77,7 @@
                            :text "Fit to Screen"
                            :max-height Double/MAX_VALUE
                            :on-action
-                           {:effect (fn [snapshot
-                                         event]
-                                      (-> snapshot
-                                          (fx/swap-context assoc
-                                                           :zoom
-                                                           (/ (- (fx/sub snapshot
-                                                                         state/width)
-                                                                 fixed-margin-width)
-                                                              (* (fx/sub snapshot
-                                                                         state/end-of-all-scans-mm)
-                                                                 (fx/sub snapshot
-                                                                         state/pixels-per-mm
-                                                                         0))))))}}]}]})
+                           {:effect effects/fit-to-screen}}]}]})
 
 (defn crop-slider
   "The sliders that visually help the user cropping the data"

@@ -128,6 +128,21 @@
                                            state/length-mm
                                            (:core-number event)))))))
 
+(defn fit-to-screen
+  [snapshot
+   _]
+  (-> snapshot
+      (fx/swap-context assoc
+                       :zoom
+                       (/ (- (fx/sub snapshot
+                                     state/width)
+                             456) ;; fixed-margin-width ;; TODO figure out how to get this var here
+                          (* (fx/sub snapshot
+                                     state/end-of-all-scans-mm)
+                             (fx/sub snapshot
+                                     state/pixels-per-mm
+                                     0))))))
+
 (defn add-core
   [snapshot
    _]
@@ -146,7 +161,8 @@
                           :xrf-scan nil
                           :crop-slider-left 0
                           :crop-slider-right 0
-                          :seams []}))))
+                          :seams []})
+        (fit-to-screen nil))))
 
 (defn remove-core
   "If the EVENT contains a `:core-number` then that core is deleted
