@@ -49,12 +49,6 @@
                :alignment :center-right
                :children [{:fx/type :button
                            :max-height Double/MAX_VALUE
-                           :on-action {:effect effects/merge-all-cores}
-                           :disable (not (fx/sub context
-                                                 state/can-merge?))
-                           :text ">> Merge"}
-                          {:fx/type :button
-                           :max-height Double/MAX_VALUE
                            :on-action {:effect effects/remove-core}
                            :text "Remove Last Core"}
                           {:fx/type :button
@@ -64,7 +58,7 @@
                           {:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :button
-                           :text "Full Width"
+                           :text " ←→ "
                            :max-height Double/MAX_VALUE
                            :on-action
                            {:effect (fn [snapshot
@@ -74,7 +68,7 @@
                                                            :zoom
                                                            1.0)))}}
                           {:fx/type :button
-                           :text "Fit to Screen"
+                           :text " |←→| "
                            :max-height Double/MAX_VALUE
                            :on-action
                            {:effect effects/fit-to-screen}}]}]})
@@ -152,8 +146,7 @@
                  :min-height height
                  :max-height height
                  :alignment :center-left
-                 :children [
-                            {:fx/type :pane
+                 :children [{:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :label
                              :ellipsis-string ".."
@@ -317,7 +310,7 @@
    :alignment :center-left
    :style "-fx-background-color: #d3d3d3;"
    :children [#_{:fx/type :separator
-               :orientation :horizontal}
+                 :orientation :horizontal}
               {:fx/type :h-box
                :alignment :center-left
                :children [{:fx/type :separator
