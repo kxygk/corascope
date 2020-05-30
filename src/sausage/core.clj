@@ -407,21 +407,34 @@
 (defn add-display-options
   "A small set of buttons for adding additional displays
   By contrast, displays are removed by the `X` button in their headers"
-  [_]
-  {:fx/type :h-box
-   :pref-height fixed-core-header-height
-   :min-height fixed-core-header-height
-   :max-height fixed-core-header-height
-   :children [{:fx/type :button
-               :pref-height Double/MAX_VALUE
-               :on-action {:display-type :overhead
-                           :effect add-display}
-               :text " + Optical"}
-              {:fx/type :button
-               :pref-height Double/MAX_VALUE
-               :on-action {:display-type :element-count
-                           :effect add-display}
-               :text " +  Element Count"}]})
+  [{:keys [fx/context]}]
+  {:fx/type :v-box
+   :children [{:fx/type :h-box
+               :pref-height (/ fixed-core-header-height 2)
+               :min-height (/ fixed-core-header-height 2)
+               :max-height (/ fixed-core-header-height 2)
+               :children [{:fx/type :pane
+                           :h-box/hgrow :always}
+                          {:fx/type :button
+                           :max-height Double/MAX_VALUE
+                           :on-action {:effect effects/merge-all-cores}
+                           :disable (not (fx/sub context
+                                                 state/can-merge?))
+                           :text "Merge <<"}]}
+              {:fx/type :h-box
+               :pref-height (/ fixed-core-header-height 2)
+               :min-height (/ fixed-core-header-height 2)
+               :max-height (/ fixed-core-header-height 2)
+               :children [{:fx/type :button
+                           :pref-height Double/MAX_VALUE
+                           :on-action {:display-type :overhead
+                                       :effect add-display}
+                           :text " ↓ Optical"}
+                          {:fx/type :button
+                           :pref-height Double/MAX_VALUE
+                           :on-action {:display-type :element-count
+                                       :effect add-display}
+                           :text " ↓ Element Count"}]}]})
 
 (defn margin
   "The right margin with global and display specific options"
