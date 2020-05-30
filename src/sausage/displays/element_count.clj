@@ -129,6 +129,14 @@
                         :element]
                        element)))
 
+(defn is-plottable?
+  [context
+   element]
+  (= java.lang.Long
+     (type (read-string (element (fx/sub context
+                                         state/xrf-first-scan-point
+                                         0))))))
+
 (defn- periodic-buttons
   "Periodic table as a grid of buttons
   Excess  columns in the xrf-scan file are then appended at the end"
@@ -167,25 +175,26 @@
                                                       ))
                                        periodic-table)))
            (if (some? non-elements)
-             (map-indexed (fn [row-after-table non-element]
-                            (let [columns 6]
-                              {:fx/type :toggle-button
-                               :grid-pane/column-span (/ (count (first periodic-table))
-                                                         columns)
-                               :selected (= non-element
-                                            current-selection)
-                               :max-height 25
-                               :max-width Double/MAX_VALUE
-                               :grid-pane/column (* (int (mod row-after-table columns))
-                                                    (/ (count (first periodic-table))
-                                                       columns))
-                               :grid-pane/row (+ (count periodic-table)
-                                                 (int (/ row-after-table columns)))
-                               :text (name non-element)
-                               :on-action {:display-number display-number
-                                           :element non-element
-                                           :effect update-selected-element}}))
-                          non-elements)
+             (->> non-elements
+                  (filter (partial is-plottable? context))
+                  (map-indexed (fn [row-after-table non-element]
+                                 (let [columns 6]
+                                   {:fx/type :toggle-button
+                                    :grid-pane/column-span (/ (count (first periodic-table))
+                                                              columns)
+                                    :selected (= non-element
+                                                 current-selection)
+                                    :max-height 25
+                                    :max-width Double/MAX_VALUE
+                                    :grid-pane/column (* (int (mod row-after-table columns))
+                                                         (/ (count (first periodic-table))
+                                                            columns))
+                                    :grid-pane/row (+ (count periodic-table)
+                                                      (int (/ row-after-table columns)))
+                                    :text (name non-element)
+                                    :on-action {:display-number display-number
+                                                :element non-element
+                                                :effect update-selected-element}}))))
              [] ))}))
 
 (defn- column-list
