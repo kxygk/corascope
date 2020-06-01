@@ -243,23 +243,30 @@
                                       state/selected-right-mm
                                       core-number)}))
 
-(defn crop-unscanned
+(defn set-sliders-to-crop-unscanned
   [snapshot
    {:keys [core-number]}]
-  (crop-core snapshot
-             {:core-number core-number
-              :crop-left-pix (fx/sub snapshot
-                                     state/unscanned-left-pix
-                                     core-number)
-              :crop-right-pix (fx/sub snapshot
-                                      state/unscanned-right-pix
-                                      core-number)
-              :crop-left-mm (fx/sub snapshot
-                                    state/unscanned-left-mm
-                                    core-number)
-              :crop-right-mm  (fx/sub snapshot
-                                      state/unscanned-right-mm
-                                      core-number)}))
+  (-> snapshot
+      (fx/swap-context assoc-in
+                       [:cores
+                        core-number
+                        :slider-left]
+                       (/ (fx/sub snapshot
+                               state/unscanned-left-pix
+                               core-number)
+                          (fx/sub snapshot
+                                  state/optical-scan-length-pix
+                                  core-number)))
+      (fx/swap-context assoc-in
+                       [:cores
+                        core-number
+                        :slider-right]
+                       (/ (fx/sub snapshot
+                                  state/unscanned-right-pix
+                                  core-number)
+                          (fx/sub snapshot
+                                  state/optical-scan-length-pix
+                                  core-number)))))
 
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images

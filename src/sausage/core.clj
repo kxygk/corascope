@@ -156,9 +156,9 @@
                                                   :effect sausage.xrf/load-data}
                                       :text "(Re)Load XRF Scan"}
                                      {:fx/type :menu-item
-                                      :text "Crop Image to Data"
+                                      :text "Auto-select areas with no XRF data"
                                       :on-action {:core-number core-number
-                                                  :effect effects/crop-unscanned}}
+                                                  :effect effects/set-sliders-to-crop-unscanned}}
                                      {:fx/type :menu-item
                                       :text "Save Optical Image"
                                       :disable (nil? (fx/sub context
@@ -236,9 +236,9 @@
                              :pref-height height
                              :context-menu {:fx/type :context-menu
                                             :items [{:fx/type :menu-item
-                                                     :text "Crop Image to Data"
+                                                     :text "Auto-select areas with no XRF data"
                                                      :on-action {:core-number core-number
-                                                                 :effect effects/crop-unscanned}}]}
+                                                                 :effect effects/set-sliders-to-crop-unscanned}}]}
                              :on-action {:core-number core-number
                                          :effect effects/crop-selected}}
                             {:fx/type :pane
