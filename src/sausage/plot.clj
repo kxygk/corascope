@@ -15,11 +15,14 @@
 
 (defn- nice-max-count
   [max-count]
-  (let [tick-mark-size (nearest-power-of-ten max-count)
-        num-tick-marks (Math/ceil (/ max-count
-                                     tick-mark-size))]
-    (* num-tick-marks
-       tick-mark-size)))
+  (if (== 1.0
+          max-count)
+    1.5 ;; For `validity` plots
+    (let [tick-mark-size (nearest-power-of-ten max-count)
+          num-tick-marks (Math/ceil (/ max-count
+                                       tick-mark-size))]
+      (* num-tick-marks
+         tick-mark-size))))
 
 
 
