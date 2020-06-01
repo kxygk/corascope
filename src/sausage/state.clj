@@ -405,23 +405,23 @@
     
 ;; Crop
 
-(defn crop-slider-left
+(defn slider-left
   "This returns the crop-percentage.
   But you shouldn't call this subscription directly
   B/c you should be rounding to the nearest pixel"
   [context
    core-number]
-  (:crop-slider-left (fx/sub context
+  (:slider-left (fx/sub context
                              get-core
                              core-number)))
 
-(defn crop-slider-right
+(defn slider-right
   "This returns the crop-percentage.
   But you shouldn't call this subscription directly
   B/c you should be rounding to the nearest pixel"
   [context
    core-number]
-  (:crop-slider-right (fx/sub context
+  (:slider-right (fx/sub context
                               get-core
                               core-number)))
 
@@ -498,7 +498,7 @@
              unscanned-right-pix
              core-number)))
 
-(defn crop-left-pix
+(defn selected-left-pix
   "Get the left crop value in Pixels
   It will round down (under-crop) to the next pixel.
   Ex:
@@ -514,20 +514,17 @@
                          mm-per-pixel
                          core-number))
           "Oh Oh! You can't crop pixels with no `mm-per-pixel`")
-  (max (fx/sub context
-               unscanned-left-pix
-               core-number)
        (int (Math/floor (/ (* (fx/sub context
-                                      crop-slider-left
+                                      slider-left
                                       core-number)
                               (fx/sub context
                                       length-mm
                                       core-number))
                            (fx/sub context
                                    mm-per-pixel
-                                   core-number))))))
+                                   core-number)))))
 
-(defn crop-left-mm
+(defn selected-left-mm
   "The crop will be along pixel lines if a `mm-per-pixel` is present
   Otherwise it'll crop at `crop-percent`*`length-m`"
   [context
@@ -535,24 +532,21 @@
   (if (some? (fx/sub context
                      mm-per-pixel
                      core-number))
-    (max (fx/sub context
-                 unscanned-left-mm
-                 core-number)
          (* (fx/sub context
-                    crop-left-pix
+                    selected-left-pix
                     core-number)
             (fx/sub context
                     mm-per-pixel
                     core-number)))
     (* (fx/sub context
-               crop-slider-left
+               slider-left
                core-number)
        (fx/sub context
                length-mm
-               core-number))))
+               core-number)))
 
 
-(defn crop-right-pix
+(defn selected-right-pix
   "Get the left crop value in Pixels
   It will round down (under-crop) to the next pixel.
   Ex:
@@ -568,20 +562,17 @@
                          mm-per-pixel
                          core-number))
           "Oh Oh! You can't crop pixels with no `mm-per-pixel`")
-  (max (fx/sub context
-               unscanned-right-pix
-               core-number)
        (int (Math/floor (/ (* (fx/sub context
-                                      crop-slider-right
+                                      slider-right
                                       core-number)
                               (fx/sub context
                                       length-mm
                                       core-number))
                            (fx/sub context
                                    mm-per-pixel
-                                   core-number))))))
+                                   core-number)))))
 
-(defn crop-right-mm
+(defn selected-right-mm
     "The crop will be along pixel lines if a `mm-per-pixel` is present
   Otherwise it'll crop at `crop-percent`*`length-m`"
     [context
@@ -589,21 +580,18 @@
     (if (some? (fx/sub context
                        mm-per-pixel
                        core-number))
-      (max (fx/sub context
-                   unscanned-right-mm
-                   core-number)
            (* (fx/sub context
-                      crop-right-pix
+                      selected-right-pix
                       core-number)
               (fx/sub context
                       mm-per-pixel
                       core-number)))
       (* (fx/sub context
-                 crop-slider-right
+                 slider-right
                  core-number)
          (fx/sub context
                  length-mm
-                 core-number))))
+                 core-number)))
 
 (defn start-mm-after-crop
   [context
@@ -617,14 +605,14 @@
       :left current-start-mm
       nil  (+ current-start-mm
               (fx/sub context
-                      crop-left-mm
+                      selected-left-mm
                       core-number))
       :right (+ current-start-mm
                 (fx/sub context
-                        crop-left-mm
+                        selected-left-mm
                         core-number)
                 (fx/sub context
-                        crop-right-mm
+                        selected-right-mm
                         core-number)))))
 
 (defn end-mm-after-crop
@@ -639,14 +627,14 @@
       :right current-end-mm
       nil  (- current-end-mm
               (fx/sub context
-                      crop-right-mm
+                      selected-right-mm
                       core-number))
       :left (- current-end-mm
                 (fx/sub context
-                        crop-left-mm
+                        selected-left-mm
                         core-number)
                 (fx/sub context
-                        crop-right-mm
+                        selected-right-mm
                         core-number)))))
 
 ;; Core Row

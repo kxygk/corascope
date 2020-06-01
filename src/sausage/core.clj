@@ -73,7 +73,7 @@
                            :on-action
                            {:effect effects/fit-to-screen}}]}]})
 
-(defn crop-slider
+(defn sliders
   "The sliders that visually help the user cropping the data"
   [{:keys [fx/context
            core-number
@@ -98,7 +98,7 @@
                :pref-height height
                :min-height height
                :value (fx/sub context
-                              state/crop-slider-left
+                              state/slider-left
                               core-number)
                :on-value-changed {:core-number core-number
                                   :effect (fn [snapshot
@@ -106,7 +106,7 @@
                                             (-> snapshot
                                                 (fx/swap-context assoc-in [:cores
                                                                            (:core-number event)
-                                                                           :crop-slider-left]
+                                                                           :slider-left]
                                                                  (:fx/event event))))}}
               {:fx/type :slider
                :max 1.0
@@ -118,7 +118,7 @@
                :pref-height height
                :min-height height
                :value (- 1 (fx/sub context
-                                   state/crop-slider-right
+                                   state/slider-right
                                    core-number))
                :on-value-changed {:core-number core-number
                                   :effect (fn [snapshot
@@ -126,7 +126,7 @@
                                             (-> snapshot
                                                 (fx/swap-context assoc-in [:cores
                                                                            (:core-number event)
-                                                                           :crop-slider-right]
+                                                                           :slider-right]
                                                                  (- 1
                                                                     (:fx/event event)))))}}]})
 
@@ -207,8 +207,13 @@
                              :text "Crop"
                              :pref-width 80
                              :pref-height height
+                             :context-menu {:fx/type :context-menu
+                                            :items [{:fx/type :menu-item
+                                                     :text "Crop Image to Data"
+                                                     :on-action {:core-number core-number
+                                                                 :effect effects/crop-unscanned}}]}
                              :on-action {:core-number core-number
-                                         :effect effects/crop-core}}
+                                         :effect effects/crop-selected}}
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :check-box ;; Pin core to right side
@@ -250,7 +255,7 @@
                                               :on-value-changed {:core-number core-number
                                                                  :effect effects/update-core-end}}}
                             ]}
-                {:fx/type crop-slider
+                {:fx/type sliders
                  :core-number core-number
                  :width width
                  :height fixed-slider-height}]}))

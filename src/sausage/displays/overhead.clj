@@ -76,11 +76,11 @@
                                    core-number))
             crop-left-pix (* zoom-factor
                              (fx/sub context
-                                     state/crop-left-pix
+                                     state/selected-left-pix
                                      core-number))
             crop-right-pix (* zoom-factor
                               (fx/sub context
-                                      state/crop-right-pix
+                                      state/selected-right-pix
                                       core-number))
             unscanned-left-pix (* zoom-factor
                                   (fx/sub context

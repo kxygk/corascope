@@ -84,10 +84,10 @@
                                                                           sausage.xrf/max-element-count-all-cores
                                                                           selected-element)
                                                                   (fx/sub context
-                                                                          state/crop-left-mm
+                                                                          state/selected-left-mm
                                                                           core-number)
                                                                   (fx/sub context
-                                                                          state/crop-right-mm
+                                                                          state/selected-right-mm
                                                                           core-number)
                                                                   (if (fx/sub context
                                                                               merge-seams?

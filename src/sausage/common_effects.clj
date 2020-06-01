@@ -159,8 +159,8 @@
                           :creation-time (System/currentTimeMillis)
                           :optical nil
                           :xrf-scan nil
-                          :crop-slider-left 0
-                          :crop-slider-right 0
+                          :slider-left 0
+                          :slider-right 0
                           :seams []})
         (fit-to-screen nil))))
 
@@ -190,42 +190,32 @@
 ;; 1 - always crop areas that are optically scanned but have no xrf data
 ;; 2 - optionally crop more based on the slider positions
 ;; TODO: Simplify this .. with some destructuring or something
-(defn crop-core
+(defn- crop-core
   [snapshot
-   {:keys [core-number]}]
+   {:keys [core-number
+           crop-left-mm
+           crop-right-mm
+           crop-left-pix
+           crop-right-pix] :as event}]
   ;; Crop values need to be precalculated
   ;; Once you crop the XRF then the subscriptions in the optical crop will recalculate
   ;; It won't give the desired effect
   (-> snapshot
-      (sausage.xrf/crop {:core-number core-number
-                         :crop-left-mm (fx/sub snapshot
-                                               state/crop-left-mm
-                                               core-number)
-                         :crop-right-mm  (fx/sub snapshot
-                                                 state/crop-right-mm
-                                                 core-number)})
-      (sausage.optical/crop {:core-number core-number
-                             :crop-left-pix (fx/sub snapshot
-                                                    state/crop-left-pix
-                                                    core-number)
-                             :crop-right-pix (fx/sub snapshot
-                                                     state/crop-right-pix
-                                                     core-number)})
+      (sausage.xrf/crop event)
+      (sausage.optical/crop event)
       (fx/swap-context update
                        :seams
-                       #(map (partial + (- (fx/sub snapshot
-                                                   state/crop-left-mm
-                                                   core-number)))
+                       #(map (partial + (- crop-left-mm))
                              %))
       (fx/swap-context assoc-in
                        [:cores
                         core-number
-                        :crop-slider-left]
+                        :slider-left]
                        0.0)
       (fx/swap-context assoc-in
                        [:cores
                         core-number
-                        :crop-slider-right]
+                        :slider-right]
                        0.0)
       (fx/swap-context assoc-in
                        [:cores
@@ -235,6 +225,41 @@
                                state/start-mm-after-crop
                                core-number))))
 
+(defn crop-selected
+  [snapshot
+   {:keys [core-number]}]
+  (crop-core snapshot
+             {:core-number core-number
+              :crop-left-pix (fx/sub snapshot
+                                     state/selected-left-pix
+                                     core-number)
+              :crop-right-pix (fx/sub snapshot
+                                      state/selected-right-pix
+                                      core-number)
+              :crop-left-mm (fx/sub snapshot
+                                    state/selected-left-mm
+                                    core-number)
+              :crop-right-mm  (fx/sub snapshot
+                                      state/selected-right-mm
+                                      core-number)}))
+
+(defn crop-unscanned
+  [snapshot
+   {:keys [core-number]}]
+  (crop-core snapshot
+             {:core-number core-number
+              :crop-left-pix (fx/sub snapshot
+                                     state/unscanned-left-pix
+                                     core-number)
+              :crop-right-pix (fx/sub snapshot
+                                      state/unscanned-right-pix
+                                      core-number)
+              :crop-left-mm (fx/sub snapshot
+                                    state/unscanned-left-mm
+                                    core-number)
+              :crop-right-mm  (fx/sub snapshot
+                                      state/unscanned-right-mm
+                                      core-number)}))
 
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
