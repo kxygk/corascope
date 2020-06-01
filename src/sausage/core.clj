@@ -148,6 +148,18 @@
                  :alignment :center-left
                  :children [{:fx/type :menu-button
                              :items [{:fx/type :menu-item
+                                      :on-action {:core-number core-number
+                                                  :effect sausage.optical/load-data}
+                                      :text "(Re)Load Optical Image"}
+                                     {:fx/type :menu-item
+                                      :on-action {:core-number core-number
+                                                  :effect sausage.xrf/load-data}
+                                      :text "(Re)Load XRF Scan"}
+                                     {:fx/type :menu-item
+                                      :text "Crop Image to Data"
+                                      :on-action {:core-number core-number
+                                                  :effect effects/crop-unscanned}}
+                                     {:fx/type :menu-item
                                       :text "Save Optical Image"
                                       :disable (nil? (fx/sub context
                                                              state/optical-image
