@@ -146,7 +146,22 @@
                  :min-height height
                  :max-height height
                  :alignment :center-left
-                 :children [{:fx/type :pane
+                 :children [{:fx/type :menu-button
+                             :items [{:fx/type :menu-item
+                                      :text "Save Optical Image"
+                                      :disable (nil? (fx/sub context
+                                                             state/optical-image
+                                                             core-number))
+                                      :on-action  {:core-number core-number
+                                                   :effect sausage.optical/save-data}}
+                                     {:fx/type :menu-item
+                                      :text "Save XRF Scan"
+                                      :disable (nil? (fx/sub context
+                                                             state/xrf-scan
+                                                             core-number))
+                                      :on-action  {:core-number core-number
+                                                   :effect sausage.xrf/save-data}}]}
+                            {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :label
                              :ellipsis-string ".."

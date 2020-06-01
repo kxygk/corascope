@@ -54,8 +54,6 @@
                                  display-number)
         ]
     {:fx/type :h-box
-     :on-mouse-clicked {:core-number core-number
-                        :effect sausage.xrf/save-data}
      :children [{:fx/type :v-box
                  :children (if xrf-scan
                              (if (nil? (selected-element (set (fx/sub context
