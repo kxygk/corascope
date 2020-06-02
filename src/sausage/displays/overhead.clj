@@ -12,7 +12,22 @@
   []
   {:type :overhead
    :height fixed-height
-   :scan-line? true})
+   :scan-line? true
+   :hightlight-unscanned? true})
+
+(defn scan-line?
+  [context
+   display-number]
+  (:scan-line? (fx/sub context
+                       state/get-display
+                       display-number)))
+
+(defn hightlight-unscanned?
+  [context
+   display-number]
+  (:hightlight-unscanned? (fx/sub context
+                                  state/get-display
+                                  display-number)))
 
 (defn- to-fx-image
   [boofcv-image]
@@ -42,13 +57,6 @@
               core-number)
       flip-image
       to-fx-image))
-
-(defn- scan-line?
-  [context
-   display-number]
-  (:scan-line? (fx/sub context
-                       state/get-display
-                       display-number)))
 
 (defn view
   "display and options for the optical image"
@@ -92,105 +100,93 @@
                                            core-number))]
         {:fx/type :group
          :children [{:fx/type :pane
-                     :children (filter identity
-                                       [{:fx/type :image-view
+                     :children (cond-> [{:fx/type :image-view
                                          :fit-width width
                                          :fit-height height
                                          :image (fx/sub context
                                                         display-image
-                                                        core-number)}
+                                                        core-number)}]
+                                        ;; Conditionally add decorations/overlays on image
                                         ;; Center Line
-                                        (if (true? (fx/sub context
-                                                           scan-line?
-                                                           display-number))
-                                          {:fx/type :line
-                                           :start-x 1 ;; pixel offset
-                                           :start-y (/ height
-                                                       2.0)
-                                           :end-x (dec width)
-                                           :end-y (/ height
-                                                     2.0)
-                                           :stroke-dash-array [10 10]
-                                           :stroke "white"})
-                                        ;; Right Crop
-                                        (if (pos? crop-right-pix)
-                                          {:fx/type :line
-                                           :start-x (- width
-                                                       crop-right-pix)
-                                           :start-y 0
-                                           :end-x (- width
-                                                     crop-right-pix)
-                                           :end-y (dec height) ;; this is inclusive!
-                                           :stroke "red"})
-                                        (if (pos? crop-right-pix)
-                                          {:fx/type :rectangle
-                                           :x (- width
-                                                 crop-right-pix)
-                                           :y 0
-                                           :height height
-                                           :width crop-right-pix
-                                           :opacity 0.10
-                                           :fill "red"})
-                                        ;; Left Crop
-                                        (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
-                                          {:fx/type :line
-                                           :start-x crop-left-pix
-                                           :start-y 0
-                                           :end-x crop-left-pix
-                                           :end-y (dec height) ;; this is inclusive!
-                                           :stroke "red"})
-                                        (if (pos? crop-left-pix);;(not (nil? (:crop-pixels-left optical)))
-                                          {:fx/type :rectangle
-                                           :x 0
-                                           :y 0
-                                           :height height
-                                           :width crop-left-pix
-                                           :opacity 0.10
-                                           :fill "red"})
-                                        ;; Left Unscanned Area
-                                        (if (pos? unscanned-left-pix)
-                                          {:fx/type :line
-                                           :start-x unscanned-left-pix
-                                           :start-y 0
-                                           :end-x unscanned-left-pix
-                                           :end-y (dec height) ;; this is inclusive!
-                                           :stroke "brown"})
-                                        (if (pos? unscanned-left-pix)
-                                          {:fx/type :rectangle
-                                           :x 0
-                                           :y 0
-                                           :height height
-                                           :width unscanned-left-pix
-                                           :opacity 0.10
-                                           :fill "yellow"})
-                                        ;; Right Unscanned Area
-                                        (if (pos? unscanned-right-pix)
-                                          {:fx/type :line
-                                           :start-x (- width
-                                                       unscanned-right-pix);;right-width
-                                           :start-y 0
-                                           :end-x (- width
-                                                     unscanned-right-pix);;right-width
-                                           :end-y (dec height) ;; this is inclusive!
-                                           :stroke "brown"})
-                                        (if (pos? unscanned-right-pix)
-                                          {:fx/type :rectangle
-                                           :x (- width
-                                                 unscanned-right-pix)
-                                           :y 0
-                                           :height height
-                                           :width  unscanned-right-pix
-                                           :opacity 0.10
-                                           :fill "yellow"})
-                                        ])}]}))))
-
-
-(defn scan-line?
-  [context
-   display-number]
-  (:scan-line? (fx/sub context
-                       state/get-display
-                       display-number)))
+                                        (fx/sub context
+                                                scan-line?
+                                                display-number) (conj {:fx/type :line
+                                                                        :start-x 1 ;; pixel offset
+                                                                        :start-y (/ height
+                                                                                    2.0)
+                                                                        :end-x (dec width)
+                                                                        :end-y (/ height
+                                                                                  2.0)
+                                                                        :stroke-dash-array [10 10]
+                                                                        :stroke "white"})
+                                       ;; Right Crop
+                                       (pos? crop-right-pix) (conj {:fx/type :line
+                                                                    :start-x (- width
+                                                                                crop-right-pix)
+                                                                    :start-y 0
+                                                                    :end-x (- width
+                                                                              crop-right-pix)
+                                                                    :end-y (dec height) ;; this is inclusive!
+                                                                    :stroke "red"}
+                                                                   {:fx/type :rectangle
+                                                                    :x (- width
+                                                                          crop-right-pix)
+                                                                    :y 0
+                                                                    :height height
+                                                                    :width crop-right-pix
+                                                                    :opacity 0.10
+                                                                    :fill "red"})
+                                       ;; Left Crop
+                                       (pos? crop-left-pix) (conj {:fx/type :line
+                                                                   :start-x crop-left-pix
+                                                                   :start-y 0
+                                                                   :end-x crop-left-pix
+                                                                   :end-y (dec height) ;; this is inclusive!
+                                                                   :stroke "red"}
+                                                                  {:fx/type :rectangle
+                                                                   :x 0
+                                                                   :y 0
+                                                                   :height height
+                                                                   :width crop-left-pix
+                                                                   :opacity 0.10
+                                                                   :fill "red"})
+                                       ;; Left Unscanned Area
+                                       (and (fx/sub context
+                                                    hightlight-unscanned?
+                                                    display-number)
+                                            (pos? unscanned-left-pix)) (conj {:fx/type :line
+                                                                              :start-x unscanned-left-pix
+                                                                              :start-y 0
+                                                                              :end-x unscanned-left-pix
+                                                                              :end-y (dec height) ;; inclusive!
+                                                                              :stroke "brown"}
+                                                                             {:fx/type :rectangle
+                                                                              :x 0
+                                                                              :y 0
+                                                                              :height height
+                                                                              :width unscanned-left-pix
+                                                                              :opacity 0.10
+                                                                              :fill "yellow"})
+                                       ;; Right Unscanned Area
+                                       (and (fx/sub context
+                                                    hightlight-unscanned?
+                                                    display-number)
+                                            (pos? unscanned-right-pix)) (conj {:fx/type :line
+                                                                               :start-x (- width
+                                                                                           unscanned-right-pix)
+                                                                               :start-y 0
+                                                                               :end-x (- width
+                                                                                         unscanned-right-pix)
+                                                                               :end-y (dec height) ;; inclusive!
+                                                                               :stroke "brown"}
+                                                                              {:fx/type :rectangle
+                                                                               :x (- width
+                                                                                     unscanned-right-pix)
+                                                                               :y 0
+                                                                               :height height
+                                                                               :width  unscanned-right-pix
+                                                                               :opacity 0.10
+                                                                               :fill "yellow"}))}]}))))
 
 (defn options
   ""
@@ -211,4 +207,19 @@
                                                [:displays
                                                 (:display-number event)
                                                 :scan-line?]
+                                               (:fx/event event))))}}
+              {:fx/type :check-box
+               :text "Highlight unscanned areas"
+               :selected (fx/sub context
+                                 hightlight-unscanned?
+                                 display-number)
+               :on-selected-changed
+               {:display-number display-number
+                :effect (fn [snapshot
+                             event]
+                          (-> snapshot
+                              (fx/swap-context assoc-in
+                                               [:displays
+                                                (:display-number event)
+                                                :hightlight-unscanned?]
                                                (:fx/event event))))}}]})
