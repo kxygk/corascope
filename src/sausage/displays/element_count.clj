@@ -261,6 +261,9 @@
                :children [{:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :toggle-button
+                           :disable (empty? (fx/sub context
+                                                    state/seams
+                                                    0))
                            :text "Merge Seams"
                            :selected (fx/sub context
                                              merge-seams?
