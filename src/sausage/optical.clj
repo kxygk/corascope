@@ -140,10 +140,9 @@
 
 (defn load-data
   [snapshot
-   event]
-  (let [core-number (:core-number event) ;; TODO: Destructure
-        file (-> (doto (FileChooser.)
-                   (.setTitle "Open a project")
+   {:keys [core-number]}]
+  (let [file (-> (doto (FileChooser.)
+                   (.setTitle "Load Optical Image")
                    (.setInitialDirectory (fx/sub snapshot
                                                  state/last-used-path)))
                  ;; Could also grab primary stage instance to make this dialog blocking
@@ -163,17 +162,25 @@
                              optical-image)
             #_(fx/swap-context update-display-image
                                core-number))))))
+
 (defn save-data
   ""
   [snapshot
    {:keys [core-number]}]
-  ;; Side Effect
-  (boofcv.io.image.UtilImageIO/saveImage (fx/sub snapshot
-                                                 state/optical-image
-                                                 core-number)
-                                         (str (fx/sub snapshot
-                                                      state/autosave-filename
-                                                      core-number)
-                                              ".tif"))
+  (let [file (-> (doto (FileChooser.)
+                   (.setTitle "Save Optical Image")
+                   (.setInitialFileName (str (fx/sub snapshot
+                                                     state/autosave-filename
+                                                     core-number)
+                                             ".tif"))
+                   (.setInitialDirectory  (fx/sub snapshot
+                                                  state/last-used-path)))
+                 ;; Could also grab primary stage instance to make this dialog blocking
+                 (.showSaveDialog (Stage.)))]
+    ;; Side Effect
+    (boofcv.io.image.UtilImageIO/saveImage (fx/sub snapshot
+                                                   state/optical-image
+                                                   core-number)
+                                           (.getCanonicalPath file)))
   ;; return state unchanged
   snapshot)

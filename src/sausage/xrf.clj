@@ -123,7 +123,6 @@
   ""
   [snapshot
    {:keys [core-number]}]
-  (println "Saving XRF Data")
   ;; Side Effect
   (let [header (fx/sub snapshot
                        state/xrf-header
@@ -138,11 +137,18 @@
                                 (into []))
         columns-csv (->> columns
                          (map name)
-                         (into []))]
-    (with-open [csv-writer (clojure.java.io/writer (str (fx/sub snapshot
-                                                                state/autosave-filename
-                                                                core-number)
-                                                        ".txt"))]
+                         (into []))
+        file (-> (doto (FileChooser.)
+                   (.setTitle "Save Optical Image")
+                   (.setInitialFileName (str (fx/sub snapshot
+                                                     state/autosave-filename
+                                                     core-number)
+                                             ".txt"))
+                   (.setInitialDirectory  (fx/sub snapshot
+                                                  state/last-used-path)))
+                 ;; Could also grab primary stage instance to make this dialog blocking
+                 (.showSaveDialog (Stage.)))]
+    (with-open [csv-writer (clojure.java.io/writer (.getCanonicalPath file))]
       (clojure.data.csv/write-csv csv-writer
                                   (concat []
                                           header
