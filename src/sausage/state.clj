@@ -25,8 +25,8 @@
 
 (defn width
   [context]
-   (fx/sub context
-           :width))
+  (fx/sub context
+          :width))
 
 (defn displays
   [context]
@@ -159,16 +159,16 @@
   [context
    core-number]
   (first (fx/sub context
-                xrf-element-counts
-                core-number)))
+                 xrf-element-counts
+                 core-number)))
 
 ;; Seams
 (defn seams
   [context
    core-number]
-   (:seams (fx/sub context
-                   get-core
-                   core-number)))
+  (:seams (fx/sub context
+                  get-core
+                  core-number)))
 ;; Displays
 
 (defn get-display
@@ -292,7 +292,7 @@
              optical-scan-length-pix
              core-number)))
 
-        
+
 (defn xrf-scan-length-mm
   "This value is maybe not what you would expect.
   It's just the position of the last measurements.
@@ -300,11 +300,11 @@
   [context
    core-number]
   (- (read-string (:position-mm (fx/sub context
-                                     xrf-last-scan-point
-                                     core-number)))
+                                        xrf-last-scan-point
+                                        core-number)))
      0.0 #_(:position (fx/sub context
-                        first-xrf-scan-point
-                        core-number))))
+                              first-xrf-scan-point
+                              core-number))))
 
 (defn length-mm
   [context
@@ -332,19 +332,19 @@
      (fx/sub context
              length-mm
              core-number)))
-    
+
 (defn end-of-all-scans-mm
   "Last position of the last core"
   [context]
   (let [num-cores (fx/sub context
                           num-cores)]
     (if (zero? num-cores)
-    0.0
-    (apply max
-           (mapv #(fx/sub context
-                          end-mm
-                          %)
-                 (range num-cores ))))))
+      0.0
+      (apply max
+             (mapv #(fx/sub context
+                            end-mm
+                            %)
+                   (range num-cores ))))))
 
 (defn distance-between-cores-pix
   "Get the distance between cores in rounded to the nearest pixels
@@ -402,7 +402,7 @@
        (fx/sub context
                mm-per-pixel
                from-core-number))))
-    
+
 ;; Crop
 
 (defn slider-left
@@ -412,8 +412,8 @@
   [context
    core-number]
   (:slider-left (fx/sub context
-                             get-core
-                             core-number)))
+                        get-core
+                        core-number)))
 
 (defn slider-right
   "This returns the crop-percentage.
@@ -422,8 +422,8 @@
   [context
    core-number]
   (:slider-right (fx/sub context
-                              get-core
-                              core-number)))
+                         get-core
+                         core-number)))
 
 
 
@@ -514,15 +514,15 @@
                          mm-per-pixel
                          core-number))
           "Oh Oh! You can't crop pixels with no `mm-per-pixel`")
-       (int (Math/floor (/ (* (fx/sub context
-                                      slider-left
-                                      core-number)
-                              (fx/sub context
-                                      length-mm
-                                      core-number))
-                           (fx/sub context
-                                   mm-per-pixel
-                                   core-number)))))
+  (int (Math/floor (/ (* (fx/sub context
+                                 slider-left
+                                 core-number)
+                         (fx/sub context
+                                 length-mm
+                                 core-number))
+                      (fx/sub context
+                              mm-per-pixel
+                              core-number)))))
 
 (defn selected-left-mm
   "The crop will be along pixel lines if a `mm-per-pixel` is present
@@ -562,18 +562,18 @@
                          mm-per-pixel
                          core-number))
           "Oh Oh! You can't crop pixels with no `mm-per-pixel`")
-       (int (Math/floor (/ (* (fx/sub context
-                                      slider-right
-                                      core-number)
-                              (fx/sub context
-                                      length-mm
-                                      core-number))
-                           (fx/sub context
-                                   mm-per-pixel
-                                   core-number)))))
+  (int (Math/floor (/ (* (fx/sub context
+                                 slider-right
+                                 core-number)
+                         (fx/sub context
+                                 length-mm
+                                 core-number))
+                      (fx/sub context
+                              mm-per-pixel
+                              core-number)))))
 
 (defn selected-right-mm
-    "The crop will be along pixel lines if a `mm-per-pixel` is present
+  "The crop will be along pixel lines if a `mm-per-pixel` is present
   Otherwise it'll crop at `crop-percent`*`length-m`"
   [context
    core-number]
@@ -619,8 +619,8 @@
   [context
    core-number]
   (let [current-end-mm (fx/sub context
-                                 end-mm
-                                 core-number)]
+                               end-mm
+                               core-number)]
     (case (fx/sub context
                   fixed-side
                   core-number)
@@ -630,12 +630,12 @@
                       selected-right-mm
                       core-number))
       :left (- current-end-mm
-                (fx/sub context
-                        selected-left-mm
-                        core-number)
-                (fx/sub context
-                        selected-right-mm
-                        core-number)))))
+               (fx/sub context
+                       selected-left-mm
+                       core-number)
+               (fx/sub context
+                       selected-right-mm
+                       core-number)))))
 
 ;; Core Row
 
@@ -723,7 +723,7 @@
 (defn can-merge?
   [context]
   (empty? (second (fx/sub context
-                  layout))))
+                          layout))))
 
 (defn- does-vector-contain-value
   "Local helper - Checks if a VECTOR contains a VALUE
@@ -732,14 +732,14 @@
   (reduce #(or %1 (= %2 value))
           false
           vector))
-  
+
 (defn core-row
   [context
    core-number]
-    (let [does-row-have-core? (map (partial does-vector-contain-value
+  (let [does-row-have-core? (map (partial does-vector-contain-value
                                           core-number)
-                                   (fx/sub context
-                                           layout))
+                                 (fx/sub context
+                                         layout))
         row-with-core (first (keep-indexed #(if (true? %2) %1)
                                            does-row-have-core?))]
     row-with-core))

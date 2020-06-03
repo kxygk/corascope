@@ -252,8 +252,8 @@
                         core-number
                         :slider-left]
                        (/ (fx/sub snapshot
-                               state/unscanned-left-pix
-                               core-number)
+                                  state/unscanned-left-pix
+                                  core-number)
                           (fx/sub snapshot
                                   state/optical-scan-length-pix
                                   core-number)))

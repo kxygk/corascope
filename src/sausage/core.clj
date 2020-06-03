@@ -198,8 +198,8 @@
                                                     core-number))
                              :pref-width 90
                              :style (if (= (fx/sub context
-                                                state/start-mm
-                                                core-number)
+                                                   state/start-mm
+                                                   core-number)
                                            (fx/sub context
                                                    state/start-mm-after-crop
                                                    core-number))
@@ -482,8 +482,8 @@
                                                                 :display-number display-number}
                                                      :element-count {:fx/type sausage.displays.element-count/options
                                                                      :display-number display-number})]})))
-                                   flatten)}
-               ]})
+                              flatten)}
+              ]})
 
 (defn root
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"

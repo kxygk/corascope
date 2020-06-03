@@ -27,15 +27,15 @@
   [context
    display-number]
   (:merge-seams? (fx/sub context
-                      state/get-display
-                      display-number)))
+                         state/get-display
+                         display-number)))
 
 (defn lines?
   [context
    display-number]
   (:lines? (fx/sub context
-                         state/get-display
-                         display-number)))
+                   state/get-display
+                   display-number)))
 
 (defn view
   "display and options for XRF scan data"
@@ -66,12 +66,12 @@
                        :effect (fn [snapshot
                                     event]
                                  (sausage.xrf/load-data snapshot
-                                                            {:core-number core-number
-                                                             :file (-> event
-                                                                       :fx/event
-                                                                       .getDragboard
-                                                                       .getFiles
-                                                                       first)}))}
+                                                        {:core-number core-number
+                                                         :file (-> event
+                                                                   :fx/event
+                                                                   .getDragboard
+                                                                   .getFiles
+                                                                   first)}))}
      :children [ (if (nil? xrf-scan)
                    {:fx/type :button
                     :pref-width width
@@ -83,7 +83,7 @@
                    (if (nil? (selected-element (set (fx/sub context
                                                             state/xrf-columns
                                                             core-number))))
-                               ;;No element counts to display for this selection on this core
+                     ;;No element counts to display for this selection on this core
                      {:fx/type :text
                       :text-alignment :center
                       :text (str "No ["
@@ -158,7 +158,7 @@
   [{:keys [fx/context
            display-number]}]
   (let [xrf-columns (fx/sub context
-                             state/xrf-all-columns)
+                            state/xrf-all-columns)
         non-elements (clojure.set/difference  (set xrf-columns)
                                               (set (flatten periodic-table)))
         current-selection (fx/sub context
@@ -261,15 +261,15 @@
                           {:fx/type :toggle-button
                            :text "Compact"
                            :selected (not= fixed-height
-                                        (fx/sub context
-                                                state/display-height
-                                                display-number))
+                                           (fx/sub context
+                                                   state/display-height
+                                                   display-number))
                            :on-selected-changed {:display-number display-number
                                                  :effect toggle-height}}]}
               (if (<= fixed-height
-                     (fx/sub context
-                             state/display-height
-                             display-number))
+                      (fx/sub context
+                              state/display-height
+                              display-number))
                 {:fx/type periodic-buttons
                  :display-number display-number}
                 {:fx/type column-list
@@ -306,6 +306,6 @@
                                          event]
                                       (-> snapshot
                                           (fx/swap-context update-in [:displays
-                                                                     (:display-number event)
-                                                                     :lines?]
+                                                                      (:display-number event)
+                                                                      :lines?]
                                                            not)))}}]}]})

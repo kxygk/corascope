@@ -18,10 +18,10 @@
    core-number
    element]
   (mapv #(vector (read-string (:position-mm %))
-                (read-string (element %)))
-       (fx/sub context
-               state/xrf-element-counts
-               core-number)))
+                 (read-string (element %)))
+        (fx/sub context
+                state/xrf-element-counts
+                core-number)))
 
 (defn max-element-count-in-core
   [context
@@ -31,14 +31,14 @@
                         state/xrf-scan
                         core-number))
           (nil? (element (set (fx/sub context
-                                 state/xrf-columns
-                                 core-number)))))
+                                      state/xrf-columns
+                                      core-number)))))
     0.0 ;; skips cores that have no XRF-scan loaded in
     (apply max (mapv second
-                    (fx/sub context
-                            element-counts
-                            core-number
-                            element)))))
+                     (fx/sub context
+                             element-counts
+                             core-number
+                             element)))))
 
 (defn max-element-count-all-cores
   [context
@@ -163,8 +163,8 @@
                                           [columns-csv]
                                           element-counts-csv)
                                   :separator \tab)))
-    ;; return state unchanged
-    snapshot)
+  ;; return state unchanged
+  snapshot)
 
 (defn- shift-string-number ;; TODO Make this unnecessary..
   [shift
