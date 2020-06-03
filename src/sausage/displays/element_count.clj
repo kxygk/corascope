@@ -261,6 +261,8 @@
                           {:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :toggle-button
+                           :pref-height 30
+                           :pref-width 80
                            :text "Compact"
                            :selected (not= fixed-height
                                            (fx/sub context
