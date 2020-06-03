@@ -532,13 +532,15 @@
                                           :width fixed-margin-width}
                                          {:fx/type :scroll-pane
                                           :hbar-policy :always
-                                          :vbar-policy :always
+                                          :vbar-policy :never
+                                          :fit-to-height  true
                                           :pref-viewport-width (- (fx/sub context
                                                                           state/width)
                                                                   fixed-margin-width)
                                           :min-viewport-height (- (fx/sub context
                                                                           :height)
-                                                                  fixed-core-header-height)
+                                                                  fixed-workspace-settings-height
+                                                                  20)
                                           :pannable true
                                           :content {:fx/type :pane
                                                     :children (->> (fx/sub context
