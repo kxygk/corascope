@@ -532,18 +532,18 @@
   (if (some? (fx/sub context
                      mm-per-pixel
                      core-number))
-         (* (fx/sub context
-                    selected-left-pix
-                    core-number)
-            (fx/sub context
-                    mm-per-pixel
-                    core-number)))
+    (* (fx/sub context
+               selected-left-pix
+               core-number)
+       (fx/sub context
+               mm-per-pixel
+               core-number))
     (* (fx/sub context
                slider-left
                core-number)
        (fx/sub context
                length-mm
-               core-number)))
+               core-number))))
 
 
 (defn selected-right-pix
@@ -575,23 +575,23 @@
 (defn selected-right-mm
     "The crop will be along pixel lines if a `mm-per-pixel` is present
   Otherwise it'll crop at `crop-percent`*`length-m`"
-    [context
-     core-number]
-    (if (some? (fx/sub context
-                       mm-per-pixel
-                       core-number))
-           (* (fx/sub context
-                      selected-right-pix
-                      core-number)
-              (fx/sub context
-                      mm-per-pixel
-                      core-number)))
-      (* (fx/sub context
-                 slider-right
-                 core-number)
-         (fx/sub context
-                 length-mm
-                 core-number)))
+  [context
+   core-number]
+  (if (some? (fx/sub context
+                     mm-per-pixel
+                     core-number))
+    (* (fx/sub context
+               selected-right-pix
+               core-number)
+       (fx/sub context
+               mm-per-pixel
+               core-number))
+    (* (fx/sub context
+               slider-right
+               core-number)
+       (fx/sub context
+               length-mm
+               core-number))))
 
 (defn start-mm-after-crop
   [context
