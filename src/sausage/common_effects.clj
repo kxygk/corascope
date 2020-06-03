@@ -288,12 +288,14 @@
                           0
                           :optical
                           :image]
-                         #(sausage.optical/pad-front % start-pix))
+                         #(if (some? %)
+                            (sausage.optical/pad-front % start-pix)))
         (fx/swap-context update-in
                          [:cores
                           0
                           :xrf-scan]
-                         #(sausage.xrf/pad-front % start-mm))
+                         #(if (some? %)
+                            (sausage.xrf/pad-front % start-mm)))
         (update-core-start {:core-number 0
                             :fx/event 0.0})))) ;; in mm
 
