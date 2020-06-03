@@ -268,6 +268,35 @@
                                   state/optical-scan-length-pix
                                   core-number)))))
 
+(defn pad-first-core
+  "This will take the first core and make it start from `0mm`,
+  the image will be padded with a blank
+  and the xrf will start `start-mm` later"
+  [snapshot
+   _]
+  (let [start-mm (fx/sub snapshot
+                         state/start-mm
+                         0)
+        mm-per-pixel (fx/sub snapshot
+                             state/mm-per-pixel
+                             0)
+        start-pix (/ start-mm
+                     mm-per-pixel)]
+    (-> snapshot
+        (fx/swap-context update-in
+                         [:cores
+                          0
+                          :optical
+                          :image]
+                         #(sausage.optical/pad-front % start-pix))
+        (fx/swap-context update-in
+                         [:cores
+                          0
+                          :xrf-scan]
+                         #(sausage.xrf/pad-front % start-mm))
+        (update-core-start {:core-number 0
+                            :fx/event 0.0})))) ;; in mm
+
 (defn merge-cores
   "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
   RESULT: One core with optical and xrf-scans merged"
@@ -290,8 +319,12 @@
   (if (= 1
          (fx/sub snapshot
                  state/num-cores))
-    snapshot
-    (recur (merge-cores snapshot
+    (pad-first-core snapshot nil)
+    (recur (merge-cores (if (zero? (fx/sub snapshot
+                                           state/start-mm
+                                           0))
+                          snapshot
+                          (pad-first-core snapshot nil))
                         {:into-core-number 0
                          :from-core-number 1})
            nil)))

@@ -201,6 +201,14 @@
                             (filter #(< 0
                                         (read-string (:position-mm %)))))))))
 
+(defn pad-front
+  [xrf-scan
+   start-mm]
+  (update xrf-scan
+          :element-counts
+          #(map (partial shift-scan-point start-mm)
+                %)))
+
 (defn- join-horizontally
   ""
   [xrfA

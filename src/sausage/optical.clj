@@ -16,6 +16,28 @@
            javafx.stage.Stage
            javax.imageio.ImageIO))
 
+(defn pad-front
+  "Insert a blank of `start-pix` in front of `image`"
+  [image
+   start-pix]
+  (if (zero? start-pix)
+    image
+    (let [image-width (.getWidth image)
+          final-height (.getHeight image)
+          final-width (+ image-width
+                         start-pix)
+          merged-image (boofcv.struct.image.Planar. boofcv.struct.image.GrayU8
+                                                    final-width
+                                                    final-height
+                                                    3)
+          subimage-area (.subimage merged-image
+                                   0
+                                   0
+                                   image-width
+                                   final-height)]
+      (.setTo subimage-area image)
+      merged-image)))
+
 (defn- join-horizontally
   "Join two boofCV images horizontally into one.
   ImageA will be on the left
