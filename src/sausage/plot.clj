@@ -15,16 +15,11 @@
 
 (defn- nice-max-count
   [max-count]
-  (if (== 1.0
-          max-count)
-    1.5 ;; For `validity` plots
     (let [tick-mark-size (nearest-power-of-ten max-count)
           num-tick-marks (Math/ceil (/ max-count
                                        tick-mark-size))]
       (* num-tick-marks
-         tick-mark-size))))
-
-
+         tick-mark-size)))
 
 (defn- grid-spec
   "Given a size (WIDTH HEIGHT) the output *spec* describes how the plot looks.
@@ -48,7 +43,10 @@
              :attribs {:stroke "none"} ;; axis line attributes
              })
    :y-axis (viz/linear-axis
-            {:domain      [-0.01 max-count]
+            {:domain      (if (== 1.0
+                                  max-count)
+                            [-0.5 1.5] ;; better for 0-1/binary validity plots
+                            [-0.01 max-count])
              :range       [height 0]
              ;; puts the axis out of view (can't show the grid with no axis)
              :pos         0 ;; major-size default
