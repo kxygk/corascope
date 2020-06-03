@@ -204,10 +204,11 @@
 (defn pad-front
   [xrf-scan
    start-mm]
-  (update xrf-scan
-          :element-counts
-          #(map (partial shift-scan-point start-mm)
-                %)))
+  (if (some? xrf-scan)
+    (update xrf-scan
+            :element-counts
+            #(map (partial shift-scan-point start-mm)
+                  %))))
 
 (defn- join-horizontally
   ""
