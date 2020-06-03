@@ -218,8 +218,10 @@
   [{:keys [fx/context
            display-number]}]
   {:fx/type :choice-box
-   :items (map name (fx/sub context
-                            state/xrf-all-columns))
+   :items (->> (fx/sub context
+                       state/xrf-all-columns)
+               (filterv (partial is-plottable? context))
+               (map name))
    :value (name (fx/sub context
                         selection
                         display-number))
