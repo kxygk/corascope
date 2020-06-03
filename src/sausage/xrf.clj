@@ -90,6 +90,22 @@
 
 (defn load-data
   [snapshot
+   {:keys [file
+           core-number]}]
+  (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
+        columns (:columns xrf-scan)]
+    (-> snapshot
+        (fx/swap-context assoc
+                         :last-used-path
+                         (.getParentFile file))
+        (fx/swap-context assoc-in
+                         [:cores
+                          core-number
+                          :xrf-scan]
+                         xrf-scan))))
+
+(defn load-dialogue
+  [snapshot
    event]
   ;;  @(fx/on-fx-thread
   (let [core-number (:core-number event)
@@ -101,17 +117,9 @@
                  (.showOpenDialog (Stage.)))]
     (if (nil? file)
       snapshot ;; if no file was selected ie. file-selection-window was just closed
-      (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
-            columns (:columns xrf-scan)]
-        (-> snapshot
-            (fx/swap-context assoc
-                             :last-used-path
-                             (.getParentFile file))
-            (fx/swap-context assoc-in
-                             [:cores
-                              core-number
-                              :xrf-scan]
-                             xrf-scan))))))
+      (load-file snapshot
+                 {:core-number core-number
+                  :file file}))))
 
 (defn build-csv-row
   "take one measurement data and shove it into a vector or string - for CSV exports"

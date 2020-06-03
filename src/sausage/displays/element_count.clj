@@ -53,57 +53,74 @@
                                  selection
                                  display-number)
         ]
-    {:fx/type :h-box
-     :children [{:fx/type :v-box
-                 :children (if xrf-scan
-                             (if (nil? (selected-element (set (fx/sub context
-                                                                      state/xrf-columns
-                                                                      core-number))))
+    {:fx/type :pane
+     :on-drag-over {:core-number core-number
+                    :effect (fn [snapshot
+                                 event]
+                              ;; This sorta enables transfering of files
+                              ;; If this isn't set, then the `:on-drag-dropped` event can't trigger
+                              (.acceptTransferModes  (:fx/event event)
+                                                     javafx.scene.input.TransferMode/ANY)
+                              snapshot)}
+     :on-drag-dropped {:core-number core-number
+                       :effect (fn [snapshot
+                                    event]
+                                 (sausage.xrf/load-data snapshot
+                                                            {:core-number core-number
+                                                             :file (-> event
+                                                                       :fx/event
+                                                                       .getDragboard
+                                                                       .getFiles
+                                                                       first)}))}
+     :children [ (if (nil? xrf-scan)
+                   {:fx/type :button
+                    :pref-width width
+                    :pref-height height
+                    :alignment :center-left
+                    :on-action {:core-number core-number
+                                :effect sausage.xrf/load-dialogue}
+                    :text "Load XRF Scan"}
+                   (if (nil? (selected-element (set (fx/sub context
+                                                            state/xrf-columns
+                                                            core-number))))
                                ;;No element counts to display for this selection on this core
-                               [{:fx/type :text
-                                 :text-alignment :center
-                                 :text (str "No ["
-                                            (name selected-element)
-                                            "] in this core")}]
-                               [{:fx/type :image-view
-                                 :fit-width width
-                                 :fit-height height
-                                 :image (sausage.plot/plot-points width
-                                                                  height
-                                                                  (fx/sub context
-                                                                          sausage.xrf/element-counts
-                                                                          core-number
-                                                                          selected-element
-                                                                          )
-                                                                  (fx/sub context
-                                                                          state/length-mm
-                                                                          core-number)
-                                                                  (fx/sub context
-                                                                          sausage.xrf/max-element-count-all-cores
-                                                                          selected-element)
-                                                                  (fx/sub context
-                                                                          state/selected-left-mm
-                                                                          core-number)
-                                                                  (fx/sub context
-                                                                          state/selected-right-mm
-                                                                          core-number)
-                                                                  (if (fx/sub context
-                                                                              merge-seams?
-                                                                              display-number)
-                                                                    (fx/sub context
-                                                                            state/seams
-                                                                            core-number)
-                                                                    [] )
-                                                                  (fx/sub context
-                                                                          lines?
-                                                                          display-number))}])
-                             [{:fx/type :button
-                               :pref-width width
-                               :pref-height height
-                               :alignment :center-left
-                               :on-action {:core-number core-number
-                                           :effect sausage.xrf/load-data}
-                               :text "Load XRF Scan"}])}]}))
+                     {:fx/type :text
+                      :text-alignment :center
+                      :text (str "No ["
+                                 (name selected-element)
+                                 "] in this core")}
+                     {:fx/type :image-view
+                      :fit-width width
+                      :fit-height height
+                      :image (sausage.plot/plot-points width
+                                                       height
+                                                       (fx/sub context
+                                                               sausage.xrf/element-counts
+                                                               core-number
+                                                               selected-element
+                                                               )
+                                                       (fx/sub context
+                                                               state/length-mm
+                                                               core-number)
+                                                       (fx/sub context
+                                                               sausage.xrf/max-element-count-all-cores
+                                                               selected-element)
+                                                       (fx/sub context
+                                                               state/selected-left-mm
+                                                               core-number)
+                                                       (fx/sub context
+                                                               state/selected-right-mm
+                                                               core-number)
+                                                       (if (fx/sub context
+                                                                   merge-seams?
+                                                                   display-number)
+                                                         (fx/sub context
+                                                                 state/seams
+                                                                 core-number)
+                                                         [] )
+                                                       (fx/sub context
+                                                               lines?
+                                                               display-number))}))]}))
 
 
 (def periodic-table

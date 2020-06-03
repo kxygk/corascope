@@ -162,6 +162,22 @@
 
 (defn load-data
   [snapshot
+   {:keys [file
+           core-number]}]
+  (let [optical-image (sausage.optical/load-image file)]
+    (-> snapshot
+        (fx/swap-context assoc
+                         :last-used-path
+                         (.getParentFile file))
+        (fx/swap-context assoc-in
+                         [:cores
+                          core-number
+                          :optical
+                          :image]
+                         optical-image))))
+
+(defn load-dialogue
+  [snapshot
    {:keys [core-number]}]
   (let [file (-> (doto (FileChooser.)
                    (.setTitle "Load Optical Image")
@@ -171,19 +187,9 @@
                  (.showOpenDialog (Stage.)))]
     (if (nil? file)
       snapshot
-      (let [optical-image (sausage.optical/load-image file)]
-        (-> snapshot
-            (fx/swap-context assoc
-                             :last-used-path
-                             (.getParentFile file))
-            (fx/swap-context assoc-in
-                             [:cores
-                              core-number
-                              :optical
-                              :image]
-                             optical-image)
-            #_(fx/swap-context update-display-image
-                               core-number))))))
+      (load-file snapshot
+                 {:core-number core-number
+                  :file file}))))
 
 (defn save-data
   ""

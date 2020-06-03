@@ -149,11 +149,11 @@
                  :children [{:fx/type :menu-button
                              :items [{:fx/type :menu-item
                                       :on-action {:core-number core-number
-                                                  :effect sausage.optical/load-data}
+                                                  :effect sausage.optical/load-dialogue}
                                       :text "(Re)Load Optical Image"}
                                      {:fx/type :menu-item
                                       :on-action {:core-number core-number
-                                                  :effect sausage.xrf/load-data}
+                                                  :effect sausage.xrf/load-dialogue}
                                       :text "(Re)Load XRF Scan"}
                                      {:fx/type :menu-item
                                       :text "Auto-select areas with no XRF data"
