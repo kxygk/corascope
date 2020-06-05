@@ -187,7 +187,7 @@
                  (.showOpenDialog (Stage.)))]
     (if (nil? file)
       snapshot
-      (load-file snapshot
+      (load-data snapshot
                  {:core-number core-number
                   :file file}))))
 

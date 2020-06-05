@@ -117,7 +117,7 @@
                  (.showOpenDialog (Stage.)))]
     (if (nil? file)
       snapshot ;; if no file was selected ie. file-selection-window was just closed
-      (load-file snapshot
+      (load-data snapshot
                  {:core-number core-number
                   :file file}))))
 
