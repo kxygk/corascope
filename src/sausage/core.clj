@@ -179,6 +179,17 @@
                  :alignment :center-left
                  :children [{:fx/type core-menu
                              :core-number core-number}
+                            {:fx/type :label
+                             :style "-fx-text-fill: red;"
+                             :ellipsis-string "ERROR"
+                             :text (if (> (fx/sub context
+                                                  state/xrf-scan-length-mm
+                                                  core-number)
+                                          (fx/sub context
+                                                  state/optical-scan-length-mm
+                                                  core-number))
+                                     "ERROR: XRF scan data is longer than the optical data"
+                                     "")}
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :label
