@@ -1,6 +1,7 @@
 (ns sausage.optical
   (:require
    [sausage.state :as state]
+   [sausage.common-effects]
    [cljfx.api :as fx])
   (:import [javafx.scene.input KeyCode KeyEvent]
            boofcv.io.image.UtilImageIO
@@ -174,7 +175,8 @@
                           core-number
                           :optical
                           :image]
-                         optical-image))))
+                         optical-image)
+        (sausage.common-effects/fit-to-screen nil))))
 
 (defn load-dialogue
   [snapshot
