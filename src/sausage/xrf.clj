@@ -3,7 +3,6 @@
    [clojure.data.csv]
    [clojure.java.io]
    [sausage.state :as state] ;; base XRF subscriptions are here b/c of `length-mm`
-   [sausage.common-effects]
    [cljfx.api :as fx])
   (:import javafx.stage.FileChooser
            javafx.stage.Stage))
@@ -104,8 +103,7 @@
                          [:cores
                           core-number
                           :xrf-scan]
-                         xrf-scan)
-        (sausage.common-effects/fit-to-screen nil))))
+                         xrf-scan))))
 
 (defn load-dialogue
   [snapshot
