@@ -230,10 +230,15 @@
         shifted-element-countsB (map (partial shift-scan-point xrfB-start-mm)
                                      (:element-counts xrfB))
         merged-counts (concat element-countsA
-                              shifted-element-countsB)]
-    (assoc xrfA
-           :element-counts
-           merged-counts)))
+                              shifted-element-countsB)
+        missing-columns (clojure.set/difference (set (:columns xrfB))
+                                                (set (:columns xrfA)))]
+    (-> xrfA
+        (assoc :element-counts
+               merged-counts)
+        (assoc :columns
+               (into (:columns xrfA)
+                     missing-columns)))))
 
 (defn merge-cores
   "Attach the FROM-CORE-NUMBER xrf-scan horizontally
