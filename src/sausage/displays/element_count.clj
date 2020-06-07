@@ -145,12 +145,31 @@
                        element)))
 
 (defn is-plottable?
-  [context
-   element]
-  (= java.lang.Long
-     (type (read-string (element (fx/sub context
-                                         state/xrf-first-scan-point
-                                         0))))))
+  "Checks if the given element is plottable (is read in as a Long)
+  Starts from the given core and checks all subsequent cores
+  if not core-number is given then it starts from core 0"
+  ([context
+    element
+    core-number]
+   ;; We try to get the element in the first XRF scan point
+   (let [value (element (fx/sub context
+                                state/xrf-first-scan-point
+                                core-number))]
+     (if (nil? value) ;; if it doesn't exist
+       (if (== core-number ;; we see if there are subsequent cores
+               (dec (fx/sub context
+                            state/num-cores)))
+         false ;; if not, then this element is unplottable
+         (recur context ;; else we check the next core
+                element
+                (inc core-number)))
+       (= java.lang.Long ;; if the element exists, we check it's a number
+          (type (read-string value)))))) ;; and not a string or something..
+  ([context
+    element] ;; Default interface - starts with the first core
+   (is-plottable? context
+                  element
+                  0)))
 
 (defn- periodic-buttons
   "Periodic table as a grid of buttons
