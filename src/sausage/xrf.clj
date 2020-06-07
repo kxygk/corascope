@@ -20,9 +20,10 @@
    element]
   (mapv #(vector (read-string (:position-mm %))
                  (read-string (element %)))
-        (fx/sub context
-                state/xrf-element-counts
-                core-number)))
+        (filter #(some? (element %))
+                (fx/sub context
+                        state/xrf-element-counts
+                        core-number))))
 
 (defn max-element-count-in-core
   [context

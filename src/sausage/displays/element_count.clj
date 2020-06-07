@@ -152,9 +152,9 @@
     element
     core-number]
    ;; We try to get the element in the first XRF scan point
-   (let [value (element (fx/sub context
-                                state/xrf-first-scan-point
-                                core-number))]
+   (let [value (element (first (filter element (fx/sub context
+                                                       state/xrf-element-counts
+                                                       core-number))))]
      (if (nil? value) ;; if it doesn't exist
        (if (== core-number ;; we see if there are subsequent cores
                (dec (fx/sub context
