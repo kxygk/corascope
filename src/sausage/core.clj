@@ -34,44 +34,34 @@
            working-directory
            height]}]
   {:fx/type :h-box
-   :children [{:fx/type :h-box
+   :children [{:fx/type :label
                :pref-width fixed-margin-width
-               :alignment :center-left
-               :children [{:fx/type :text
-                           :text " Working Directory: "}
-                          {:fx/type :text-field
-                           :editable false
-                           :pref-height height
-                           :prompt-text "Select a working directory.."
-                           :pref-column-count 999
-                           :text working-directory}]}
-              {:fx/type :h-box
-               :alignment :center-right
-               :children [{:fx/type :button
-                           :max-height Double/MAX_VALUE
-                           :on-action {:effect effects/remove-core}
-                           :text "Remove Last Core"}
-                          {:fx/type :button
-                           :max-height Double/MAX_VALUE
-                           :on-action {:effect effects/add-core}
-                           :text "Add Core to End"}
-                          {:fx/type :pane
-                           :h-box/hgrow :always}
-                          {:fx/type :button
-                           :text " ←→ "
-                           :max-height Double/MAX_VALUE
-                           :on-action
-                           {:effect (fn [snapshot
-                                         event]
-                                      (-> snapshot
-                                          (fx/swap-context assoc
-                                                           :zoom
-                                                           1.0)))}}
-                          {:fx/type :button
-                           :text " |←→| "
-                           :max-height Double/MAX_VALUE
-                           :on-action
-                           {:effect effects/fit-to-screen}}]}]})
+               :text " Sausage Inspector"}
+              {:fx/type :button
+               :text " ←→ "
+               :max-height Double/MAX_VALUE
+               :on-action
+               {:effect (fn [snapshot
+                             event]
+                          (-> snapshot
+                              (fx/swap-context assoc
+                                               :zoom
+                                               1.0)))}}
+              {:fx/type :button
+               :text " |←→| "
+               :max-height Double/MAX_VALUE
+               :on-action
+               {:effect effects/fit-to-screen}}
+              {:fx/type :pane
+               :h-box/hgrow :always}
+              {:fx/type :button
+               :max-height Double/MAX_VALUE
+               :on-action {:effect effects/remove-core}
+               :text "Remove Last Core"}
+              {:fx/type :button
+               :max-height Double/MAX_VALUE
+               :on-action {:effect effects/add-core}
+               :text "Add Core to End"}]})
 
 (defn sliders
   "The sliders that visually help the user cropping the data"
