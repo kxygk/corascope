@@ -182,13 +182,20 @@
                             {:fx/type :label
                              :style "-fx-text-fill: red;"
                              :ellipsis-string "ERROR"
-                             :text (if (> (fx/sub context
-                                                  state/xrf-scan-length-mm
-                                                  core-number)
-                                          (fx/sub context
-                                                  state/optical-scan-length-mm
-                                                  core-number))
-                                     "ERROR: XRF scan data is longer than the optical data"
+                             :text (if (and (some? (fx/sub context
+                                                           state/xrf-scan
+                                                           core-number))
+                                            (some? (fx/sub context
+                                                           state/optical-image
+                                                           core-number)))
+                                     (if (> (fx/sub context
+                                                    state/xrf-scan-length-mm
+                                                    core-number)
+                                            (fx/sub context
+                                                    state/optical-scan-length-mm
+                                                    core-number))
+                                       "ERROR: XRF scan data is longer than the optical data"
+                                       "")
                                      "")}
                             {:fx/type :pane
                              :h-box/hgrow :always}
