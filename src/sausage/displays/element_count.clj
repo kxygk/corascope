@@ -65,20 +65,25 @@
      :on-drag-dropped {:core-number core-number
                        :effect (fn [snapshot
                                     event]
-                                 (sausage.xrf/load-data snapshot
-                                                        {:core-number core-number
-                                                         :file (-> event
-                                                                   :fx/event
-                                                                   .getDragboard
-                                                                   .getFiles
-                                                                   first)}))}
+                                 (-> snapshot
+                                     (sausage.xrf/load-data {:core-number core-number
+                                                             :file (-> event
+                                                                       :fx/event
+                                                                       .getDragboard
+                                                                       .getFiles
+                                                                       first)})
+                                     (effects/fit-to-screen event)))}
      :children [ (if (nil? xrf-scan)
                    {:fx/type :button
                     :pref-width width
                     :pref-height height
                     :alignment :center-left
                     :on-action {:core-number core-number
-                                :effect sausage.xrf/load-dialogue}
+                                :effect (fn [snapshot
+                                             event]
+                                          (-> snapshot
+                                              (sausage.xrf/load-dialogue event)
+                                              (effects/fit-to-screen event)))}
                     :text "Load XRF Scan"}
                    (if (nil? (selected-element (set (fx/sub context
                                                             state/xrf-columns

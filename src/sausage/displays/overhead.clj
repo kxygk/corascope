@@ -1,5 +1,6 @@
 (ns sausage.displays.overhead
   (:require
+   [sausage.common-effects :as effects]
    [sausage.state :as state]
    [cljfx.api :as fx])
   (:import boofcv.io.image.ConvertBufferedImage
@@ -76,13 +77,14 @@
    :on-drag-dropped {:core-number core-number
                      :effect (fn [snapshot
                                   event]
-                               (sausage.optical/load-data snapshot
-                                                          {:core-number core-number
-                                                           :file (-> event
-                                                                     :fx/event
-                                                                     .getDragboard
-                                                                     .getFiles
-                                                                     first)}))}
+                               (-> snapshot
+                                   (sausage.optical/load-data {:core-number core-number
+                                                               :file (-> event
+                                                                         :fx/event
+                                                                         .getDragboard
+                                                                         .getFiles
+                                                                         first)})
+                                   (effects/fit-to-screen event)))}
    :children [(let [height (fx/sub context
                                    state/display-height
                                    display-number)]
@@ -95,7 +97,11 @@
                                :pref-height height
                                :alignment :center-left
                                :on-action {:core-number core-number
-                                           :effect sausage.optical/load-dialogue}
+                                           :effect (fn [snapshot
+                                                        event]
+                                                     (-> snapshot
+                                                         (sausage.optical/load-dialogue event)
+                                                         (effects/fit-to-screen event)))}
                                :text "Load image"}]}
                   (let [zoom-factor (/ width
                                        (fx/sub context
