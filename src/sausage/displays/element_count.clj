@@ -84,7 +84,7 @@
                                                             state/xrf-columns
                                                             core-number))))
                      ;;No element counts to display for this selection on this core
-                     {:fx/type :text
+                     {:fx/type :label
                       :text-alignment :center
                       :text (str "No ["
                                  (name selected-element)
