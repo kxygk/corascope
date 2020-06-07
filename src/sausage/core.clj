@@ -130,6 +130,37 @@
                                                                  (- 1
                                                                     (:fx/event event)))))}}]})
 
+(defn core-menu
+  [{:keys [fx/context
+           core-number]}]
+  {:fx/type :menu-button
+   :items [{:fx/type :menu-item
+            :on-action {:core-number core-number
+                        :effect sausage.optical/load-dialogue}
+            :text "(Re)Load Optical Image"}
+           {:fx/type :menu-item
+            :on-action {:core-number core-number
+                        :effect sausage.xrf/load-dialogue}
+            :text "(Re)Load XRF Scan"}
+           {:fx/type :menu-item
+            :text "Auto-select areas with no XRF data"
+            :on-action {:core-number core-number
+                        :effect effects/set-sliders-to-crop-unscanned}}
+           {:fx/type :menu-item
+            :text "Save Optical Image"
+            :disable (nil? (fx/sub context
+                                   state/optical-image
+                                   core-number))
+            :on-action  {:core-number core-number
+                         :effect sausage.optical/save-data}}
+           {:fx/type :menu-item
+            :text "Save XRF Scan"
+            :disable (nil? (fx/sub context
+                                   state/xrf-scan
+                                   core-number))
+            :on-action  {:core-number core-number
+                         :effect sausage.xrf/save-data}}]})
+
 (defn core-header
   "The options bar at the top of every core"
   [{:keys [fx/context
@@ -146,33 +177,8 @@
                  :min-height height
                  :max-height height
                  :alignment :center-left
-                 :children [{:fx/type :menu-button
-                             :items [{:fx/type :menu-item
-                                      :on-action {:core-number core-number
-                                                  :effect sausage.optical/load-dialogue}
-                                      :text "(Re)Load Optical Image"}
-                                     {:fx/type :menu-item
-                                      :on-action {:core-number core-number
-                                                  :effect sausage.xrf/load-dialogue}
-                                      :text "(Re)Load XRF Scan"}
-                                     {:fx/type :menu-item
-                                      :text "Auto-select areas with no XRF data"
-                                      :on-action {:core-number core-number
-                                                  :effect effects/set-sliders-to-crop-unscanned}}
-                                     {:fx/type :menu-item
-                                      :text "Save Optical Image"
-                                      :disable (nil? (fx/sub context
-                                                             state/optical-image
-                                                             core-number))
-                                      :on-action  {:core-number core-number
-                                                   :effect sausage.optical/save-data}}
-                                     {:fx/type :menu-item
-                                      :text "Save XRF Scan"
-                                      :disable (nil? (fx/sub context
-                                                             state/xrf-scan
-                                                             core-number))
-                                      :on-action  {:core-number core-number
-                                                   :effect sausage.xrf/save-data}}]}
+                 :children [{:fx/type core-menu
+                             :core-number core-number}
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :label
