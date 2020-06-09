@@ -346,6 +346,57 @@
                      (range (fx/sub context
                                     state/num-displays))))}))
 
+(defn layout-area
+  [{:keys [fx/context]}]
+  {:fx/type :scroll-pane
+   :hbar-policy :always
+   :vbar-policy :never
+   :fit-to-height  true
+   :on-scroll {:effect (fn [snapshot
+                            event]
+                         (let [delta-y (.getDeltaY (:fx/event event))]
+                           (if (zero? delta-y)
+                             snapshot
+                             (if (pos? delta-y) ;; Maybe there is some simpler way to do this..?
+                               (fx/swap-context snapshot
+                                                update
+                                                :zoom
+                                                #( * %
+                                                  (+ 1
+                                                     (/ (Math/log delta-y)
+                                                        40))))
+                               (fx/swap-context snapshot
+                                                update
+                                                :zoom
+                                                #( / %
+                                                  (+ 1
+                                                     (/ (Math/log (Math/abs delta-y))
+                                                        40))))))))}
+   :pref-viewport-width (- (fx/sub context
+                                   state/width)
+                           fixed-margin-width)
+   :min-viewport-height (- (fx/sub context
+                                   :height)
+                           fixed-workspace-settings-height
+                           20)
+   :pannable true
+   :content {:fx/type :pane
+             :children (->> (fx/sub context
+                                    state/num-cores)
+                            range
+                            (map (fn [core-index]
+                                   {:fx/type core-displays
+                                    :fx/key (fx/sub context
+                                                    state/core-creation-time
+                                                    core-index)
+                                    :core-number core-index
+                                    :horizontal-zoom-factor (fx/sub context
+                                                                    state/zoom)
+                                    :height (+ (fx/sub context
+                                                       state/displays-total-height)
+                                               fixed-core-header-height)}))
+                            (into []))}})
+
 (defn display-options-header
   "Each Display's header
   With common things like: Name, Button to close the display, etc.
@@ -515,26 +566,6 @@
            :on-height-changed {:effect (fn [snapshot
                                             event]
                                          (fx/swap-context snapshot assoc :height (:fx/event event)))}
-           :on-scroll {:effect (fn [snapshot
-                                    event]
-                                 (let [delta-y (.getDeltaY (:fx/event event))]
-                                   (if (zero? delta-y)
-                                     snapshot
-                                     (if (pos? delta-y) ;; Maybe there is some simpler way to do this..?
-                                       (fx/swap-context snapshot
-                                                        update
-                                                        :zoom
-                                                        #( * %
-                                                          (+ 1
-                                                             (/ (Math/log delta-y)
-                                                                40))))
-                                       (fx/swap-context snapshot
-                                                        update
-                                                        :zoom
-                                                        #( / %
-                                                          (+ 1
-                                                             (/ (Math/log (Math/abs delta-y))
-                                                                40))))))))}
            :root {:fx/type :v-box
                   :children [{:fx/type workspace-settings-display
                               :working-directory (fx/sub context
@@ -544,36 +575,7 @@
                               :children [
                                          {:fx/type margin
                                           :width fixed-margin-width}
-                                         {:fx/type :scroll-pane
-                                          :hbar-policy :always
-                                          :vbar-policy :never
-                                          :fit-to-height  true
-                                          :pref-viewport-width (- (fx/sub context
-                                                                          state/width)
-                                                                  fixed-margin-width)
-                                          :min-viewport-height (- (fx/sub context
-                                                                          :height)
-                                                                  fixed-workspace-settings-height
-                                                                  20)
-                                          :pannable true
-                                          :content {:fx/type :pane
-                                                    :children (->> (fx/sub context
-                                                                           state/num-cores)
-                                                                   range
-                                                                   (map (fn [core-index]
-                                                                          {:fx/type core-displays
-                                                                           :fx/key (fx/sub context
-                                                                                           state/core-creation-time
-                                                                                           core-index)
-                                                                           :core-number core-index
-                                                                           :horizontal-zoom-factor (fx/sub context
-                                                                                                           state/zoom)
-                                                                           :height (+ (fx/sub context
-                                                                                              state/displays-total-height)
-                                                                                      fixed-core-header-height)}))
-                                                                   (into []))
-                                                    }}
-                                         ]}]}}})
+                                         {:fx/type layout-area}]}]}}})
 
 (defn event-handler-wrapper
   [{:keys [snapshot
