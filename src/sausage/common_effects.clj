@@ -91,32 +91,46 @@
                                         (:start-mm %2)))
                               (into []))))))
 
+(defn snap-core-to-pixel
+  [snapshot
+   {:keys [core-number]}]
+  (if (nil? (fx/sub snapshot
+                        state/optical-scan
+                        core-number))
+    snapshot
+    (let [mm-per-pixel (fx/sub snapshot
+                               state/mm-per-pixel
+                               core-number)
+          rounded-to-pixel (Math/round (/ (fx/sub snapshot
+                                                  state/start-mm
+                                                  core-number)
+                                          mm-per-pixel))
+          corrected-start-mm (* rounded-to-pixel
+                                mm-per-pixel)]
+      (-> snapshot
+          (fx/swap-context assoc-in
+                           [:cores
+                            core-number
+                            :start-mm]
+                           corrected-start-mm)))))
+
 (defn update-core-start
   [snapshot
    {:keys [fx/event
            offset ;; Optional
            core-number]}]
-  (try
-    (let [input-value-mm event
-          mm-per-pixel (fx/sub snapshot
-                               state/mm-per-pixel
-                               core-number)
-          rounded-to-pixel (Math/round (/ input-value-mm
-                                          mm-per-pixel))
-          corrected-start-mm (* rounded-to-pixel
-                                mm-per-pixel)]
-      (-> snapshot
-          (fx/swap-context assoc-in [:cores
-                                     core-number
-                                     :start-mm]
-                           (if (nil? offset)
-                             corrected-start-mm
-                             (+ corrected-start-mm
-                                offset)))
-          (sort-cores nil)))
-    (catch Exception ex
-      (println "Invalid core-start input")
-      snapshot)))
+  (cond-> snapshot
+    true (fx/swap-context assoc-in [:cores
+                                    core-number
+                                    :start-mm]
+                          (if (nil? offset)
+                            event
+                            (+ event
+                               offset)))
+    (some? (fx/sub snapshot
+                   state/optical-scan
+                   core-number)) (snap-core-to-pixel {:core-number core-number})
+    true (sort-cores nil)))
 
 (defn update-core-end
   [snapshot
