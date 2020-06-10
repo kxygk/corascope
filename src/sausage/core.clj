@@ -38,16 +38,6 @@
                :pref-width fixed-margin-width
                :text " Sausage Inspector"}
               {:fx/type :button
-               :text " ←→ "
-               :max-height Double/MAX_VALUE
-               :on-action
-               {:effect (fn [snapshot
-                             event]
-                          (-> snapshot
-                              (fx/swap-context assoc
-                                               :zoom
-                                               1.0)))}}
-              {:fx/type :button
                :text " |←→| "
                :max-height Double/MAX_VALUE
                :on-action
