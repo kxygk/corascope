@@ -310,9 +310,6 @@
            core-number]}]
   (let [width (* horizontal-zoom-factor
                  (fx/sub context
-                         state/pixels-per-mm
-                         core-number)
-                 (fx/sub context
                          state/length-mm
                          core-number))]
     {:fx/type :v-box

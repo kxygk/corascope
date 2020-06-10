@@ -152,10 +152,7 @@
                                      state/width)
                              456) ;; fixed-margin-width ;; TODO figure out how to get this var here
                           (* (fx/sub snapshot
-                                     state/end-of-all-scans-mm)
-                             (fx/sub snapshot
-                                     state/pixels-per-mm
-                                     0))))))
+                                     state/end-of-all-scans-mm))))))
 
 (defn add-core
   [snapshot
