@@ -558,11 +558,12 @@
                               :working-directory (fx/sub context
                                                          state/working-directory)
                               :height fixed-workspace-settings-height}
-                             {:fx/type :h-box
-                              :children [
-                                         {:fx/type margin
-                                          :width fixed-margin-width}
-                                         {:fx/type layout-area}]}]}}})
+
+                             {:fx/type :border-pane
+                              :left {:fx/type margin
+                                     :width fixed-margin-width}
+                              :center {:fx/type layout-area}
+                              }]}}})
 
 (defn event-handler-wrapper
   [{:keys [snapshot
