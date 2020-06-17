@@ -303,13 +303,46 @@
                          state/length-mm
                          core-number))]
     {:fx/type :v-box
-     :layout-x (* horizontal-zoom-factor
+     :on-scroll {:fx/sync true
+                 :effect (fn [snapshot
+                              {:keys [fx/event]}]
+                           (let [delta-y (.getDeltaY event)]
+                             (if (zero? (.getDeltaY event))
+                               snapshot
+                               (cond-> snapshot
+                                 true (fx/swap-context assoc-in
+                                                       [:zoom
+                                                        :depth-mm]
+                                                       (+ (fx/sub snapshot
+                                                                  state/start-mm
+                                                                  core-number)
+                                                          (* (fx/sub snapshot
+                                                                     state/length-mm
+                                                                     core-number)
+                                                             (/ (.getX event)
+                                                                width))))
+                                 (pos? delta-y) (fx/swap-context update-in
+                                                                 [:zoom
+                                                                  :factor]
+                                                                 #( * %
+                                                                   (+ 1
+                                                                      (/ (Math/log delta-y)
+                                                                         40))))
+                                 (neg? delta-y) (fx/swap-context update-in
+                                                                 [:zoom
+                                                                  :factor]
+                                                                 #( / %
+                                                                   (+ 1
+                                                                      (/ (Math/log (Math/abs delta-y))
+                                                                         40))))))))}
+     :layout-x (- (* horizontal-zoom-factor
+                     (fx/sub context
+                             state/start-mm
+                             core-number))
                   (fx/sub context
-                          state/pixels-per-mm
-                          core-number)
+                          state/display-left-pix)
                   (fx/sub context
-                          state/start-mm
-                          core-number))
+                          state/horizontal-drag-pix))
      :layout-y (* height
                   (fx/sub context
                           state/core-row
@@ -336,38 +369,73 @@
 (defn layout-area
   [{:keys [fx/context]}]
   {:fx/type :scroll-pane
-   :hbar-policy :always
+   :hbar-policy :never
    :vbar-policy :never
-   :fit-to-height  true
-   :on-scroll {:effect (fn [snapshot
-                            event]
-                         (let [delta-y (.getDeltaY (:fx/event event))]
-                           (if (zero? delta-y)
-                             snapshot
-                             (if (pos? delta-y) ;; Maybe there is some simpler way to do this..?
-                               (fx/swap-context snapshot
-                                                update
-                                                :zoom
-                                                #( * %
-                                                  (+ 1
-                                                     (/ (Math/log delta-y)
-                                                        40))))
-                               (fx/swap-context snapshot
-                                                update
-                                                :zoom
-                                                #( / %
-                                                  (+ 1
-                                                     (/ (Math/log (Math/abs delta-y))
-                                                        40))))))))}
-   :pref-viewport-width (- (fx/sub context
-                                   state/width)
-                           fixed-margin-width)
-   :min-viewport-height (- (fx/sub context
-                                   :height)
-                           fixed-workspace-settings-height
-                           20)
-   :pannable true
    :content {:fx/type :pane
+             :on-mouse-dragged {:effect (fn [snapshot
+                                             {:keys [fx/event]}]
+                                          (-> snapshot
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :drag-x]
+                                                               (.getX event))
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :drag-y]
+                                                               (.getY event))))}
+             :on-mouse-pressed {:effect (fn [snapshot
+                                             {:keys [fx/event]}]
+                                          (-> snapshot
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :pressed]
+                                                               true)
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :x]
+                                                               (.getX event))
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :y]
+                                                               (.getY event))
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :drag-x]
+                                                               (.getX event))
+                                              (fx/swap-context assoc-in
+                                                               [:mouse
+                                                                :drag-y]
+                                                               (.getY event))))}
+             :on-mouse-released {:effect (fn [snapshot
+                                              event]
+                                           (-> snapshot
+                                               (fx/swap-context update-in
+                                                                [:zoom
+                                                                 :mouse-horizontal-pix]
+                                                                #(- %
+                                                                    (fx/sub snapshot
+                                                                            state/horizontal-drag-pix)))
+                                               (fx/swap-context assoc-in
+                                                                [:mouse
+                                                                 :pressed]
+                                                                false)
+                                               (fx/swap-context assoc-in
+                                                                [:mouse
+                                                                 :drag-x]
+                                                                0)
+                                               (fx/swap-context assoc-in
+                                                                [:mouse
+                                                                 :drag-y]
+                                                                0)))}
+             :on-scroll {:effect (fn [snapshot
+                                      event]
+                                   (if (zero? (.getDeltaY (:fx/event event)))
+                                     snapshot
+                                     (-> snapshot
+                                         (fx/swap-context assoc-in
+                                                          [:zoom
+                                                           :mouse-horizontal-pix]
+                                                          (.getX (:fx/event event))))))}
              :children (->> (fx/sub context
                                     state/num-cores)
                             range
@@ -378,7 +446,7 @@
                                                     core-index)
                                     :core-number core-index
                                     :horizontal-zoom-factor (fx/sub context
-                                                                    state/zoom)
+                                                                    state/zoom-factor)
                                     :height (+ (fx/sub context
                                                        state/displays-total-height)
                                                fixed-core-header-height)}))

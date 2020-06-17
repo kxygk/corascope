@@ -146,8 +146,17 @@
   [snapshot
    _]
   (-> snapshot
-      (fx/swap-context assoc
-                       :zoom
+      (fx/swap-context assoc-in
+                       [:zoom
+                        :depth-mm]
+                       0.0)
+      (fx/swap-context assoc-in
+                       [:zoom
+                        :mouse-horizontal-pix]
+                       0)
+      (fx/swap-context assoc-in
+                       [:zoom
+                        :factor]
                        (/ (- (fx/sub snapshot
                                      state/width)
                              456) ;; fixed-margin-width ;; TODO figure out how to get this var here

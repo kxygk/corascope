@@ -8,7 +8,14 @@
   (atom (fx/create-context {:working-directory ""
                             :width 1000
                             :height 600
-                            :zoom 1.0
+                            :zoom {:factor 1.0
+                                   :depth-mm 0.0
+                                   :mouse-horizontal-pix 0}
+                            :mouse {:pressed false
+                                    :x 0
+                                    :y 0
+                                    :drag-x 0
+                                    :drag-y 0}
                             :mm-per-pixel 0.5 ;; Common parameter across all cores
                             :mm-xrf-step-size 5 ;; Common parameter across all cores
                             :cores []
@@ -43,10 +50,63 @@
   (fx/sub context
           :last-used-path))
 
+;; mouse
+
+(defn mouse
+  [context]
+  (fx/sub context
+          :mouse))
+
+(defn mouse-pressed?
+  [context]
+  (:pressed (fx/sub context
+                     mouse)))
+
+(defn mouse-x
+  "mouse position x. Stays fixed when dragging"
+  [context]
+  (:x (fx/sub context
+                     mouse)))
+
+(defn mouse-y
+  "mouse position y. Stays fixed when dragging"
+  [context]
+  (:y (fx/sub context
+              mouse)))
+
+(defn mouse-drag-x
+  "This position is updated during draggin. Otherwise zero"
+  [context]
+  (:drag-x (fx/sub context
+                     mouse)))
+
+(defn mouse-drag-y
+  "This position is updated during draggin. Otherwise zero"
+  [context]
+  (:drag-y (fx/sub context
+                     mouse)))
+
+;; zoom
+
 (defn zoom
   [context]
   (fx/sub context
           :zoom))
+
+(defn zoom-factor
+  [context]
+  (:factor (fx/sub context
+                       zoom)))
+
+(defn zoom-depth-mm
+  [context]
+  (:depth-mm (fx/sub context
+                     zoom)))
+
+(defn zoom-mouse-horizontal-pix
+  [context]
+  (:mouse-horizontal-pix (fx/sub context
+                                    zoom)))
 
 ;; DEEPER SUBSCRIPTIONS
 
@@ -743,3 +803,37 @@
         row-with-core (first (keep-indexed #(if (true? %2) %1)
                                            does-row-have-core?))]
     row-with-core))
+
+
+;; Display position
+
+(defn horizontal-drag-pix
+  [context]
+  (if (fx/sub context
+              mouse-pressed?)
+    (- (fx/sub context
+               mouse-x)
+       (fx/sub context
+               mouse-drag-x))
+    0))
+
+
+(defn display-left-pix
+  "This code is incredibly convoluted.."
+  [context]
+  (let [zoom-factor (fx/sub context
+                            zoom-factor)
+        mouse-horizontal-pix (fx/sub context
+                                     zoom-mouse-horizontal-pix)
+        layout-area-width (- (fx/sub context
+                                     width)
+                             456) ;;fixed-margin-width)
+        mouse-depth-mm (fx/sub context
+                               zoom-depth-mm)
+        mouse-horizontal-mm (/ mouse-horizontal-pix
+                               zoom-factor) ;; OR OLD ZOOM?
+        screen-left-mm (- mouse-depth-mm
+                          mouse-horizontal-mm)
+        screen-left-pix (* screen-left-mm
+                           zoom-factor)]
+    screen-left-pix))
