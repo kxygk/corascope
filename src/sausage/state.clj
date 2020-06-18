@@ -269,7 +269,7 @@
   (if (nil? (fx/sub context
                     xrf-scan
                     core-number))
-    (str "Core Number: " core-number)
+    (str "Core Number " core-number)
     (let [xrf-file-name-first-point (-> (fx/sub context
                                                 xrf-first-scan-point
                                                 core-number)
@@ -283,9 +283,9 @@
       (if (= xrf-file-name-first-point
              xrf-file-name-last-point)
         xrf-file-name-first-point
-        (str "From: -"
+        (str "From -"
              xrf-file-name-first-point
-             "- To: -"
+             "- To -"
              xrf-file-name-last-point
              "-")))))
 
