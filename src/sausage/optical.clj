@@ -206,9 +206,10 @@
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showSaveDialog (Stage.)))]
     ;; Side Effect
-    (boofcv.io.image.UtilImageIO/saveImage (fx/sub snapshot
-                                                   state/optical-image
-                                                   core-number)
-                                           (.getCanonicalPath file)))
-  ;; return state unchanged
-  snapshot)
+    (if (some? file)
+      (boofcv.io.image.UtilImageIO/saveImage (fx/sub snapshot
+                                                     state/optical-image
+                                                     core-number)
+                                             (.getCanonicalPath file))))
+    ;; return state unchanged
+    snapshot)

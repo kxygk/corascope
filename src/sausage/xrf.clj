@@ -157,13 +157,14 @@
                                                   state/last-used-path)))
                  ;; Could also grab primary stage instance to make this dialog blocking
                  (.showSaveDialog (Stage.)))]
-    (with-open [csv-writer (clojure.java.io/writer (.getCanonicalPath file))]
-      (clojure.data.csv/write-csv csv-writer
-                                  (concat []
-                                          header
-                                          [columns-csv]
-                                          element-counts-csv)
-                                  :separator \tab)))
+    (if (some? file)
+      (with-open [csv-writer (clojure.java.io/writer (.getCanonicalPath file))]
+        (clojure.data.csv/write-csv csv-writer
+                                    (concat []
+                                            header
+                                            [columns-csv]
+                                            element-counts-csv)
+                                    :separator \tab))))
   ;; return state unchanged
   snapshot)
 
