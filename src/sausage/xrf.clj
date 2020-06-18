@@ -17,7 +17,7 @@
   [context
    core-number
    element]
-  (mapv #(vector (read-string (:position-mm %))
+  (mapv #(vector (read-string (:depth-mm %))
                  (read-string (element %)))
         (filter #(some? (element %))
                 (fx/sub context
@@ -61,6 +61,18 @@
                     %)))
        element-counts))
 
+(defn add-depth-mm-column
+  "Fills in a `:depth-mm` column is it doesn't already exist
+  Just by copying the `:position-mm` column"
+  [element-counts]
+  (map (fn [data-point]
+         (update data-point     ;; save file name to column
+                 :depth-mm
+                 #(if (nil? %) ;; unless it's already there
+                    (:position-mm data-point)
+                    %)))
+       element-counts))
+
 (defn- load-xrf-scan-file
   "Note: XRF files are tab separated CSV files
   with an extrenious tab at the end
@@ -87,7 +99,8 @@
      :header header
      :columns (into [:pre-merge-file-source] columns)
      :element-counts (-> data
-                         (add-column-with-filename file-name))}))
+                         (add-column-with-filename file-name)
+                         (add-depth-mm-column))}))
 
 (defn load-data
   [snapshot
@@ -177,7 +190,7 @@
 (defn- shift-scan-point
   [shift
    scan-point]
-  (update scan-point :position-mm (partial shift-string-number shift)))
+  (update scan-point :depth-mm (partial shift-string-number shift)))
 
 (defn crop
   [snapshot
@@ -201,7 +214,7 @@
                                     state/xrf-element-counts
                                     core-number)
                             ;; filter out right pixels
-                            (filter #(<= (read-string (:position-mm %))
+                            (filter #(<= (read-string (:depth-mm %))
                                          (- length-mm
                                             crop-right-mm)))
                             ;; shift all points down by crop
@@ -209,7 +222,7 @@
                                                     %))
                             ;; filter out all below zero
                             (filter #(< 0
-                                        (read-string (:position-mm %)))))))))
+                                        (read-string (:depth-mm %)))))))))
 
 (defn pad-front
   [xrf-scan

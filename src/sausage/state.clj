@@ -360,7 +360,7 @@
   NOT the distance from the first measurement to the last"
   [context
    core-number]
-  (- (read-string (:position-mm (fx/sub context
+  (- (read-string (:depth-mm (fx/sub context
                                         xrf-last-scan-point
                                         core-number)))
      0.0 #_(:position (fx/sub context
@@ -499,7 +499,7 @@
            (some? (fx/sub context
                           xrf-scan
                           core-number)))
-    (int (Math/floor (/ (read-string (:position-mm (fx/sub context
+    (int (Math/floor (/ (read-string (:depth-mm (fx/sub context
                                                            xrf-first-scan-point
                                                            core-number)))
                         (fx/sub context
@@ -536,7 +536,7 @@
     (int (Math/floor (/ (- (fx/sub context
                                    length-mm
                                    core-number)
-                           (read-string (:position-mm (fx/sub context
+                           (read-string (:depth-mm (fx/sub context
                                                               xrf-last-scan-point
                                                               core-number))))
                         (fx/sub context
