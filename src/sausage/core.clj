@@ -574,7 +574,6 @@
   [{:keys [fx/context
            width]}]
   {:fx/type :v-box
-   :pref-width width
    :min-width width
    :max-width width
    :children [{:fx/type add-display-options}

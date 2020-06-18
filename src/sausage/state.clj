@@ -42,6 +42,7 @@
 
 (defn working-directory
   [context]
+  #_(println "working directory for some reason...")
   (fx/sub context
           :working-directory))
 

@@ -92,6 +92,8 @@
                               (into []))))))
 
 (defn snap-core-to-pixel
+  "Adjusts the `:start-mm` to be at a pixel mutliple
+  This is a necessary condition for merging"
   [snapshot
    {:keys [core-number]}]
   (if (nil? (fx/sub snapshot
@@ -320,7 +322,7 @@
                             :fx/event 0.0})))) ;; in mm
 
 (defn merge-cores
-  "Given a CORE-A and CORE-B and a MM-PER-PIXEL for their respective images
+  "Given a CORE-A and CORE-B
   RESULT: One core with optical and xrf-scans merged"
   [snapshot
    {:keys [into-core-number

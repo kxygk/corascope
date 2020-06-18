@@ -134,22 +134,6 @@
                                         height          ;;exclusive
                                         nil))))))
 
-;; (defn update-display-image
-;;   [snapshot
-;;    core-number]
-;;   (let [optical (-> snapshot
-;;                     :cores
-;;                     (get core-number)
-;;                     :optical
-;;                     :image)]
-;;     (assoc-in snapshot [:cores
-;;                         core-number
-;;                         :optical
-;;                         :display]
-;;               (-> optical
-;;                   flip-image
-;;                   to-fx-image))))
-
 (defn- load-image
   [file]
   (-> file
@@ -174,7 +158,9 @@
                           core-number
                           :optical
                           :image]
-                         optical-image))))
+                         optical-image)
+        #_(fx/swap-context state/snap-core-to-pixel ;; Creates circular dependency!
+                         {:core-number core-number}))))
 
 (defn load-dialogue
   [snapshot
