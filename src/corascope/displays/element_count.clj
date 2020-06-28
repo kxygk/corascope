@@ -195,13 +195,15 @@
                           (map-indexed (fn [valence-electrons period]
                                          (map-indexed (fn [group element]
                                                         (if (some? element)
-                                                          {:fx/type :toggle-button
+                                                          {:fx/type :button
                                                            :padding 2.0
                                                            :min-width 25
                                                            :max-height 25
                                                            :pref-width 25
-                                                           :selected (= element
+                                                           :style (if (= element
                                                                         current-selection)
+                                                                    "-fx-background-color: yellow;"
+                                                                    "-fx-background-color: #d3d3d3;")
                                                            :grid-pane/column group
                                                            :grid-pane/row valence-electrons
                                                            :disable (not (contains? (set xrf-columns)
@@ -218,11 +220,13 @@
                   (filter (partial is-plottable? context))
                   (map-indexed (fn [row-after-table non-element]
                                  (let [columns 6]
-                                   {:fx/type :toggle-button
+                                   {:fx/type :button
                                     :grid-pane/column-span (/ (count (first periodic-table))
                                                               columns)
-                                    :selected (= non-element
-                                                 current-selection)
+                                    :style (if (= non-element
+                                                  current-selection)
+                                             "-fx-background-color: yellow;"
+                                             "-fx-background-color: #d3d3d3;")
                                     :max-height 25
                                     :max-width Double/MAX_VALUE
                                     :grid-pane/column (* (int (mod row-after-table columns))
