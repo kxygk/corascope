@@ -1,4 +1,4 @@
-(ns sausage.svg
+(ns corascope.svg
   (:import  com.kitfox.svg.SVGCache
             java.awt.image.BufferedImage
             java.awt.RenderingHints

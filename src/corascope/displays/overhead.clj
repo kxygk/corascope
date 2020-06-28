@@ -1,7 +1,7 @@
-(ns sausage.displays.overhead
+(ns corascope.displays.overhead
   (:require
-   [sausage.common-effects :as effects]
-   [sausage.state :as state]
+   [corascope.common-effects :as effects]
+   [corascope.state :as state]
    [cljfx.api :as fx])
   (:import boofcv.io.image.ConvertBufferedImage
            boofcv.alg.misc.ImageMiscOps
@@ -78,7 +78,7 @@
                      :effect (fn [snapshot
                                   event]
                                (-> snapshot
-                                   (sausage.optical/load-data {:core-number core-number
+                                   (corascope.optical/load-data {:core-number core-number
                                                                :file (-> event
                                                                          :fx/event
                                                                          .getDragboard
@@ -100,7 +100,7 @@
                                            :effect (fn [snapshot
                                                         event]
                                                      (-> snapshot
-                                                         (sausage.optical/load-dialogue event)
+                                                         (corascope.optical/load-dialogue event)
                                                          (effects/fit-to-screen event)))}
                                :text "Load image"}]}
                   (let [zoom-factor (/ width

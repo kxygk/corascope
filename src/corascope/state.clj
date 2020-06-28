@@ -1,4 +1,4 @@
-(ns sausage.state
+(ns corascope.state
   (:require
    [clojure.core.cache :as cache]
    [cljfx.api :as fx]))

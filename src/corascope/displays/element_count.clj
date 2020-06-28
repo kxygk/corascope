@@ -1,9 +1,9 @@
-(ns sausage.displays.element-count
+(ns corascope.displays.element-count
   (:require
-   [sausage.plot]
-   [sausage.common-effects :as effects]
-   [sausage.state :as state]
-   [sausage.xrf]
+   [corascope.plot]
+   [corascope.common-effects :as effects]
+   [corascope.state :as state]
+   [corascope.xrf]
    [cljfx.api :as fx]))
 
 (def fixed-height 360.0)
@@ -44,7 +44,7 @@
            display-number
            width]}] ;; TODO Make width calculated here
   (let [xrf-scan (fx/sub context
-                         sausage.state/xrf-scan
+                         corascope.state/xrf-scan
                          core-number)
         height (fx/sub context
                        state/display-height
@@ -66,7 +66,7 @@
                        :effect (fn [snapshot
                                     event]
                                  (-> snapshot
-                                     (sausage.xrf/load-data {:core-number core-number
+                                     (corascope.xrf/load-data {:core-number core-number
                                                              :file (-> event
                                                                        :fx/event
                                                                        .getDragboard
@@ -82,7 +82,7 @@
                                 :effect (fn [snapshot
                                              event]
                                           (-> snapshot
-                                              (sausage.xrf/load-dialogue event)
+                                              (corascope.xrf/load-dialogue event)
                                               (effects/fit-to-screen event)))}
                     :text "Load XRF Scan"}
                    (if (nil? (selected-element (set (fx/sub context
@@ -97,10 +97,10 @@
                      {:fx/type :image-view
                       :fit-width width
                       :fit-height height
-                      :image (sausage.plot/plot-points width
+                      :image (corascope.plot/plot-points width
                                                        height
                                                        (fx/sub context
-                                                               sausage.xrf/element-counts
+                                                               corascope.xrf/element-counts
                                                                core-number
                                                                selected-element
                                                                )
@@ -108,7 +108,7 @@
                                                                state/length-mm
                                                                core-number)
                                                        (fx/sub context
-                                                               sausage.xrf/max-element-count-all-cores
+                                                               corascope.xrf/max-element-count-all-cores
                                                                selected-element)
                                                        (fx/sub context
                                                                state/selected-left-mm

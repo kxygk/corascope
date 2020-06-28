@@ -1,6 +1,6 @@
-(ns sausage.optical
+(ns corascope.optical
   (:require
-   [sausage.state :as state]
+   [corascope.state :as state]
    [cljfx.api :as fx])
   (:import [javafx.scene.input KeyCode KeyEvent]
            boofcv.io.image.UtilImageIO
@@ -148,7 +148,7 @@
   [snapshot
    {:keys [file
            core-number]}]
-  (let [optical-image (sausage.optical/load-image file)]
+  (let [optical-image (corascope.optical/load-image file)]
     (-> snapshot
         (fx/swap-context assoc
                          :last-used-path

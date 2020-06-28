@@ -1,12 +1,12 @@
-(ns sausage.core
+(ns corascope.core
   (:require
-   [sausage.plot]
-   [sausage.optical]
-   [sausage.state :as state]
-   [sausage.xrf]
-   [sausage.displays.element-count]
-   [sausage.displays.overhead]
-   [sausage.common-effects :as effects]
+   [corascope.plot]
+   [corascope.optical]
+   [corascope.state :as state]
+   [corascope.xrf]
+   [corascope.displays.element-count]
+   [corascope.displays.overhead]
+   [corascope.common-effects :as effects]
    [cljfx.api :as fx]
    [cljfx.ext.list-view :as fx.ext.list-view])
   (:import javafx.stage.DirectoryChooser
@@ -36,7 +36,7 @@
   {:fx/type :h-box
    :children [{:fx/type :label
                :pref-width fixed-margin-width
-               :text " Sausage Inspector"}
+               :text " Corascope"}
               {:fx/type :button
                :text " |←→| "
                :max-height Double/MAX_VALUE
@@ -116,11 +116,11 @@
   {:fx/type :menu-button
    :items [{:fx/type :menu-item
             :on-action {:core-number core-number
-                        :effect sausage.optical/load-dialogue}
+                        :effect corascope.optical/load-dialogue}
             :text "(Re)Load Optical Image"}
            {:fx/type :menu-item
             :on-action {:core-number core-number
-                        :effect sausage.xrf/load-dialogue}
+                        :effect corascope.xrf/load-dialogue}
             :text "(Re)Load XRF Scan"}
            {:fx/type :menu-item
             :text "Auto-select areas with no XRF data"
@@ -132,14 +132,14 @@
                                    state/optical-image
                                    core-number))
             :on-action  {:core-number core-number
-                         :effect sausage.optical/save-data}}
+                         :effect corascope.optical/save-data}}
            {:fx/type :menu-item
             :text "Save XRF Scan"
             :disable (nil? (fx/sub context
                                    state/xrf-scan
                                    core-number))
             :on-action  {:core-number core-number
-                         :effect sausage.xrf/save-data}}]})
+                         :effect corascope.xrf/save-data}}]})
 
 (defn core-header
   "The options bar at the top of every core"
@@ -355,11 +355,11 @@
                        (case (fx/sub context
                                      state/display-type
                                      display-number)
-                         :overhead {:fx/type sausage.displays.overhead/view
+                         :overhead {:fx/type corascope.displays.overhead/view
                                     :core-number core-number
                                     :display-number display-number
                                     :width width}
-                         :element-count {:fx/type sausage.displays.element-count/view
+                         :element-count {:fx/type corascope.displays.element-count/view
                                          :core-number core-number
                                          :display-number display-number
                                          :width width}))
@@ -532,9 +532,9 @@
                        #(conj %
                               (-> (case display-type
                                     :overhead
-                                    (sausage.displays.overhead/create)
+                                    (corascope.displays.overhead/create)
                                     :element-count
-                                    (sausage.displays.element-count/create))
+                                    (corascope.displays.element-count/create))
                                   (assoc :creation-time (System/currentTimeMillis)))))))
 
 (defn add-display-options
@@ -597,9 +597,9 @@
                                                    (case (fx/sub context
                                                                  state/display-type
                                                                  display-number)
-                                                     :overhead {:fx/type sausage.displays.overhead/options
+                                                     :overhead {:fx/type corascope.displays.overhead/options
                                                                 :display-number display-number}
-                                                     :element-count {:fx/type sausage.displays.element-count/options
+                                                     :element-count {:fx/type corascope.displays.element-count/options
                                                                      :display-number display-number})]})))
                               flatten)}
               ]})
@@ -608,7 +608,7 @@
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [fx/context]}]
   {:fx/type :stage
-   :title "Sausage Scanner"
+   :title "Corascope"
    :showing true
    :min-height 400
    :min-width (+ fixed-margin-width
@@ -644,14 +644,14 @@
       ;; adds the current state to every processed event
       ;; the event handler can then operate on the current state
       ;; and doesn't need to do it own dereferencing
-      (fx/wrap-co-effects {:snapshot #(deref sausage.state/*context)})
+      (fx/wrap-co-effects {:snapshot #(deref corascope.state/*context)})
       ;; wrap-effects will take:
       ;; - a key where it will some data
       ;; - a side-effect function of what to do with the data
       ;; in our case the data will be an updated state
       ;; and it will update the global state with this updated state
       (fx/wrap-effects {:updated-context (fn [our-updated-context _]
-                                           (reset! sausage.state/*context ;; feel this should be a `reset-context`
+                                           (reset! corascope.state/*context ;; feel this should be a `reset-context`
                                                    our-updated-context))})))
 
 (def renderer
@@ -671,14 +671,14 @@
   (Platform/setImplicitExit true)
   ;; Add a first empty core
   ;; The UI paradigm doesn't make much sense with zero cores
-  (if (zero? (fx/sub @sausage.state/*context
+  (if (zero? (fx/sub @corascope.state/*context
                      state/num-cores))
     (event-dispatcher {:effect effects/add-core}))
   (fx/mount-renderer
-   sausage.state/*context
+   corascope.state/*context
    renderer)
   ;; Add 2 displays so that there is something to look at
-  (if (zero? (fx/sub @sausage.state/*context
+  (if (zero? (fx/sub @corascope.state/*context
                      state/num-displays))
     (do (event-dispatcher {:effect add-display
                            :display-type :overhead})

@@ -1,8 +1,8 @@
-(ns sausage.xrf
+(ns corascope.xrf
   (:require
    [clojure.data.csv]
    [clojure.java.io]
-   [sausage.state :as state] ;; base XRF subscriptions are here b/c of `length-mm`
+   [corascope.state :as state] ;; base XRF subscriptions are here b/c of `length-mm`
    [cljfx.api :as fx])
   (:import javafx.stage.FileChooser
            javafx.stage.Stage))
@@ -106,7 +106,7 @@
   [snapshot
    {:keys [file
            core-number]}]
-  (let [xrf-scan (sausage.xrf/load-xrf-scan-file file)
+  (let [xrf-scan (corascope.xrf/load-xrf-scan-file file)
         columns (:columns xrf-scan)]
     (-> snapshot
         (fx/swap-context assoc

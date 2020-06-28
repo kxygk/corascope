@@ -1,7 +1,7 @@
-(ns sausage.common-effects
-  (:require [sausage.xrf]
-            [sausage.optical]
-            [sausage.state :as state]
+(ns corascope.common-effects
+  (:require [corascope.xrf]
+            [corascope.optical]
+            [corascope.state :as state]
             [cljfx.api :as fx]))
 
 ;;## Example:
@@ -223,8 +223,8 @@
   ;; Once you crop the XRF then the subscriptions in the optical crop will recalculate
   ;; It won't give the desired effect
   (-> snapshot
-      (sausage.xrf/crop event)
-      (sausage.optical/crop event)
+      (corascope.xrf/crop event)
+      (corascope.optical/crop event)
       (fx/swap-context update
                        :seams
                        #(map (partial + (- crop-left-mm))
@@ -311,13 +311,13 @@
                           :optical
                           :image]
                          #(if (some? %)
-                            (sausage.optical/pad-front % start-pix)))
+                            (corascope.optical/pad-front % start-pix)))
         (fx/swap-context update-in
                          [:cores
                           0
                           :xrf-scan]
                          #(if (some? %)
-                            (sausage.xrf/pad-front % start-mm)))
+                            (corascope.xrf/pad-front % start-mm)))
         (update-core-start {:core-number 0
                             :fx/event 0.0})))) ;; in mm
 
@@ -328,8 +328,8 @@
    {:keys [into-core-number
            from-core-number] :as core-numbers}]
   (-> snapshot
-      (sausage.optical/merge-cores core-numbers)
-      (sausage.xrf/merge-cores core-numbers)
+      (corascope.optical/merge-cores core-numbers)
+      (corascope.xrf/merge-cores core-numbers)
       (remove-core {:core-number from-core-number})))
 
 (defn merge-all-cores

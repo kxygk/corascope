@@ -61,18 +61,18 @@
                                      ;; Note: `cambada` will not work
                                      ;; with no AOT compiled `-main`
                                      "--aot" "all"
-                                     "-m" "sausage.core"]}
+                                     "-m" "corascope.core"]}
            :native-image {:extra-deps
                           {luchiniatwork/cambada {:mvn/version "1.0.0"}}
                           :main-opts ["-m" "cambada.native-image"
-                                      "-m" "sausage.core"]}
+                                      "-m" "corascope.core"]}
 
            ;; To have an uberjar with no AOT compilation you need to
            ;; - Go into `core.clj` and comment out `(:gen-class :main true)`
-           ;; - Launch the app with `java -sausage.jar -m sausage.core`
+           ;; - Launch the app with `java -corascope.jar -m corascope.core`
            ;; - Launch time is /very/ slow .. ~17 seconds
            :uberjar-no-aot {:extra-deps
                             {seancorfield/depstar {:mvn/version "0.5.2"}}
                             :main-opts ["-m" "hf.depstar.uberjar"
-                                        "sausage.jar";; "--compile"
-                                        "-m" "clojure.main -m sausage.core"]}}}
+                                        "corascope.jar";; "--compile"
+                                        "-m" "clojure.main -m corascope.core"]}}}

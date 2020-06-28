@@ -1,5 +1,5 @@
-(ns sausage.plot
-  (:require [sausage.svg]
+(ns corascope.plot
+  (:require [corascope.svg]
             [thi.ng.geom.core :as g] ;; The graphing libraires
             [thi.ng.math.core :as m]
             [thi.ng.geom.viz.core :as viz]
@@ -162,7 +162,7 @@
         crop-points (concat right-crop-points
                             left-crop-points)
         graph-height (nice-max-count max-count)]
-    (sausage.svg/render-as-jfx-image (-> (grid-spec width
+    (corascope.svg/render-as-jfx-image (-> (grid-spec width
                                                     height
                                                     max-position
                                                     graph-height)
