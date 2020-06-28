@@ -20,12 +20,12 @@ jobs:
       - name: Build Uberjar
         run: clojure -A:uberjar-aot
       - name: Set as executable
-        run: chmod +x ./target/sausage-1.0.0-SNAPSHOT-standalone.jar
+        run: chmod +x ./target/corascope-1.0.0-SNAPSHOT-standalone.jar
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: uberjar
-          path: ./target/sausage-1.0.0-SNAPSHOT-standalone.jar
+          path: ./target/corascope-1.0.0-SNAPSHOT-standalone.jar
 
   deb:
     needs: uberjar
@@ -35,19 +35,19 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: '14'
-      - name: Get Sausage Jar
+      - name: Get Corascope Jar
         uses: actions/download-artifact@v2
         with:
           name: uberjar
       - name: JPackaging
-        run: jpackage --name sausage --input . --main-jar sausage-1.0.0-SNAPSHOT-standalone.jar --main-class sausage.core
+        run: jpackage --name corascope --input . --main-jar corascope-1.0.0-SNAPSHOT-standalone.jar --main-class corascope.core
       - name: Inspect ApplImage
         run: ls -la
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: deb
-          path: sausage_1.0-1_amd64.deb
+          path: corascope_1.0-1_amd64.deb
 
   exe:
     needs: uberjar
@@ -57,19 +57,19 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: '14'
-      - name: Get Sausage Jar
+      - name: Get Corascope Jar
         uses: actions/download-artifact@v2
         with:
           name: uberjar
       - name: JPackaging
-        run: jpackage --name sausage --input . --main-jar sausage-1.0.0-SNAPSHOT-standalone.jar --main-class sausage.core --win-menu
+        run: jpackage --name corascope --input . --main-jar corascope-1.0.0-SNAPSHOT-standalone.jar --main-class corascope.core --win-menu
       - name: Inspect Exe
         run: dir
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: exe
-          path: sausage-1.0.exe
+          path: corascope-1.0.exe
 
   release:
     needs: [uberjar, deb, exe]
@@ -88,7 +88,7 @@ jobs:
             It could be broken..
           draft: false
           prerelease: true
-      - name: Get Sausage Jar
+      - name: Get Corascope Jar
         uses: actions/download-artifact@v2
         with:
           name: uberjar
@@ -98,8 +98,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url  }}
-          asset_path: sausage-1.0.0-SNAPSHOT-standalone.jar
-          asset_name: sausage.jar
+          asset_path: corascope-1.0.0-SNAPSHOT-standalone.jar
+          asset_name: corascope.jar
           asset_content_type: application/x-java-archive
       - name: Get Deb
         uses: actions/download-artifact@v2
@@ -111,8 +111,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url  }}
-          asset_path: sausage_1.0-1_amd64.deb
-          asset_name: sausage.deb
+          asset_path: corascope_1.0-1_amd64.deb
+          asset_name: corascope.deb
           asset_content_type: application/vnd.debian.binary-package
       - name: Get Exe
         uses: actions/download-artifact@v2
@@ -124,6 +124,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url  }}
-          asset_path: sausage-1.0.exe
-          asset_name: sausage.exe
+          asset_path: corascope-1.0.exe
+          asset_name: corascope.exe
           asset_content_type: application/vnd.microsoft.portable-executable
