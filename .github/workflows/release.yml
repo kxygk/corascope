@@ -102,29 +102,3 @@ jobs:
           asset_path: corascope-1.0.0-SNAPSHOT-standalone.jar
           asset_name: corascope.jar
           asset_content_type: application/x-java-archive
-      - name: Get Deb
-        uses: actions/download-artifact@v2
-        with:
-          name: deb
-      - name: Upload Deb
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url  }}
-          asset_path: corascope_1.0-1_amd64.deb
-          asset_name: corascope.deb
-          asset_content_type: application/vnd.debian.binary-package
-      - name: Get Exe
-        uses: actions/download-artifact@v2
-        with:
-          name: exe
-      - name: Upload Exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url  }}
-          asset_path: corascope-1.0.exe
-          asset_name: corascope.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
