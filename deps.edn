@@ -50,7 +50,7 @@
  ;; https://github.com/jdhollis/cambada#caveats
  :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
              "clojars" {:url "https://repo.clojars.org/"}}
-
+ :paths ["src" "resources"]
  :aliases {:uberjar-aot {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.2"}}
                          ;; This option is necessary to build on a headless machine
                          ;; ex: Github Actions

@@ -1,5 +1,6 @@
 (ns corascope.core
   (:require
+   [clojure.java.io :as io]
    [corascope.plot]
    [corascope.optical]
    [corascope.state :as state]
@@ -9,7 +10,8 @@
    [corascope.common-effects :as effects]
    [cljfx.api :as fx]
    [cljfx.ext.list-view :as fx.ext.list-view])
-  (:import javafx.stage.DirectoryChooser
+  (:import javafx.scene.image.Image
+           javafx.stage.DirectoryChooser
            javafx.stage.FileChooser
            javafx.application.Platform
            javafx.stage.Stage)
@@ -28,6 +30,22 @@
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
 
+#_(def app-icons [(-> (io/resource "128.png")
+                    .toString
+                    javafx.scene.image.Image.)
+                (-> (io/resource "48.png")
+                    .toString
+                    javafx.scene.image.Image.)
+                (-> (io/resource "32.png")
+                    .toString
+                    javafx.scene.image.Image.)
+                (-> (io/resource "24.png")
+                    .toString
+                    javafx.scene.image.Image.)
+                (-> (io/resource "16.png")
+                    .toString
+                    javafx.scene.image.Image.)])
+
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
   [{:keys [fx/context
@@ -36,7 +54,7 @@
   {:fx/type :h-box
    :children [{:fx/type :label
                :pref-width fixed-margin-width
-               :text " Corascope"}
+               :text ""}
               {:fx/type :button
                :text " |←→| "
                :max-height Double/MAX_VALUE
@@ -608,6 +626,9 @@
   "Takes the state atom (which is a map) and then get the mixers out of it and builds a windows with the mixers"
   [{:keys [fx/context]}]
   {:fx/type :stage
+   :icons [(-> (io/resource "128.png")
+                    .toString
+                    javafx.scene.image.Image.)]
    :title "Corascope"
    :showing true
    :min-height 400
