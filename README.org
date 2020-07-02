@@ -10,11 +10,13 @@
 Free and opens source software for inspecting, cropping and stitching ITRAX XRF core scans
 #+END_CENTER
 
-- [[./core32.png]] *[[https://github.com/geokon-gh/corascope/releases/download/v1.0/corascope.jar][Download]]* :: A simple JAR excutable. No installation, just download and go. *Requires Java 11 (or higher)*
-- [[./measurement32.png]] *[[./quick-start.org][Quick Start]]* :: A quick visual walk through loading, cropping and merging a core for export
-- [[./sediment32.png]] *[[./manual.org][Manual]]* :: A indepth dive into the features available for core editing as well as details of how  
-- [[./core32.png]] *[[https://github.com/geokon-gh/corascope][Source]]* :: All code is available on Github
-
+ [[./core32.png]] [[https://github.com/geokon-gh/corascope/releases/download/v1.0/corascope.jar][*Download*]]  A simple JAR excutable. No installation, just download and go. *Requires Java 11 (or higher)* \\
+ [[./measurement32.png]] [[./quick-start.org][*Quick Start*]]  A quick visual walk through loading, cropping and merging a core for export \\
+ [[./sediment32.png]] [[./manual.org][*Manual*]] A indepth dive into the features available for core editing as well as details of how  \\
+ [[./core32.png]] [[https://github.com/geokon-gh/corascope][*Source*]] All code is available on Github \\
+ [[./measurement32.png]] *Samples* A couple of adjacent core scans are provided for testing:
+ - *A* 0- 134cm -  [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleA-optical.tif][Optical]], [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleA-0-134cm.txt][XRF Scan]]  
+ - *B* 134-275cm -  [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleB-optical.tif][Optical]], [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleB-134-275cm-Mo.txt][XRF Scan]]
 
 #+BEGIN_COMMENT
 #+END_COMMENT
