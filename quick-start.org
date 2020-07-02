@@ -1,0 +1,23 @@
+#+TITLE: Corascope: Quick Start
+#+DESCRIPTION:
+
+#+INCLUDE: "../web/config.org"
+
+* [[./core32.png]] Loading
+[[./loading.gif]]
+Load data by:
+1. clicking on the *Load* buttons
+2. dragging and dropping data into empty area
+Add new cores to load additional data by clicking on the upper right button
+* [[./measurement32.png]] Cropping
+[[./cropping.gif]]
+Select elements like /Argon/ to see areas of bad data \\
+Use the sliders to select areas with no/useless data. Then click *Crop* to remove them\\
+To autoselect areas with no XRF data, right click on the Crop button 
+* [[./sediment32.png]] Merging
+[[./merging.gif]]
+Once cores are cleaned up, adjust their positions by changing the start position (hit Enter for value to take effect) \\
+Once all cores are layed out properly, hit *Merge* to glue them into one core
+* [[./core32.png]] Saving
+[[./saving.gif]]
+Once all the cores have been merged, go into the core menu (upper left corner) and save the image/xrf data to disk

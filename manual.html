@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corascope: Manual</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="George Kontsevich">
+<link rel="stylesheet" type="text/css" href="../web/worg.css" />
+<link rel="shortcut icon" href="../web/panda.svg" type="image/x-icon">
+</head>
+<body>
+<div id="content">
+<h1 class="title">Corascope: Manual</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org95896e6">./core32.png Project Goals</a></li>
+<li><a href="#org79b40c9">./sediment32.png Program layout</a>
+<ul>
+<li><a href="#org50dff38">Displays</a></li>
+<li><a href="#orgd23dac4">Cores</a></li>
+</ul>
+</li>
+<li><a href="#orge658edb">./measurement32.png Adjusting Cores</a>
+<ul>
+<li><a href="#org1fbdcd2">Core Position</a></li>
+<li><a href="#org0972c4d">Cropping</a></li>
+</ul>
+</li>
+<li><a href="#org9531740">./core32.png Project non-goals &#x2026;</a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org95896e6" class="outline-2">
+<h2 id="org95896e6"><img src="./core32.png" alt="core32.png"> Project Goals</h2>
+<div class="outline-text-2" id="text-org95896e6">
+<dl class="org-dl">
+<dt><b>ITRAX core scan inspection</b></dt><dd>to find scanning issues and identify regions of interest</dd>
+<dt><b>Crop ITRAX Cores scans</b></dt><dd>to remove extraneous data, overscans and regions of bad data</dd>
+<dt><b>Merge ITRAX Core scans</b></dt><dd>to glue back long core sections that needed to be scanned in sections so that you can go back to reasoning about core depth positions</dd>
+<dt><b>Maintaining ITRAX format</b></dt><dd>All input and output should conform to the ITRAX formats so that data that has been cropped and merged is in the familiar format on output</dd>
+</dl>
+</div>
+</div>
+<div id="outline-container-org79b40c9" class="outline-2">
+<h2 id="org79b40c9"><img src="./sediment32.png" alt="sediment32.png"> Program layout</h2>
+<div class="outline-text-2" id="text-org79b40c9">
+<p>
+On program launch we are presented with a minimal layout
+</p>
+
+
+<div class="figure">
+<p><img src="./layout.png" alt="layout.png">
+</p>
+</div>
+
+<p>
+The screen is split into several areas:
+</p>
+<ul class="org-ul">
+<li>a top area with a few global options</li>
+<li>a menu area on the side which has different toggles and buttons</li>
+<li>a core layout area with an empty core with <b>Load</b> buttons.</li>
+</ul>
+
+<p>
+We can already see the two principle modular visual elements that will be at the center of our workflow
+</p>
+</div>
+
+<div id="outline-container-org50dff38" class="outline-3">
+<h3 id="org50dff38">Displays</h3>
+<div class="outline-text-3" id="text-org50dff38">
+<p>
+Horizontally we have a list of different displays with their correspinding menus on the side. 
+</p>
+
+
+<p>
+On launch we are already presented with two displays: <i>Overhead</i> and <i>Element Count</i>. Each row has a display area and a separate margin with the display's name, display-specific options and buttons for rearranging/removing displays. When data is unavailable the display either displays an error or reverts to a "Load" button - prompting the user to load in the necessary file.
+</p>
+
+<blockquote>
+<p>
+Displays are simply ways of visualizing core data! They are not tied to any information of their own. You can always delete and recreate them without any loss of information
+</p>
+</blockquote>
+</div>
+</div>
+
+<div id="outline-container-orgd23dac4" class="outline-3">
+<h3 id="orgd23dac4">Cores</h3>
+<div class="outline-text-3" id="text-orgd23dac4">
+<p>
+By contrast, the actual data is stored in <b>cores</b>. These are organized along vertical columns in the core layout area which you can navigate around using your mouse - scroll to zoom and drag to pan. The button at top will help you recenter/zoom-to-fit the cores. The core layout area is organized from left to right, from shallow to deep. 
+</p>
+
+<blockquote>
+<p>
+ITRAX optical scans are right-to-left. The program expects scans this ITRAX format and will output in the ITRAX format, even though they are displayed horizontally flipped within the program itself b/c this is the more canonical and visually intuitive ordering
+</p>
+</blockquote>
+
+<p>
+On program launch the layout shows just one empty core. As we load more cores into the program the vertical arrangement will become more apparant. Each vertical colum corresponds logically to one core and its associated data.
+</p>
+
+<p>
+At the top of each row is the core name, menu and [X] Delete button - the row below that the core start and end points (in mm) and has additional options for cropping the core.
+</p>
+
+<blockquote>
+<ol class="org-ol">
+<li>The core name is derived from the XRF file name</li>
+<li>The start/end points and cropping will discussed in the next section</li>
+</ol>
+</blockquote>
+
+<p>
+When you drag/load data into a display area the data is being loading into the corresponding column's core and when that core is removed its associated data is permanently removed (so be careful!). The data will be things like: XRF scans, optical scans, XRay scans, associated depth/positions etc. At upper left corner of each core column you will find a drop down menu that allows you to load these different files of data.
+</p>
+
+<p>
+Once data is loaded you can add additional cores by clicking "Add Core" in the upper right corner. This will add an empty core column right after the end of the last core
+</p>
+
+
+<div class="figure">
+<p><img src="./added-core.png" alt="added-core.png">
+</p>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge658edb" class="outline-2">
+<h2 id="orge658edb"><img src="./measurement32.png" alt="measurement32.png"> Adjusting Cores</h2>
+<div class="outline-text-2" id="text-orge658edb">
+<p>
+Once all core data has been loading into the program, they need to be adjusted and layed out. There are two mechanisms for this and you should use them in whatever order makes sense for your situation
+</p>
+</div>
+
+<div id="outline-container-org1fbdcd2" class="outline-3">
+<h3 id="org1fbdcd2">Core Position</h3>
+<div class="outline-text-3" id="text-org1fbdcd2">
+<p>
+To go from an XRF scan to actual usuable depth values we need to be able to fine-tune the core position. Corascope supports a flexible system for adjusting the position that should cover most usecases.
+</p>
+
+<p>
+Note that the core's length is an inherant property of the core data. It's either based on the length of the optical scan or XRF data (the final <code>position mm</code> in the XRF scan file). It can only be modified through cropping
+</p>
+
+<p>
+This places a hard constraint on how the position can be adjusted
+</p>
+
+<p>
+On the right and left of the core header there are two boxes indicating the start and end of the core. By clicking the check box adjacent to the value you want to modify you can change it to whatever value you require
+</p>
+
+<p>
+B/c the core length is fixed you naturally can only modify one of these values. The check boxes further serve to <i>pin</i> the core position to that value
+</p>
+
+
+<div class="figure">
+<p><img src="./core-header.png" alt="core-header.png">
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0972c4d" class="outline-3">
+<h3 id="org0972c4d">Cropping</h3>
+<div class="outline-text-3" id="text-org0972c4d">
+<p>
+Below the position values at the very bottom of the core header you will always see two sliders which allow you to select the tail ends you would like to crop off. The open displays will provide visual feedback for what is being selected to crop. Once you've made your selection you can hit the <code>Crop</code> button and the ends will be cropped off all of the cores data 
+</p>
+<blockquote>
+<p>
+Note:
+</p>
+<ol class="org-ol">
+<li>When running the ITRAX machine you will first run an optical scan and then select a subregion to run the XRF scan. This typically means there will be regions/pixels on either end that are visible on the optical scan but have no XRF data associated with them. If you right click on <code>Crop</code> you can autoselect there areas to be cropped.</li>
+<li>The sliders are limited to cropping off at most 50% - so if you have an very unusual scan where one tail is &gt;50% then you may simply need to crop multiple times</li>
+<li>If there is an optical scan loaded into a core column, then the cropping will snap to the nearest pixel boundary. This ensures that if there is XRF data loaded then cropping will never make the data drift and that the optical and XRF data remain aligned with respect to each other.</li>
+</ol>
+</blockquote>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9531740" class="outline-2">
+<h2 id="org9531740"><img src="./core32.png" alt="core32.png"> Project non-goals &#x2026;</h2>
+<div class="outline-text-2" id="text-org9531740">
+<p>
+Core inspection and processing is an endess field of possibilities limited only by the user imagination. I hope this software helps you gain insight into the data you've gathered and provides some inspiration for what to look into further. That said, to maintain everyone's sanity as well as constrain and guide development some things are explicitely left as <i>non-goals</i> of the project:
+</p>
+
+<dl class="org-dl">
+<dt>Editing XRF data</dt><dd>Input data shoud always be left intact and data can only be cropped or merging. Data from the input files should never be altered. This precludes things such as interpolation, data averaging, data shifting, stetching/compressing cores.. etc. If you need to do these things then do them yourself manually before feeding your data into the program</dd>
+<dt>Making images for publication</dt><dd>There are displays to inspecting your cores and to help guide core merging, but the displays/plots/images are not meant for export or publication. The displays try to be as accurate as possible however if you need a plot you should replicate them yourself manually to ensure it shows exactly what you want</dd>
+<dt>Data analysis</dt><dd>As you've seen the program does some minimal data analysis but this is only to the extent that it helps guide the cropping and merging of data. This is not intended to be a rigorous data anaylsis software.</dd>
+</dl>
+</div>
+</div>
+</div>
+</body>
+</html>
