@@ -169,7 +169,9 @@
                 element
                 (inc core-number)))
        (= java.lang.Long ;; if the element exists, we check it's a number
-          (type (read-string value)))))) ;; and not a string or something..
+          (try (type (read-string value))
+               (catch java.lang.RuntimeException _
+                   nil)))))) ;; and not a string or something..
   ([context
     element] ;; Default interface - starts with the first core
    (is-plottable? context
