@@ -4,7 +4,8 @@
    [corascope.common-effects :as effects]
    [corascope.state :as state]
    [corascope.xrf]
-   [cljfx.api :as fx]))
+   [cljfx.api :as fx]
+   [thi.ng.geom.svg.core :as svgthing]))
 
 (def fixed-height 360.0)
 
@@ -36,6 +37,66 @@
   (:lines? (fx/sub context
                    state/get-display
                    display-number)))
+
+(defn raster-plot
+  [context
+   plot-svg
+   width
+   height]
+  (-> plot-svg
+      (#(svgthing/svg {:width width
+                       :height height}
+                      %))
+      (svgthing/serialize)
+      (corascope.svg/render-as-jfx-image width
+                                         height)))
+
+(defn plot
+  [{:keys [fx/context
+           width
+           height
+           core-number
+           display-number
+           selected-element]}]
+  (let [plot-svg (corascope.plot/plot-points width
+                                             height
+                                             (fx/sub context
+                                                     corascope.xrf/element-counts
+                                                     core-number
+                                                     selected-element
+                                                     )
+                                             (fx/sub context
+                                                     state/length-mm
+                                                     core-number)
+                                             (fx/sub context
+                                                     corascope.xrf/max-element-count-all-cores
+                                                     selected-element)
+                                             (fx/sub context
+                                                     state/selected-left-mm
+                                                     core-number)
+                                             (fx/sub context
+                                                     state/selected-right-mm
+                                                     core-number)
+                                             (if (fx/sub context
+                                                         merge-seams?
+                                                         display-number)
+                                               (fx/sub context
+                                                       state/seams
+                                                       core-number)
+                                               [] )
+                                             (fx/sub context
+                                                     lines?
+                                                     display-number))]
+    {:fx/type :image-view
+     ;; :fit-width width
+     ;; :fit-height height
+     :smooth false
+     :image (fx/sub context
+                    raster-plot
+                    plot-svg
+                    width
+                    height}))
+
 
 (defn view
   "display and options for XRF scan data"
@@ -94,39 +155,13 @@
                       :text (str "No ["
                                  (name selected-element)
                                  "] in this core")}
-                     {:fx/type :image-view
-                      :fit-width width
-                      :fit-height height
-                      :image (corascope.plot/plot-points width
-                                                       height
-                                                       (fx/sub context
-                                                               corascope.xrf/element-counts
-                                                               core-number
-                                                               selected-element
-                                                               )
-                                                       (fx/sub context
-                                                               state/length-mm
-                                                               core-number)
-                                                       (fx/sub context
-                                                               corascope.xrf/max-element-count-all-cores
-                                                               selected-element)
-                                                       (fx/sub context
-                                                               state/selected-left-mm
-                                                               core-number)
-                                                       (fx/sub context
-                                                               state/selected-right-mm
-                                                               core-number)
-                                                       (if (fx/sub context
-                                                                   merge-seams?
-                                                                   display-number)
-                                                         (fx/sub context
-                                                                 state/seams
-                                                                 core-number)
-                                                         [] )
-                                                       (fx/sub context
-                                                               lines?
-                                                               display-number))}))]}))
-
+                     {:fx/type plot
+                      :width width
+                      :height height
+                      :core-number core-number
+                      :display-number display-number
+                      :selected-element selected-element}))
+                     ]}))
 
 (def periodic-table
   [[:H  nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil nil :He]

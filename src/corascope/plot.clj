@@ -2,8 +2,7 @@
   (:require [corascope.svg]
             [thi.ng.geom.core :as g] ;; The graphing libraires
             [thi.ng.math.core :as m]
-            [thi.ng.geom.viz.core :as viz]
-            [thi.ng.geom.svg.core :as svgthing]))
+            [thi.ng.geom.viz.core :as viz]))
 
 
 
@@ -162,18 +161,12 @@
         crop-points (concat right-crop-points
                             left-crop-points)
         graph-height (nice-max-count max-count)]
-    (corascope.svg/render-as-jfx-image (-> (grid-spec width
-                                                    height
-                                                    max-position
-                                                    graph-height)
-                                         (add-plot points lines?)
-                                         (add-red-overlay crop-points)
-                                         (add-seam-marker seams
-                                                          graph-height)
-                                         (viz/svg-plot2d-cartesian)
-                                         (#(svgthing/svg {:width width
-                                                          :height height}
-                                                         %))
-                                         (svgthing/serialize))
-                                     width
-                                     height)))
+ (-> (grid-spec width
+                height
+                max-position
+                graph-height)
+     (add-plot points lines?)
+     (add-red-overlay crop-points)
+     (add-seam-marker seams
+                      graph-height)
+     (viz/svg-plot2d-cartesian))))
