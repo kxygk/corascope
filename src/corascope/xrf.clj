@@ -62,7 +62,7 @@
        element-counts))
 
 (defn add-depth-mm-column
-  "Fills in a `:depth-mm` column is it doesn't already exist
+  "Fills in a `:depth-mm` column if it doesn't already exist
   Just by copying the `:position-mm` column"
   [element-counts]
   (map (fn [data-point]
@@ -97,7 +97,9 @@
             "BAD NEWS: Your XRF scan has non-unique columns names")
     {:file-name file-name
      :header header
-     :columns (into [:pre-merge-file-source] columns)
+     :columns (into [:pre-merge-file-source
+                     :depth-mm]
+                    columns)
      :element-counts (-> data
                          (add-column-with-filename file-name)
                          (add-depth-mm-column))}))
