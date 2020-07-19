@@ -51,6 +51,16 @@
       (corascope.svg/render-as-jfx-image width
                                          height)))
 
+(defn native-plot
+  [context
+   plot-svg]
+;;  (println "MY PLOT: " plot-svg)
+  (->> plot-svg
+       #_(svgthing/svg {:width width
+                      :height height})
+       (corascope.svg/render-with-jfx-shapes nil)
+       ))
+
 (defn plot
   [{:keys [fx/context
            width
@@ -87,7 +97,11 @@
                                              (fx/sub context
                                                      lines?
                                                      display-number))]
-    {:fx/type :image-view
+    {:fx/type :group
+     :children (fx/sub context
+                       native-plot
+                       plot-svg)}
+    #_{:fx/type :image-view
      ;; :fit-width width
      ;; :fit-height height
      :smooth false
@@ -95,7 +109,7 @@
                     raster-plot
                     plot-svg
                     width
-                    height}))
+                    height)}))
 
 
 (defn view
