@@ -18,5 +18,9 @@ Free and opens source software for inspecting, cropping and stitching ITRAX XRF 
  - *A* 0- 134cm -  [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleA-optical.tif][Optical]], [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleA-0-134cm.txt][XRF Scan]]
  - *B* 134-275cm -  [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleB-optical.tif][Optical]], [[https://github.com/geokon-gh/corascope/releases/download/v1.0/sampleB-134-275cm-Mo.txt][XRF Scan]]
 
+*Acknowledgments*:
+- The /Paleoenvironmental Sediment Laboratory/ at Nation Taiwan University
+- [[https://github.com/vlaaad][vlaaad]] for his patience and help making this a polished piece of software
+
 #+BEGIN_COMMENT
 #+END_COMMENT
