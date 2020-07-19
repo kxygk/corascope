@@ -17,7 +17,8 @@
     (let [tick-mark-size (nearest-power-of-ten max-count)
           num-tick-marks (Math/ceil (/ max-count
                                        tick-mark-size))]
-      (* num-tick-marks
+      (* (+ num-tick-marks
+            0.5)
          tick-mark-size)))
 
 (defn- grid-spec
@@ -33,13 +34,14 @@
              :range  [0.0 width]
              :pos    0.0
              :visible true
-             :label-style {:stroke "none"
-                           :fill "dimgray"
+             :label-style {:stroke "darkgray"
+                           :stroke-width 0.2
+                           :fill "darkgray"
                            :font-family nil}
              :label-dist  (- height 1)
              ;;             :major-size 0
              :major 500
-             :attribs {:stroke "none"} ;; axis line attributes
+             :attribs {:stroke "darkgray"} ;; axis line attributes
              })
    :y-axis (viz/linear-axis
             {:domain      (if (== 1.0
@@ -51,13 +53,15 @@
              :pos         0 ;; major-size default
              :visible true
              :major (nearest-power-of-ten max-count)
-             :label-dist -25
-             :label-y 10
+             :label-dist 0
+             :label-y 0
              :major-size 5
              :minor-size 5
-             :label-style {:stroke "none"
-                           :fill "dimgray"
+             :label-style {:stroke "darkgray"
+                           :stroke-width 0.2
+                           :fill "darkgray"
                            :font-family nil}
+             :attribs {:stroke "transparent"} ;; axis line attributes
              ;; :label-style {:fill "red" :text-anchor "start"}
              })
    ;; :grid   {;:attribs {:stroke "#caa"}
@@ -116,7 +120,7 @@
             :data
             #(into %
                    [{:values  points
-                     :attribs {:fill "pink" :stroke "red" :stroke-width 1.25}
+                     :attribs {:fill "pink" :stroke "red" :stroke-width 1.00}
                      ;;                    :bar-width 100
                      :interleave 1
                      :layout  viz/svg-bar-plot}]))))
