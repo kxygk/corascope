@@ -1,11 +1,9 @@
 (ns corascope.displays.element-count
-  (:require
-   [corascope.plot]
-   [corascope.common-effects :as effects]
-   [corascope.state :as state]
-   [corascope.xrf]
-   [cljfx.api :as fx]
-   [thi.ng.geom.svg.core :as svgthing]))
+  (:require  [corascope.plot]
+             [corascope.common-effects :as effects]
+             [corascope.state :as state]
+             [corascope.xrf]
+             [cljfx.api :as fx]))
 
 (def fixed-height 360.0)
 
@@ -37,29 +35,6 @@
   (:lines? (fx/sub context
                    state/get-display
                    display-number)))
-
-(defn raster-plot
-  [context
-   plot-svg
-   width
-   height]
-  (-> plot-svg
-      (#(svgthing/svg {:width width
-                       :height height}
-                      %))
-      (svgthing/serialize)
-      (corascope.svg/render-as-jfx-image width
-                                         height)))
-
-(defn native-plot
-  [context
-   plot-svg]
-;;  (println "MY PLOT: " plot-svg)
-  (->> plot-svg
-       #_(svgthing/svg {:width width
-                      :height height})
-       (corascope.svg/render-with-jfx-shapes nil)
-       ))
 
 (defn plot
   [{:keys [fx/context
@@ -98,19 +73,7 @@
                                                      lines?
                                                      display-number))]
     {:fx/type :group
-     :children (fx/sub context
-                       native-plot
-                       plot-svg)}
-    #_{:fx/type :image-view
-     ;; :fit-width width
-     ;; :fit-height height
-     :smooth false
-     :image (fx/sub context
-                    raster-plot
-                    plot-svg
-                    width
-                    height)}))
-
+     :children [(corascope.svg/render-with-jfx-shapes plot-svg)]}))
 
 (defn view
   "display and options for XRF scan data"

@@ -1,15 +1,17 @@
 (ns corascope.svg
+  (:require [thi.ng.geom.svg.core :as svgthing])
   (:import  com.kitfox.svg.SVGCache
             java.awt.image.BufferedImage
             java.awt.RenderingHints
             javafx.embed.swing.SwingFXUtils))
 
-(defn render-as-buffered-image
+(defn- render-as-buffered-image
   "Given an SVG string, return a native Java BufferedImage
   ie. java.awt.image.BufferedImage"
   [svg-xml-string
    width
    height]
+  (println svg-xml-string)
   (let [universe (com.kitfox.svg.SVGCache/getSVGUniverse)
         uri (.loadSVG universe
                       (java.io.StringReader. svg-xml-string)
@@ -28,8 +30,30 @@
                      uri)
     buffered-image))
 
+(defn render-as-jfx-image
+  "Given an SVG string, return a JFX Image"
+  [svg
+   width
+   height]
+  (-> svg
+      (#(svgthing/svg {:width width
+                       :height height}
+                      %))
+      (svgthing/serialize)
+      (render-as-buffered-image width
+                                height)
+      (javafx.embed.swing.SwingFXUtils/toFXImage nil)))
 
-(defn svg-to-jfx-attributes
+(defn render-as-jfx-image-view
+  [svg
+   width
+   height]
+  {:fx/type :image-view
+   :image (render-as-jfx-image svg
+                               width
+                               height)})
+
+(defn- svg-to-jfx-attributes
   "The attributes in `thi-ng/geom`'s SVG hiccup
   are very similar to the CLJFX JavaFX ones.
   There are minor differences and defaults
@@ -67,16 +91,16 @@
                             "none" 10
                             %))))
 
-(defn render-with-jfx-shapes
-  ""
+(defn- render-with-jfx-shapes-rec
+  "Recursive helper"
   [parent-attributes svg]
   (if (coll? (first svg))
     (if (empty? (rest svg))
-      (render-with-jfx-shapes parent-attributes
+      (render-with-jfx-shapes-rec parent-attributes
                               (first svg))
-      (concat (render-with-jfx-shapes parent-attributes
+      (concat (render-with-jfx-shapes-rec parent-attributes
                                       (first svg))
-              (render-with-jfx-shapes parent-attributes
+              (render-with-jfx-shapes-rec parent-attributes
                                       (rest svg))))
     (let [new-attributes (second svg)
           merged-attributes (svg-to-jfx-attributes (merge parent-attributes
@@ -85,11 +109,11 @@
                                         [:stroke :fill :stroke-width :stroke-dash-array])]
       (case (first svg)
         (:g :svg) [{:fx/type :group
-                   :children
-                   (->> (rest (rest svg))
-                        (map #(render-with-jfx-shapes merged-attributes %))
-                        (apply concat)
-                        (filter some?))}]
+                    :children
+                    (->> (rest (rest svg))
+                         (map #(render-with-jfx-shapes-rec merged-attributes %))
+                         (apply concat)
+                         (filter some?))}]
         ;; Unimplemented
         ;; SVG          JFX
         ;; :path        javafx.scene.shape.Path
@@ -97,30 +121,30 @@
         ;; :rect        javafx.scene.shape.Rectangle
         ;; :use         a link?
         :line [(merge shape-attributes
-                     {:fx/type :line
-                      :start-x (-> merged-attributes
-                                   :x1
-                                   read-string)
-                      :start-y (-> merged-attributes
-                                   :y1
-                                   read-string)
-                      :end-x (-> merged-attributes
-                                 :x2
-                                 read-string)
-                      :end-y (-> merged-attributes
-                                 :y2
-                                 read-string)})]
+                      {:fx/type :line
+                       :start-x (-> merged-attributes
+                                    :x1
+                                    read-string)
+                       :start-y (-> merged-attributes
+                                    :y1
+                                    read-string)
+                       :end-x (-> merged-attributes
+                                  :x2
+                                  read-string)
+                       :end-y (-> merged-attributes
+                                  :y2
+                                  read-string)})]
         :text [(merge shape-attributes
-                     {:fx/type :text
-                      :font (-> merged-attributes
-                                :font-size)
-                      :x (-> merged-attributes
-                             :x
-                             read-string)
-                      :y (-> merged-attributes
-                             :y
-                             read-string)
-                      :text (nth svg 2)})]
+                      {:fx/type :text
+                       :font (-> merged-attributes
+                                 :font-size)
+                       :x (-> merged-attributes
+                              :x
+                              read-string)
+                       :y (-> merged-attributes
+                              :y
+                              read-string)
+                       :text (nth svg 2)})]
         :polyline [(merge shape-attributes
                           {:fx/type :polyline
                            :points (-> merged-attributes
@@ -132,12 +156,9 @@
         nil nil
         (println "Unexpected SVG element: "(first svg))))))
 
-(defn render-as-jfx-image
-  "Given an SVG string, return a JFX Image"
-  [svg-xml-string
-   width
-   height]
-  (javafx.embed.swing.SwingFXUtils/toFXImage (render-as-buffered-image svg-xml-string
-                                                                       width
-                                                                       height)
-                                             nil))
+(defn render-with-jfx-shapes
+  ""
+  [svg]
+   {:fx/type :group
+    :children (render-with-jfx-shapes-rec nil
+                                          svg)})
