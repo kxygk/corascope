@@ -28,6 +28,45 @@
                      uri)
     buffered-image))
 
+
+(defn svg-to-jfx-attributes
+  "The attributes in `thi-ng/geom`'s SVG hiccup
+  are very similar to the CLJFX JavaFX ones.
+  There are minor differences and defaults
+
+  This helper function massages the SVG ones into a JFX friendly variety"
+  [svg-attributes]
+  (-> svg-attributes
+      (update :stroke #(case %
+                         nil :black
+                         "none" :black
+                         (if (= \# %)
+                           %
+                           (keyword %))))
+      (update :fill #(case %
+                       nil "transparent"
+                       "none" "transparent"
+                       (if (= \# %)
+                         %
+                         (keyword %))))
+      (update :points #(case %
+                         nil []
+                         [] []
+                         (map read-string (-> %
+                                              (clojure.string/split #"[ ,]")))))
+      (update :stroke-width #(case %
+                               nil 1.0
+                               %))
+      (update :stroke-dasharray #(case %
+                                   nil []
+                                   (map read-string (-> %
+                                                        (clojure.string/split #"[ ,]")))))
+      (clojure.set/rename-keys {:stroke-dasharray :stroke-dash-array})
+      (update :font-size #(case %
+                            nil 10
+                            "none" 10
+                            %))))
+
 (defn render-with-jfx-shapes
   ""
   [parent-attributes svg]
@@ -39,84 +78,59 @@
                                       (first svg))
               (render-with-jfx-shapes parent-attributes
                                       (rest svg))))
-    (let [attributes (merge parent-attributes
-                            (second svg))
-          stroke (case (:stroke attributes)
-                   nil :black
-                   "none" :black
-                   (if (= '#' (:stroke attributes))
-                     (:stroke attributes)
-                     (keyword (:stroke attributes))))
-          fill (case  (:fill attributes)
-                 nil :black
-                 "none" :black
-                 (if (= '#' (:fill attributes))
-                   (:fill attributes)
-                   (keyword (:fill attributes))))
-          points (case (:points attributes)
-                   nil []
-                   (map read-string (-> (:points attributes)
-                                        (clojure.string/split #"[ ,]"))))
-          stroke-dash-array (case (:stroke-dasharray attributes)
-                              nil []
-                              (map read-string (-> (:stroke-dasharray attributes)
-                                                   (clojure.string/split #"[ ,]"))))
-          stroke-width (case (:stroke-width attributes)
-                         nil 1.0
-                         (:stroke-width attributes))
-          font (case (:font-size attributes)
-                 nil 10
-                 "none" 10
-                 (:font-size attributes))]
+    (let [new-attributes (second svg)
+          merged-attributes (svg-to-jfx-attributes (merge parent-attributes
+                                                          new-attributes))
+          shape-attributes (select-keys merged-attributes
+                                        [:stroke :fill :stroke-width :stroke-dash-array])]
       (case (first svg)
         (:g :svg) [{:fx/type :group
-                    :children
-                    (->> (rest (rest svg))
-                         (map #(render-with-jfx-shapes attributes %))
-                         (apply concat)
-                         (filter some?))}]
-        :line [{:fx/type :line
-                :stroke stroke
-                :fill fill
-                :stroke-dash-array stroke-dash-array
-                :stroke-width stroke-width
-                :start-x (-> attributes
-                             :x1
+                   :children
+                   (->> (rest (rest svg))
+                        (map #(render-with-jfx-shapes merged-attributes %))
+                        (apply concat)
+                        (filter some?))}]
+        ;; Unimplemented
+        ;; SVG          JFX
+        ;; :path        javafx.scene.shape.Path
+        ;; :circle      javafx.scene.shape.Circle
+        ;; :rect        javafx.scene.shape.Rectangle
+        ;; :use         a link?
+        :line [(merge shape-attributes
+                     {:fx/type :line
+                      :start-x (-> merged-attributes
+                                   :x1
+                                   read-string)
+                      :start-y (-> merged-attributes
+                                   :y1
+                                   read-string)
+                      :end-x (-> merged-attributes
+                                 :x2
+                                 read-string)
+                      :end-y (-> merged-attributes
+                                 :y2
+                                 read-string)})]
+        :text [(merge shape-attributes
+                     {:fx/type :text
+                      :font (-> merged-attributes
+                                :font-size)
+                      :x (-> merged-attributes
+                             :x
                              read-string)
-                :start-y (-> attributes
-                             :y1
+                      :y (-> merged-attributes
+                             :y
                              read-string)
-                :end-x (-> attributes
-                           :x2
-                           read-string)
-                :end-y (-> attributes
-                           :y2
-                           read-string)}]
-        :text [{:fx/type :text
-                :stroke stroke
-                :fill fill
-                :stroke-dash-array stroke-dash-array
-                :stroke-width stroke-width
-                :font font
-                :x (-> attributes
-                       :x
-                       read-string)
-                :y (-> attributes
-                       :y
-                       read-string)
-                :text (nth svg 2)}]
-        :polyline [{:fx/type :polyline
-                    :stroke stroke
-                    :points points
-                    :stroke-dash-array stroke-dash-array
-                    :stroke-width stroke-width}]
-        :polygon [{:fx/type :polygon
-                   :stroke stroke
-                   :fill fill
-                   :points points
-                   :stroke-dash-array stroke-dash-array
-                   :stroke-width stroke-width}]
-        nil))))
+                      :text (nth svg 2)})]
+        :polyline [(merge shape-attributes
+                          {:fx/type :polyline
+                           :points (-> merged-attributes
+                                       :points)})]
+        :polygon [(merge shape-attributes
+                         {:fx/type :polygon
+                          :points (-> merged-attributes
+                                      :points)})]
+        nil nil
+        (println "Unexpected SVG element: "(first svg))))))
 
 (defn render-as-jfx-image
   "Given an SVG string, return a JFX Image"
