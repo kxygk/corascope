@@ -2,9 +2,8 @@
   (:require [corascope.svg]
             [thi.ng.geom.core :as g] ;; The graphing libraires
             [thi.ng.math.core :as m]
-            [thi.ng.geom.viz.core :as viz]))
-
-
+            [thi.ng.geom.viz.core :as viz]
+            [thi.ng.geom.svg.core :as svg]))
 
 (defn- nearest-power-of-ten
   [number]
@@ -64,6 +63,7 @@
              :attribs {:stroke "transparent"} ;; axis line attributes
              ;; :label-style {:fill "red" :text-anchor "start"}
              })
+   :data []
    ;; :grid   {;:attribs {:stroke "#caa"}
    ;;          ; :minor-x true
    ;;          ; :major-x true
@@ -74,40 +74,52 @@
 
 
 (defn- add-lines
-  "Add the points (as little triangles) to the graph"
-  [spec
-   points]
-  (if (empty? points)
-    spec ;; do nothing.. else:
-    (assoc spec
-           :data
-           [{:values  points
-             :attribs {:fill "none" :stroke "black" :stroke-width 1.25}
-             ;; :shape   (viz/svg-triangle-down 6)
-             :layout  viz/svg-line-plot}
-            ])))
+  "Add the lines to the graph"
+  ([spec
+    points]
+   (add-lines spec
+              points
+              "black"))
+  ([spec
+    points
+    color]
+    (-> spec ;; do nothing.. else:
+         (update :data
+                 #(conj % {:values  points
+                           :attribs {:fill "none" :stroke color :stroke-width 1.25}
+                           :layout  viz/svg-line-plot})))))
 
 (defn- add-points
-  "Add the points (as little triangles) to the graph"
-  [spec
-   points]
-  (if (empty? points)
-    spec ;; do nothing.. else:
-    (assoc spec
-           :data
-           [{:values  points
-             :attribs {:fill "none" :stroke "black"}
-             :shape   (viz/svg-triangle-down 6)
-             :layout  viz/svg-scatter-plot}
-            ])))
+  "Add the points (as little triangles) to the graph
+  Also has an overload to supply your own point-shape function
+  See `add-words` for an example"
+  ([spec
+    points]
+   (add-points spec
+               points
+               (viz/svg-triangle-down 6)))
+  ([spec
+    points
+    point-shape]
+   (if (empty? points)
+     spec ;; do nothing.. else:
+     (assoc spec
+            :data
+            [{:values  points
+              :attribs {:fill "none" :stroke "black"}
+              :shape point-shape
+              :layout  viz/svg-scatter-plot}
+             ]))))
 
-(defn- add-plot
+(defn- add-words
+  "Overload for `add-points` to directly display a word/letter at plot point
+  See `geom-viz` for details, but the shape supplied is an svg function"
   [spec
    points
-   lines?]
-  (if lines?
-    (add-lines spec points)
-    (add-points spec points)))
+   word]
+  (add-points spec
+              points
+              (fn [[[x y]]] (svg/text [x y] word))))
 
 (defn- add-red-overlay
   "Will draw red overlays at the selected points
@@ -165,6 +177,17 @@
         crop-points (concat right-crop-points
                             left-crop-points)
         graph-height (nice-max-count max-count)]
+    (cond-> (grid-spec width
+                       height
+                       max-position
+                       graph-height)
+      lines? (add-lines points)
+      (not lines?)  (add-points points)
+      true (add-red-overlay crop-points)
+      true (add-seam-marker seams
+                            graph-height)
+      true (viz/svg-plot2d-cartesian))))
+
  (-> (grid-spec width
                 height
                 max-position
