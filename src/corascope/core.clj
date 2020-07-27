@@ -394,11 +394,11 @@
                   (fx/sub context
                           state/core-row
                           core-number))
-     :children (into
+     :children (concat
                 [{:fx/type core-header
                   :core-number core-number
                   :width width}]
-                (map (fn [display-number]
+                (mapv (fn [display-number]
                        (case (fx/sub context
                                      state/display-type
                                      display-number)
@@ -419,6 +419,7 @@
    :hbar-policy :never
    :vbar-policy :never
    :content {:fx/type :pane
+             :pref-height 99999
              :on-mouse-dragged {:effect (fn [snapshot
                                              {:keys [fx/event]}]
                                           (-> snapshot

@@ -92,6 +92,7 @@
                                  display-number)
         ]
     {:fx/type :pane
+     :pref-height height
      :on-drag-over {:core-number core-number
                     :effect (fn [snapshot
                                  event]
