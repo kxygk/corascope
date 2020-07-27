@@ -1,6 +1,7 @@
 (ns corascope.core
   (:require
    [clojure.java.io :as io]
+   [corascope.adjustment]
    [corascope.plot]
    [corascope.optical]
    [corascope.state :as state]
@@ -26,6 +27,7 @@
 ;; (TODO: Think of a less goofy UI solution)
 (def fixed-workspace-settings-height 30.0)
 (def fixed-margin-width 456) ;; dialed in to fit the periodic table
+(def fixed-adjustment-area-height 400)
 (def fixed-core-header-height 76)
 (def fixed-slider-height 18)
 (def fixed-element-selector-width 50)
@@ -250,6 +252,33 @@
                                                          (if (:fx/event event)
                                                            :left
                                                            nil)))}}
+                            (if (> (fx/sub context
+                                           state/core-row
+                                           core-number)
+                                   0)
+                              {:fx/type :toggle-button
+                               :text "Adjust"
+                               :pref-width 80
+                               :pref-height height
+                               :selected (= (fx/sub context
+                                                    state/adjustment-core)
+                                            core-number)
+                               :on-selected-changed {:core-number core-number
+                                                     :effect (fn [snapshot
+                                                                  event]
+                                                               (if (= (fx/sub context
+                                                                              state/adjustment-core)
+                                                                      core-number)
+                                                                 (-> snapshot
+                                                                     (fx/swap-context assoc
+                                                                                      :adjustment-core
+                                                                                      nil)       )
+                                                                 (-> snapshot
+                                                                     (fx/swap-context assoc
+                                                                                      :adjustment-core
+                                                                                      core-number))))}}
+                              {:fx/type :pane
+                               :h-box/hgrow :always})
                             {:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :button
@@ -331,7 +360,7 @@
                                  true (fx/swap-context assoc-in
                                                        [:zoom
                                                         :depth-mm]
-                                                       (+ (fx/sub snapshot
+                                                      (+ (fx/sub snapshot
                                                                   state/start-mm
                                                                   core-number)
                                                           (* (fx/sub snapshot
@@ -469,6 +498,31 @@
                                                        state/displays-total-height)
                                                fixed-core-header-height)}))
                             (into []))}})
+
+(defn overlap-adjustment-area
+  [{:keys [fx/context]}]
+  {:fx/type corascope.adjustment/view
+   :width (- (fx/sub context
+                     state/width)
+             fixed-margin-width)
+   :height fixed-adjustment-area-height}
+   #_{:fx/type :v-box
+   :alignment :center-left
+   :style "-fx-background-color: #d3d3d3;"
+   :children [{:fx/type :text
+               :text (str "Adjusting Core: "
+                          (fx/sub context
+                                  state/adjustment-core))}]})
+
+(defn workspace-area
+  [{:keys [fx/context]}]
+  (cond-> {:fx/type :border-pane
+           :center {:fx/type layout-area
+                    :key :the-layout-area}}
+    (some? (fx/sub context
+                   state/adjustment-core)) (assoc :bottom
+                                                  {:fx/type overlap-adjustment-area
+                                                   :key :adjustment-area})))
 
 (defn display-options-header
   "Each Display's header
@@ -650,7 +704,7 @@
                              {:fx/type :border-pane
                               :left {:fx/type margin
                                      :width fixed-margin-width}
-                              :center {:fx/type layout-area}
+                              :center {:fx/type workspace-area}
                               }]}}})
 
 (defn event-handler-wrapper

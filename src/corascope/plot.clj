@@ -188,12 +188,20 @@
                             graph-height)
       true (viz/svg-plot2d-cartesian))))
 
+
+(defn plot-overlapping
+  ""
+  [width
+   height
+   left-points
+   right-points
+   max-position
+   max-count]
+  (let [graph-height (nice-max-count max-count)]
  (-> (grid-spec width
                 height
                 max-position
                 graph-height)
-     (add-plot points lines?)
-     (add-red-overlay crop-points)
-     (add-seam-marker seams
-                      graph-height)
+     (add-lines left-points "black")
+     (add-lines right-points "red")
      (viz/svg-plot2d-cartesian))))

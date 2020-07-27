@@ -51,6 +51,11 @@
   (fx/sub context
           :last-used-path))
 
+(defn adjustment-core
+  [context]
+  (fx/sub context
+          :adjustment-core))
+
 ;; mouse
 
 (defn mouse
@@ -805,6 +810,35 @@
                                            does-row-have-core?))]
     row-with-core))
 
+(defn overlapped-core
+  "Given a CORE-NUMBER return the core that it overlaps at the starting point"
+  [context
+   core-number]
+  (if (zero? (fx/sub context
+                     core-row
+                     core-number))
+    (println "ERROR: Given core is on the first row. Doesn't overlap anything")
+    (let [core-start-mm (fx/sub context
+                                start-mm
+                                core-number)
+          cores-on-row-above (get (fx/sub context
+                                          layout)
+                                  (dec (fx/sub context
+                                               core-row
+                                               core-number)))]
+      (->> cores-on-row-above
+           (filter (fn [core-above]
+                     (let [core-above-start (fx/sub context
+                                                    start-mm
+                                                    core-above)
+                           core-above-end (fx/sub context
+                                                  end-mm
+                                                  core-above)]
+                       (and (> core-start-mm
+                               core-above-start)
+                            (< core-start-mm
+                               core-above-end)))))
+           first))))
 
 ;; Display position
 
