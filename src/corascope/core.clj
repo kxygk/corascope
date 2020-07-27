@@ -215,7 +215,8 @@
                  :min-height height
                  :max-height height
                  :alignment :center-left
-                 :children [{:fx/type :text-field
+                 :children (concat
+                            [{:fx/type :text-field
                              :disable (not= :left
                                             (fx/sub context
                                                     state/fixed-side
@@ -251,12 +252,12 @@
                                                                    :fixed-side]
                                                          (if (:fx/event event)
                                                            :left
-                                                           nil)))}}
-                            (if (> (fx/sub context
+                                                           nil)))}}]
+                            (when (> (fx/sub context
                                            state/core-row
                                            core-number)
-                                   0)
-                              {:fx/type :toggle-button
+                                     0)
+                              [{:fx/type :toggle-button
                                :text "Adjust"
                                :pref-width 80
                                :pref-height height
@@ -276,10 +277,8 @@
                                                                  (-> snapshot
                                                                      (fx/swap-context assoc
                                                                                       :adjustment-core
-                                                                                      core-number))))}}
-                              {:fx/type :pane
-                               :h-box/hgrow :always})
-                            {:fx/type :pane
+                                                                                      core-number))))}}])
+                            [{:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :button
                              :text "Crop"
@@ -331,8 +330,8 @@
                                                              state/end-mm-after-crop
                                                              core-number)
                                               :on-value-changed {:core-number core-number
-                                                                 :effect effects/update-core-end}}}
-                            ]}
+                                                                 :effect effects/update-core-end}}}])
+                            }
                 {:fx/type sliders
                  :core-number core-number
                  :width width
