@@ -416,6 +416,7 @@
 (defn layout-area
   [{:keys [fx/context]}]
   {:fx/type :scroll-pane
+   :fit-to-height true
    :hbar-policy :never
    :vbar-policy :never
    :content {:fx/type :pane
