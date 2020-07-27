@@ -85,11 +85,27 @@
                                       overlaped-core-index))]
     {:fx/type :v-box
      :alignment :center-left
-     :style "-fx-background-color: #d3d3d3;"
-     :children [{:fx/type :text
-                 :text (str "Adjusting Core: "
-                            (fx/sub context
-                                    state/adjustment-core))}
+     :children [{:fx/type :h-box
+                 :style "-fx-background-color: #d3d3d3;"
+                 :alignment :center-left
+                 :children [{:fx/type :separator
+                             :style "-fx-background-color: #a9a9a9;"
+                             :orientation :vertical}
+                            {:fx/type :text
+                             :text (str "Adjusting Core: "
+                                        (fx/sub context
+                                                state/adjustment-core))}
+                            {:fx/type :pane
+                             :h-box/hgrow :always}
+                            {:fx/type :button
+                             :text "X"
+                             :on-action
+                             {:effect (fn [snapshot
+                                           event]
+                                        (-> snapshot
+                                            (fx/swap-context assoc
+                                                             :adjustment-core
+                                                             nil)))}}]}
                 {:fx/type plot
                  :width width
                  :height 400
