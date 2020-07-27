@@ -82,7 +82,13 @@
                                       core-to-adjust-index) ;; Super short core
                               (fx/sub context
                                       state/end-mm
-                                      overlaped-core-index))]
+                                      overlaped-core-index))
+        element-to-display (->> (fx/sub context
+                                       state/displays)
+                                (filter #(= (:type %)
+                                            :element-count))
+                                first
+                                :element)]
     {:fx/type :v-box
      :alignment :center-left
      :children [{:fx/type :h-box
@@ -109,7 +115,10 @@
                 {:fx/type plot
                  :width width
                  :height 400
-                 :element :Mn
+                 :element (if (some? element-to-display)
+                            element-to-display
+                            (first (fx/sub context
+                                           state/xrf-columns)))
                  :adjustment-core core-to-adjust-index
                  :overlapped-core overlaped-core-index
                  :min-depth overlap-area-start
