@@ -2,9 +2,7 @@
 
 (defn interpolate-point
   "Given a vector V1 of [X1 Y1] pairs and a vector of X2 values
-  this returns an [X2 Y2} values, Where the Y2's are interpolated linearly
-  TODO: Figure out how to implement quickly.
-  Right now just gets the first number that is past the X1"
+  this returns an [X2 Y2} values, Where the Y2's are interpolated linearly"
   [x2 v1]
   (let [[preceeding-points
          following-points] (split-with #(<= (first %)
@@ -21,9 +19,7 @@
 
 (defn interpolate-points
   "Given a vector of X2 values and a vector V1 of [X1 Y1] pairs
-  this returns an [X2 Y2} values, Where the Y2's are interpolated linearly
-  TODO: Figure out how to implement quickly.
-  Right now just gets the first number that is past the X1"
+  this returns an [X2 Y2] values, Where the Y2's are interpolated linearly"
   [x2 v1]
   (->> x2
        (map #(vector %
@@ -31,7 +27,9 @@
        #_(filter #(some? (second %)))))
 
 (defn interpolate-overlap
-  "Take a 2 point vector PV1 PV2. Crop PV1 to the overlapping segment. Interpolate PV2 points to PV1 positions and return the cropped PV1 and interpolated PV2 (they will be the same length)"
+  "Take a 2 point vector PV1 PV2. Crop PV1 to the overlapping segment.
+  Interpolate PV2 points to PV1 positions
+  Return the cropped PV1 and interpolated PV2 (they will be the same length)"
   [pv1
    pv2]
   (let [first-pv2-position (-> pv2
