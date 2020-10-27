@@ -78,14 +78,16 @@
       (update :points #(case %
                          nil []
                          [] []
-                         (map read-string (-> %
-                                              (clojure.string/split #"[ ,]")))))
+                         "" (do (println "No points are being plotted.. shouldn't happen")
+                                [])
+                         (mapv read-string (-> %
+                                               (clojure.string/split #"[ ,]")))))
       (update :stroke-width #(case %
                                nil 1.0
                                %))
       (update :stroke-dasharray #(case %
                                    nil []
-                                   (map read-string (-> %
+                                   (mapv read-string (-> %
                                                         (clojure.string/split #"[ ,]")))))
       (clojure.set/rename-keys {:stroke-dasharray :stroke-dash-array})
       (update :font-size #(case %
@@ -113,9 +115,9 @@
         (:g :svg) [{:fx/type :group
                     :children
                     (->> (rest (rest svg))
-                         (map #(render-with-jfx-shapes-rec merged-attributes %))
+                         (mapv #(render-with-jfx-shapes-rec merged-attributes %))
                          (apply concat)
-                         (filter some?))}]
+                         (filterv some?))}]
         ;; Unimplemented
         ;; SVG          JFX
         ;; :path        javafx.scene.shape.Path

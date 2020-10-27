@@ -22,7 +22,7 @@
                                       corascope.xrf/element-counts
                                       adjustment-core
                                       element) ;; these are mm from `:start-mm`
-                                (filter #(-> %
+                                (filterv #(-> %
                                             first
                                             (> (- (fx/sub context
                                                           state/start-mm-after-crop
@@ -30,7 +30,7 @@
                                                   (fx/sub context
                                                        state/start-mm
                                                        adjustment-core)))))
-                               (filter #(-> %
+                               (filterv #(-> %
                                             first
                                             (< (- max-depth
                                                   min-depth)))))
@@ -38,18 +38,18 @@
                                       corascope.xrf/element-counts
                                       overlapped-core
                                       element)
-                               (filter #(-> %
+                               (filterv #(-> %
                                             first
                                             (> min-depth)))
-                               (filter #(-> %
+                               (filterv #(-> %
                                             first
                                             (< max-depth)))
-                               (filter #(-> %
+                               (filterv #(-> %
                                             first
                                             (< (fx/sub context
                                                        state/end-mm-after-crop
                                                        overlapped-core))))
-                               (map #(-> %
+                               (mapv #(-> %
                                          (update-in [0]
                                                     -
                                                     min-depth))))
@@ -63,9 +63,10 @@
                                                   [0
                                                    (fx/sub context
                                                            corascope.xrf/max-element-count-all-cores
-                                                           :Mn)])]
+                                                           element)])
+        jfx-shapes (corascope.svg/render-with-jfx-shapes plot-svg)]
     {:fx/type :group
-     :children [(corascope.svg/render-with-jfx-shapes plot-svg)]}))
+     :children [jfx-shapes]}))
 
 
 (defn plot-correlation
