@@ -39,6 +39,8 @@
   ;; org.openjfx/javafx-web$mac {:mvn/version "14"}
   ;; org.openjfx/javafx-web$win {:mvn/version "14"}
 
+  criterium {:mvn/version "0.4.6"}
+
   org.clojure/data.csv {:mvn/version "0.1.4"} ;; data injestion
   thi.ng/geom {:mvn/version "1.0.0-RC4"
                :exclusions [org.clojure/clojurescript

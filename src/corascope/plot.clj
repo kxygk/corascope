@@ -13,12 +13,19 @@
 
 (defn- nice-max-count
   [max-count]
-    (let [tick-mark-size (nearest-power-of-ten max-count)
-          num-tick-marks (Math/ceil (/ max-count
-                                       tick-mark-size))]
-      (* (+ num-tick-marks
-            0.5)
-         tick-mark-size)))
+  (if (zero? max-count)
+    0
+    (let [mag-max-count (Math/abs max-count)
+          negative? (neg? max-count)
+          tick-mark-size (nearest-power-of-ten mag-max-count)
+          num-tick-marks (Math/ceil (/ mag-max-count
+                                       tick-mark-size))
+          nicer-mag (* (+ num-tick-marks
+                          0.5)
+                       tick-mark-size)]
+      (if negative?
+        (- nicer-mag)
+        nicer-mag))))
 
 (defn- grid-spec
   "Given a size (WIDTH HEIGHT) the output *spec* describes how the plot looks.
@@ -26,10 +33,10 @@
   The data has been left initialized"
   [width
    height
-   max-position
-   max-count]
+   [min-x max-x]
+   [min-y max-y]]
   {:x-axis (viz/linear-axis
-            {:domain [0 max-position]
+            {:domain [min-x max-x]
              :range  [0.0 width]
              :pos    0.0
              :visible true
@@ -43,15 +50,12 @@
              :attribs {:stroke "darkgray"} ;; axis line attributes
              })
    :y-axis (viz/linear-axis
-            {:domain      (if (== 1.0
-                                  max-count)
-                            [-0.5 1.5] ;; better for 0-1/binary validity plots
-                            [-0.01 max-count])
+            {:domain    [min-y max-y]
              :range       [height 0]
              ;; puts the axis out of view (can't show the grid with no axis)
              :pos         0 ;; major-size default
              :visible true
-             :major (nearest-power-of-ten max-count)
+             :major (nearest-power-of-ten max-y)
              :label-dist 0
              :label-y 0
              :major-size 5
@@ -161,30 +165,36 @@
   [width
    height
    points
-   max-position
-   max-count
+   [min-x max-x]
+   [min-y max-y]
    crop-left
    crop-right
    seams
    lines?]
-  (let [right-crop-points (filter #(> (first %)
-                                      (- max-position
-                                         crop-right))
-                                  points)
-        left-crop-points (filter #(< (first %)
+  (let [right-crop-points (if (zero? crop-right)
+                            []
+                            (filter #(> (first %)
+                                        (- max-x
+                                           crop-right))
+                                    points))
+        left-crop-points (if (zero? crop-left)
+                           []
+                           (filter #(< (first %)
                                      crop-left)
-                                 points)
+                                 points))
         crop-points (concat right-crop-points
                             left-crop-points)
-        graph-height (nice-max-count max-count)]
+        graph-height (nice-max-count max-y)]
     (cond-> (grid-spec width
                        height
-                       max-position
-                       graph-height)
+                       [min-x
+                        max-x]
+                       [(nice-max-count min-y)
+                        (nice-max-count max-y)])
       lines? (add-lines points)
       (not lines?)  (add-points points)
-      true (add-red-overlay crop-points)
-      true (add-seam-marker seams
+      (seq crop-points) (add-red-overlay crop-points)
+      (seq seams) (add-seam-marker seams
                             graph-height)
       true (viz/svg-plot2d-cartesian))))
 
@@ -195,13 +205,14 @@
    height
    left-points
    right-points
-   max-position
-   max-count]
-  (let [graph-height (nice-max-count max-count)]
- (-> (grid-spec width
-                height
-                max-position
-                graph-height)
-     (add-lines left-points "black")
-     (add-lines right-points "red")
-     (viz/svg-plot2d-cartesian))))
+   [min-x max-x]
+   [min-y max-y]]
+  (-> (grid-spec width
+                 height
+                 [min-x
+                  max-x]
+                 [(nice-max-count min-y)
+                  (nice-max-count max-y)])
+      (add-lines left-points "black")
+      (add-lines right-points "red")
+      (viz/svg-plot2d-cartesian)))

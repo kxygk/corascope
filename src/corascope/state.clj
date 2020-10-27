@@ -19,7 +19,9 @@
                             :mm-per-pixel 0.5 ;; Common parameter across all cores
                             :mm-xrf-step-size 5 ;; Common parameter across all cores
                             :cores []
-                            :displays []}
+                            :displays []
+                            :adjustment {:core nil
+                                         :window-mm 0}}
                            cache/lru-cache-factory)))
 
 ;; BASE SUBSCRIPTIONS
@@ -51,10 +53,10 @@
   (fx/sub context
           :last-used-path))
 
-(defn adjustment-core
+(defn adjustment
   [context]
   (fx/sub context
-          :adjustment-core))
+          :adjustment))
 
 ;; mouse
 
@@ -872,3 +874,25 @@
         screen-left-pix (* screen-left-mm
                            zoom-factor)]
     screen-left-pix))
+
+;; Adjustment window
+
+
+(defn adjustment-core
+  [context]
+  (:core (fx/sub context
+                 adjustment)))
+
+(defn adjustment-elements
+  [context]
+  (or (:elements (fx/sub context
+                         adjustment))
+      (->> (fx/sub context
+                   displays)
+           (filterv #(= (:type %)
+                       :element-count))
+           (#(if (empty? %)
+               nil
+               (mapv :element %))))
+      [(first (fx/sub context
+                     xrf-all-columns))]))

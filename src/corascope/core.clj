@@ -264,20 +264,36 @@
                                :selected (= (fx/sub context
                                                     state/adjustment-core)
                                             core-number)
-                               :on-selected-changed {:core-number core-number
-                                                     :effect (fn [snapshot
-                                                                  event]
-                                                               (if (= (fx/sub context
-                                                                              state/adjustment-core)
-                                                                      core-number)
-                                                                 (-> snapshot
-                                                                     (fx/swap-context assoc
-                                                                                      :adjustment-core
-                                                                                      nil)       )
-                                                                 (-> snapshot
-                                                                     (fx/swap-context assoc
-                                                                                      :adjustment-core
-                                                                                      core-number))))}}])
+                                :on-selected-changed
+                                {:core-number core-number
+                                 :effect (fn [snapshot
+                                              event]
+                                           (if (= (fx/sub context
+                                                          state/adjustment-core)
+                                                  core-number)
+                                             (-> snapshot
+                                                 (fx/swap-context assoc-in [:adjustment
+                                                                            :core]
+                                                                  nil))
+                                             (-> snapshot
+                                                 (fx/swap-context assoc-in [:adjustment
+                                                                            :core]
+                                                                  core-number)
+                                                 (fx/swap-context update-in [:adjustment
+                                                                             :elements]
+                                                                  (fn [elements]
+                                                                    (if (some? elements)
+                                                                      elements
+                                                                      ;;search for candidate
+                                                                      ;;else get fist thing..
+                                                                      (or (->> (fx/sub context
+                                                                                       state/displays)
+                                                                               (filterv #(= (:type %)
+                                                                                            :element-count))
+                                                                               (#(if (empty? %)
+                                                                                   nil
+                                                                                   (set (mapv :element %)))))
+                                                                          #{(first (state/xrf-all-columns))})))))))}}])
                             [{:fx/type :pane
                              :h-box/hgrow :always}
                             {:fx/type :button
@@ -502,18 +518,13 @@
 
 (defn overlap-adjustment-area
   [{:keys [fx/context]}]
+  #_{:fx/type :text
+   :text "ehllo"}
   {:fx/type corascope.adjustment/view
    :width (- (fx/sub context
                      state/width)
              fixed-margin-width)
-   :height fixed-adjustment-area-height}
-   #_{:fx/type :v-box
-   :alignment :center-left
-   :style "-fx-background-color: #d3d3d3;"
-   :children [{:fx/type :text
-               :text (str "Adjusting Core: "
-                          (fx/sub context
-                                  state/adjustment-core))}]})
+   :height fixed-adjustment-area-height})
 
 (defn workspace-area
   [{:keys [fx/context]}]
@@ -522,8 +533,7 @@
                     :key :the-layout-area}}
     (some? (fx/sub context
                    state/adjustment-core)) (assoc :bottom
-                                                  {:fx/type overlap-adjustment-area
-                                                   :key :adjustment-area})))
+                                                  {:fx/type overlap-adjustment-area})))
 
 (defn display-options-header
   "Each Display's header
@@ -675,6 +685,18 @@
                                                      :element-count {:fx/type corascope.displays.element-count/options
                                                                      :display-number display-number})]})))
                               flatten)}
+              {:fx/type :pane
+               :v-box/vgrow :always}
+              (if (nil? (fx/sub context
+                                state/adjustment-core))
+                {:fx/type :pane
+                 :v-box/vgrow :never}
+                {:fx/type :v-box
+                 :pref-height fixed-adjustment-area-height
+                 :min-height fixed-adjustment-area-height
+                 :max-height fixed-adjustment-area-height
+                 :children [{:fx/type corascope.adjustment/options
+                             :height fixed-adjustment-area-height}]})
               ]})
 
 (defn root

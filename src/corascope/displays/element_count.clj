@@ -50,12 +50,14 @@
                                                      core-number
                                                      selected-element
                                                      )
-                                             (fx/sub context
-                                                     state/length-mm
-                                                     core-number)
-                                             (fx/sub context
+                                             [0
+                                              (fx/sub context
+                                                      state/length-mm
+                                                      core-number)]
+                                             [0
+                                              (fx/sub context
                                                      corascope.xrf/max-element-count-all-cores
-                                                     selected-element)
+                                                     selected-element)]
                                              (fx/sub context
                                                      state/selected-left-mm
                                                      core-number)

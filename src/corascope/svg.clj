@@ -31,7 +31,8 @@
     buffered-image))
 
 (defn render-as-jfx-image
-  "Given an SVG string, return a JFX Image"
+  "Given an SVG string, return a JFX Image
+  NOTE: SVGsalamander can't handle `transparent` elements"
   [svg
    width
    height]
@@ -45,6 +46,7 @@
       (javafx.embed.swing.SwingFXUtils/toFXImage nil)))
 
 (defn render-as-jfx-image-view
+  "Wrapped for `render-as-jfx-image` that sticks it into a view"
   [svg
    width
    height]
