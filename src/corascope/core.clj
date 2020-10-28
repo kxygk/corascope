@@ -629,13 +629,68 @@
                :pref-height (/ fixed-core-header-height 2)
                :min-height (/ fixed-core-header-height 2)
                :max-height (/ fixed-core-header-height 2)
-               :children [{:fx/type :pane
+               :alignment :center-left
+               :children [{:fx/type :label
+                           :alignment :center-left
+                           :text "Resolution: "}
+                          {:fx/type :toggle-button
+                           :max-height Double/MAX_VALUE
+                           :selected (= (fx/sub context
+                                                state/mm-per-pixel
+                                                0)
+                                        0.047)
+                           :on-action {:effect (fn [snapshot
+                                                    event]
+                                                 (-> snapshot
+                                                     (fx/swap-context assoc-in [:adjustment
+                                                                                :core]
+                                                                      nil)
+                                                     (fx/swap-context assoc
+                                                                      :mm-per-pixel
+                                                                      0.047)))}
+                           :text "0.047"}
+                          {:fx/type :toggle-button
+                           :max-height Double/MAX_VALUE
+                           :selected (= (fx/sub context
+                                                state/mm-per-pixel
+                                                0)
+                                        0.188)
+                           :on-action {:effect (fn [snapshot
+                                                    event]
+                                                 (-> snapshot
+                                                     (fx/swap-context assoc-in [:adjustment
+                                                                                :core]
+                                                                      nil)
+                                                     (fx/swap-context assoc
+                                                                      :mm-per-pixel
+                                                                      0.188)))}
+                           :text "0.188"}
+                          {:fx/type :toggle-button
+                           :max-height Double/MAX_VALUE
+                           :selected (= (fx/sub context
+                                                state/mm-per-pixel
+                                                0)
+                                        0.5)
+                           :on-action {:effect (fn [snapshot
+                                                    event]
+                                                 (-> snapshot
+                                                     (fx/swap-context assoc-in [:adjustment
+                                                                                :core]
+                                                                      nil)
+                                                     (fx/swap-context assoc
+                                                                      :mm-per-pixel
+                                                                      0.5)))}
+                           :text "0.5"}
+                          {:fx/type :label
+                           :alignment :center-left
+                           :text " mm/pixel"}
+                          {:fx/type :pane
                            :h-box/hgrow :always}
                           {:fx/type :button
                            :max-height Double/MAX_VALUE
-                           :on-action {:effect effects/merge-all-cores}
-                           :disable (not (fx/sub context
-                                                 state/can-merge?))
+                           :on-action {:effect (fn [snapshot
+                                            event]
+                                         (fx/swap-context snapshot assoc :height (:fx/event event)))}
                            :text "Merge <<"}]}
               {:fx/type :h-box
                :pref-height (/ fixed-core-header-height 2)

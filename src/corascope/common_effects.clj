@@ -122,6 +122,9 @@
            offset ;; Optional
            core-number]}]
   (cond-> snapshot
+    ;; true (fx/swap-context assoc-in [:adjustment
+    ;;                                 :core]
+    ;;                       nil)
     true (fx/swap-context assoc-in [:cores
                                     core-number
                                     :start-mm]
