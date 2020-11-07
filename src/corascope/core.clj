@@ -688,9 +688,9 @@
                            :h-box/hgrow :always}
                           {:fx/type :button
                            :max-height Double/MAX_VALUE
-                           :on-action {:effect (fn [snapshot
-                                            event]
-                                         (fx/swap-context snapshot assoc :height (:fx/event event)))}
+                           :on-action {:effect effects/merge-all-cores}
+                           :disable (not (fx/sub context
+                                                 state/can-merge?))
                            :text "Merge <<"}]}
               {:fx/type :h-box
                :pref-height (/ fixed-core-header-height 2)
