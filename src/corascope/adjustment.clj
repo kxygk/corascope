@@ -80,11 +80,11 @@
            ]}]
   (let [correlations (mapv #(correlation/points-cross-correlation (fx/sub context
                                                                           corascope.xrf/element-counts
-                                                                          adjustment-core
+                                                                          overlapped-core
                                                                           %)
                                                                   (fx/sub context
                                                                           corascope.xrf/element-counts
-                                                                          overlapped-core
+                                                                          adjustment-core
                                                                           %)
                                                                   (fx/sub context
                                                                           state/mm-per-pixel
