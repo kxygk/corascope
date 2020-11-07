@@ -212,7 +212,7 @@
                  :core-number (fx/sub context
                                       state/adjustment-core)
                  :current-start (- (+ (fx/sub context
-                                           state/start-mm-after-crop
+                                           state/start-mm
                                            core-to-adjust-index)
                                       (-> (fx/sub context
                                               state/xrf-first-scan-point
@@ -221,7 +221,7 @@
                                           read-string))
                                       
                                    (+ (fx/sub context
-                                           state/start-mm-after-crop
+                                           state/start-mm
                                            overlaped-core-index)
                                       (-> (fx/sub context
                                                   state/xrf-first-scan-point
