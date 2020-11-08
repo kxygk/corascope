@@ -88,10 +88,18 @@ If the top/bottom positions are not pinned and are left floating, then the core 
 *Note*: The sliders are limited to cropping off at most 50% - so if you have an very unusual scan where one tail is >50% then you may simply need to crop multiple times
 #+END_QUOTE
 
+** Overlap
+[[./docs/9-overlap.png]]
+If two cores overlap than the deeper one will be drawn offset downward with an "Adjust" button in its header near the start position. Pressing this button opens an additional display below where the start position of the deeper core can be adjusted (by clicking in the lower plot). 
+
+The upper plot allows the user to line up to two overlapping signals (black and red bein the upper and lower core respectively). It updates "live" as the cropping sliders are adjusted 
+
+Once both cores are sufficiently cropped they will once again appear side-by-side
+
 ** Merging
 
 
-[[./docs/9-merged.png]]
+[[./docs/10-merged.png]]
 Once cores are cropped and aligned they should be merged into one virtual "core" by hitting the "Merge <<" button in the top left
 
 #+BEGIN_QUOTE
@@ -104,7 +112,7 @@ Once cores are cropped and aligned they should be merged into one virtual "core"
 
 ** Export
 
-[[./docs/10-export.png]]
+[[./docs/11-export.png]]
 
 Once cores are merged we want to export the data using the core's context menu (upper left of the core header)
 
