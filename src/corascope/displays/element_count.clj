@@ -149,6 +149,7 @@
                                  (name selected-element)
                                  "] in this core")}
                      {:fx/type plot
+                      :key (str "element-display-CORE-" core-number "-DISPLAY-" display-number)
                       :width width
                       :height height
                       :core-number core-number
