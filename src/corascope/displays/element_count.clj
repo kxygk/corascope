@@ -36,28 +36,27 @@
                    state/get-display
                    display-number)))
 
-(defn plot
-  [{:keys [fx/context
-           width
-           height
-           core-number
-           display-number
-           selected-element]}]
+(defn render-jfx-plot
+  [context
+   width
+   height
+   core-number
+   display-number
+   selected-element]
   (let [plot-svg (corascope.plot/plot-points width
                                              height
                                              (fx/sub context
                                                      corascope.xrf/element-counts
                                                      core-number
-                                                     selected-element
-                                                     )
+                                                     selected-element)
                                              [0
                                               (fx/sub context
                                                       state/length-mm
                                                       core-number)]
                                              [0
                                               (fx/sub context
-                                                     corascope.xrf/max-element-count-all-cores
-                                                     selected-element)]
+                                                      corascope.xrf/max-element-count-all-cores
+                                                      selected-element)]
                                              (fx/sub context
                                                      state/selected-left-mm
                                                      core-number)
@@ -74,9 +73,23 @@
                                              (fx/sub context
                                                      lines?
                                                      display-number))]
-    {:fx/type :group
-     :children [(corascope.svg/render-with-jfx-shapes plot-svg)]}))
+    (corascope.svg/render-with-jfx-shapes plot-svg)))
 
+(defn plot
+  [{:keys [fx/context
+           width
+           height
+           core-number
+           display-number
+           selected-element]}]
+  {:fx/type :group
+   :children [(fx/sub context
+                      render-jfx-plot
+                      width
+                      height
+                      core-number
+                      display-number
+                      selected-element)]})
 (defn view
   "display and options for XRF scan data"
   [{:keys [fx/context
