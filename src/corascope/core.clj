@@ -632,7 +632,7 @@
                :alignment :center-left
                :children [{:fx/type :label
                            :alignment :center-left
-                           :text "Resolution: "}
+                           :text " Resolution: "}
                           {:fx/type :toggle-button
                            :max-height Double/MAX_VALUE
                            :selected (= (fx/sub context
