@@ -14,9 +14,9 @@ jobs:
         with:
           java-version: '14'
       - name: Setup Clojure
-        uses: DeLaGuardo/setup-clojure@1.0
+        uses: DeLaGuardo/setup-clojure@master
         with:
-          tools-deps: '1.10.1.507'
+          cli: '1.10.1.507'
       - name: Build Uberjar
         run: clojure -A:uberjar-aot
       - name: Set as executable
