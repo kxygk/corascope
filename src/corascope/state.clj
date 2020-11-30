@@ -22,7 +22,7 @@
                             :displays []
                             :adjustment {:core nil
                                          :window-mm 0}}
-                           cache/lru-cache-factory)))
+                           #(cache/lru-cache-factory % :threshold 4096))))
 
 ;; BASE SUBSCRIPTIONS
 ;; Instead of subscribing directly to keys
