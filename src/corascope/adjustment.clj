@@ -119,27 +119,6 @@
     {:fx/type :group
      :children [(corascope.svg/render-with-jfx-shapes plot-svg)]}))
 
-
-  (apply (partial map (fn [ first-corr & all-correlations-at-shift]
-                                   [(reduce (fn [correlation sum]
-                                              (+ (second correlation)
-                                                 sum))
-                                            first-corr
-                                            all-correlations-at-shift)]))
-         [[1 2 3 4] [12 23 45 67]])
-
-  (apply (partial map (fn [ first-corr & all-correlations-at-shift]
-                (println "first-corr" first-corr)
-                (println "rest" all-correlations-at-shift)
-                first-corr))
-         [[1 2 3 4] [12 23 45 67]])
-
-(map (fn [ first-corr & all-correlations-at-shift]
-                (println "first-corr" first-corr)
-                (println "rest" all-correlations-at-shift)
-                first-corr)
-         [1 2 3 4] [12 23 45 67])
-
 (defn view
   [{:keys [fx/context
            width
