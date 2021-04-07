@@ -116,6 +116,24 @@
                             :start-mm]
                            corrected-start-mm)))))
 
+(defn validate-adjustment-window
+  "Ensure that any adjustment window is still valid.
+  If not, disable adjustment window"
+  [snapshot]
+  (if (nil? (fx/sub snapshot
+                    state/adjustment-core))
+    snapshot
+    (if (> (fx/sub snapshot
+                   state/core-row
+                   (fx/sub snapshot
+                           state/adjustment-core))
+           0)
+      snapshot
+      (-> snapshot
+          (fx/swap-context assoc-in [:adjustment
+                                     :core]
+                           nil)))))
+
 (defn update-core-start
   [snapshot
    {:keys [fx/event
@@ -135,7 +153,8 @@
     (some? (fx/sub snapshot
                    state/optical-scan
                    core-number)) (snap-core-to-pixel {:core-number core-number})
-    true (sort-cores nil)))
+    true (sort-cores nil)
+    true validate-adjustment-window))
 
 (defn update-core-end
   [snapshot
@@ -253,20 +272,21 @@
 (defn crop-selected
   [snapshot
    {:keys [core-number]}]
-  (crop-core snapshot
-             {:core-number core-number
-              :crop-left-pix (fx/sub snapshot
-                                     state/selected-left-pix
-                                     core-number)
-              :crop-right-pix (fx/sub snapshot
-                                      state/selected-right-pix
-                                      core-number)
-              :crop-left-mm (fx/sub snapshot
+  (-> snapshot
+      (crop-core {:core-number core-number
+                  :crop-left-pix (fx/sub snapshot
+                                         state/selected-left-pix
+                                         core-number)
+                  :crop-right-pix (fx/sub snapshot
+                                          state/selected-right-pix
+                                          core-number)
+                  :crop-left-mm (fx/sub snapshot
                                     state/selected-left-mm
                                     core-number)
-              :crop-right-mm  (fx/sub snapshot
-                                      state/selected-right-mm
-                                      core-number)}))
+                  :crop-right-mm  (fx/sub snapshot
+                                          state/selected-right-mm
+                                          core-number)})
+      validate-adjustment-window))
 
 (defn set-sliders-to-crop-unscanned
   [snapshot
