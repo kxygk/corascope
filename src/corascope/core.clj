@@ -267,8 +267,8 @@
                                 :on-selected-changed
                                 {:core-number core-number
                                  :effect (fn [snapshot
-                                              event]
-                                           (if (= (fx/sub context
+                                              {:keys [core-number]}]
+                                           (if (= (fx/sub snapshot
                                                           state/adjustment-core)
                                                   core-number)
                                              (-> snapshot
@@ -286,7 +286,7 @@
                                                                       elements
                                                                       ;;search for candidate
                                                                       ;;else get fist thing..
-                                                                      (or (->> (fx/sub context
+                                                                      (or (->> (fx/sub snapshot
                                                                                        state/displays)
                                                                                (filterv #(= (:type %)
                                                                                             :element-count))
