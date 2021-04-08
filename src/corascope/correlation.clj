@@ -332,16 +332,16 @@
    ^doubles shifted-positions]
     (let [first-overlayed (aget overlay-positions
                               0)
-        last-overlayed (aget overlay-positions
-                             (dec (alength overlay-positions)))
-        first-to-shift (aget shifted-positions
-                             0)
-        last-to-shift (aget shifted-positions
-                            (dec (alength shifted-positions)))
-        start-shifts (+ (- last-to-shift)
-                        first-overlayed)
-        end-shifts (- last-overlayed
-                      first-to-shift)]
+          last-overlayed (aget overlay-positions
+                               (dec (alength overlay-positions)))
+          first-to-shift (aget shifted-positions
+                               0)
+          last-to-shift (aget shifted-positions
+                              (dec (alength shifted-positions)))
+          start-shifts (+ (- first-to-shift)
+                          first-overlayed)
+          end-shifts (- last-overlayed
+                        first-to-shift)]
       [start-shifts
        end-shifts]))
 
