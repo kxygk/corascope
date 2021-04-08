@@ -119,6 +119,41 @@
     {:fx/type :group
      :children [(corascope.svg/render-with-jfx-shapes plot-svg)]}))
 
+(defn- click-handler
+  [snapshot
+   {:keys [fx/event
+           width
+           height]}]
+
+  (let [core-to-adjust-index (fx/sub snapshot
+                                     state/adjustment-core)
+        overlaped-core-index (fx/sub snapshot
+                                     state/overlapped-core
+                                     core-to-adjust-index)
+        elements-to-display (fx/sub snapshot
+                                    state/adjustment-elements)
+        first-element (first elements-to-display)
+        [start
+         end] (correlation/shift-range-vector (fx/sub snapshot
+                                                      corascope.xrf/element-counts
+                                                      overlaped-core-index
+                                                      first-element)
+                                              (fx/sub snapshot
+                                                      corascope.xrf/element-counts
+                                                      core-to-adjust-index
+                                                      first-element))
+        new-start (+ (fx/sub snapshot
+                             state/start-mm
+                             overlaped-core-index)
+                     (+ start
+                        (* (- end
+                              start)
+                           (/ (.getX event)
+                              width))))]
+    (effects/update-core-start snapshot
+                               {:fx/event new-start
+                                :core-number core-to-adjust-index})))
+
 (defn view
   [{:keys [fx/context
            width
@@ -145,29 +180,9 @@
                                     state/adjustment-elements)]
     {:fx/type :v-box
      ;;     :alignment :center-left
-     :on-mouse-clicked {:effect (fn [snapshot
-                                     {:keys [fx/event]}]
-                                  (let [first-element (first elements-to-display)
-                                        [start
-                                         end] (correlation/shift-range-vector (fx/sub snapshot
-                                                                                      corascope.xrf/element-counts
-                                                                                      overlaped-core-index
-                                                                                      first-element)
-                                                                              (fx/sub snapshot
-                                                                                      corascope.xrf/element-counts
-                                                                                      core-to-adjust-index
-                                                                                      first-element))
-                                        new-start (+ (fx/sub snapshot
-                                                             state/start-mm
-                                                             overlaped-core-index)
-                                                     (+ start
-                                                        (* (- end
-                                                              start)
-                                                           (/ (.getX event)
-                                                              width))))]
-                                  (effects/update-core-start snapshot
-                                                             {:fx/event new-start
-                                                              :core-number core-to-adjust-index})))}
+     :on-mouse-clicked {:width width
+                        :height height
+                        :effect click-handler}
      :children [{:fx/type plot-element-counts
                  :width width
                  :height (/ height
