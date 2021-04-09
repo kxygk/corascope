@@ -76,7 +76,7 @@
            elements
            adjustment-core
            overlapped-core
-           current-start
+           current-offset
            ]}]
   (let [correlations (mapv #(correlation/points-cross-correlation (fx/sub context
                                                                           corascope.xrf/element-counts
@@ -114,17 +114,22 @@
                                              [-1.0 1.0]
                                              0
                                              0
-                                             [current-start]
+                                             [current-offset]
                                              true)]
     {:fx/type :group
      :children [(corascope.svg/render-with-jfx-shapes plot-svg)]}))
 
-(defn- click-handler
+(defn- click-in-overlapping-view
   [snapshot
-   {:keys [fx/event
-           width
-           height]}]
+   width
+   mouse-x]
+  snapshot)
 
+
+(defn- click-in-correlation-view
+  [snapshot
+   width
+   mouse-x]
   (let [core-to-adjust-index (fx/sub snapshot
                                      state/adjustment-core)
         overlaped-core-index (fx/sub snapshot
@@ -148,11 +153,28 @@
                      (+ start
                         (* (- end
                               start)
-                           (/ (.getX event)
+                           (/ mouse-x
                               width))))]
     (effects/update-core-start snapshot
                                {:fx/event new-start
                                 :core-number core-to-adjust-index})))
+
+(defn- click-handler
+  [snapshot
+   {:keys [fx/event
+           width
+           height]}]
+  (let [mouse-x (.getX event)
+        mouse-y (.getY event)]
+    (if (> mouse-y
+           (/ height
+              2.0))
+      (click-in-correlation-view snapshot
+                                 width
+                                 mouse-x)
+      (click-in-overlapping-view snapshot
+                                 width
+                                 mouse-x))))
 
 (defn view
   [{:keys [fx/context
@@ -176,6 +198,12 @@
                               (fx/sub context
                                       state/end-mm
                                       overlaped-core-index))
+        core-offset (- (fx/sub context
+                               state/start-mm
+                               core-to-adjust-index)
+                       (fx/sub context
+                               state/start-mm
+                               overlaped-core-index))
         elements-to-display (fx/sub context
                                     state/adjustment-elements)]
     {:fx/type :v-box
@@ -205,23 +233,7 @@
                  :max-depth overlap-area-end
                  :core-number (fx/sub context
                                       state/adjustment-core)
-                 :current-start (- (+ (fx/sub context
-                                           state/start-mm
-                                           core-to-adjust-index)
-                                      (-> (fx/sub context
-                                              state/xrf-first-scan-point
-                                              core-to-adjust-index)
-                                          :depth-mm
-                                          read-string))
-                                      
-                                   (+ (fx/sub context
-                                           state/start-mm
-                                           overlaped-core-index)
-                                      (-> (fx/sub context
-                                                  state/xrf-first-scan-point
-                                                  overlaped-core-index)
-                                          :depth-mm
-                                          read-string)))
+                 :current-offset core-offset
                                         }
                 ]}))
 
