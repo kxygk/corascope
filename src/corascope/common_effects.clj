@@ -97,8 +97,8 @@
   [snapshot
    {:keys [core-number]}]
   (if (nil? (fx/sub snapshot
-                        state/optical-scan
-                        core-number))
+                    state/optical-scan
+                    core-number))
     snapshot
     (let [mm-per-pixel (fx/sub snapshot
                                state/mm-per-pixel
@@ -281,8 +281,8 @@
                                           state/selected-right-pix
                                           core-number)
                   :crop-left-mm (fx/sub snapshot
-                                    state/selected-left-mm
-                                    core-number)
+                                        state/selected-left-mm
+                                        core-number)
                   :crop-right-mm  (fx/sub snapshot
                                           state/selected-right-mm
                                           core-number)})

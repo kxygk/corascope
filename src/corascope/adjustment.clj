@@ -22,11 +22,6 @@
                                            corascope.xrf/element-counts
                                            adjustment-core
                                            element) ;; these are mm from `:start-mm`
-                                   ;; (filterv #(-> %
-                                   ;;             first
-                                   ;;             (> (fx/sub context
-                                   ;;                        state/start-mm
-                                   ;;                        adjustment-core))))
                                    (filterv #(-> %
                                                  first
                                                  (< (- max-depth
@@ -44,8 +39,8 @@
                                    (filterv #(-> %
                                                  first
                                                  (<= (fx/sub context
-                                                            state/end-mm
-                                                            overlapped-core))))
+                                                             state/end-mm
+                                                             overlapped-core))))
                                    (mapv #(-> %
                                               (update-in [0]
                                                          -
@@ -57,15 +52,15 @@
                                        (filterv #(-> %
                                                      first
                                                      (>= (- (fx/sub context
-                                                                   state/start-mm-after-crop
-                                                                   adjustment-core)
-                                                           (fx/sub context
-                                                                   state/start-mm
-                                                                   adjustment-core)))))
+                                                                    state/start-mm-after-crop
+                                                                    adjustment-core)
+                                                            (fx/sub context
+                                                                    state/start-mm
+                                                                    adjustment-core)))))
                                        (filterv #(-> %
                                                      first
                                                      (<= (- max-depth
-                                                           min-depth)))))
+                                                            min-depth)))))
         cropped-overlapped-points (->> (fx/sub context
                                                corascope.xrf/element-counts
                                                overlapped-core
@@ -79,8 +74,8 @@
                                        (filterv #(-> %
                                                      first
                                                      (<= (fx/sub context
-                                                                state/end-mm-after-crop
-                                                                overlapped-core))))
+                                                                 state/end-mm-after-crop
+                                                                 overlapped-core))))
                                        (mapv #(-> %
                                                   (update-in [0]
                                                              -
@@ -130,10 +125,10 @@
                            (apply (partial map (fn [ first-corr & all-correlations-at-shift]
                                                  [(first first-corr)
                                                   (/ (reduce (fn [sum correlation ]
-                                                            (+ (second correlation)
-                                                               sum))
-                                                          (second first-corr)
-                                                          all-correlations-at-shift)
+                                                               (+ (second correlation)
+                                                                  sum))
+                                                             (second first-corr)
+                                                             all-correlations-at-shift)
                                                      num-elements)]))
                                   correlations))
         plot-svg (corascope.plot/plot-points width
@@ -226,7 +221,9 @@
   [snapshot
    width
    mouse-x]
-  (let [core-to-adjust-index (fx/sub snapshot
+  (let [overlap-area-fraction-selected (/ mouse-x
+                                          width)
+        core-to-adjust-index (fx/sub snapshot
                                      state/adjustment-core)
         overlaped-core-index (fx/sub snapshot
                                      state/overlapped-core
@@ -249,8 +246,7 @@
                      (+ start
                         (* (- end
                               start)
-                           (/ mouse-x
-                              width))))]
+                           overlap-area-fraction-selected)))]
     (effects/update-core-start snapshot
                                {:fx/event new-start
                                 :core-number core-to-adjust-index})))
@@ -330,7 +326,7 @@
                  :core-number (fx/sub context
                                       state/adjustment-core)
                  :current-offset core-offset
-                                        }
+                 }
                 ]}))
 
 ;; (time
@@ -393,7 +389,7 @@
                                     1)
                                elements
                                (disj elements
-                                   element))
+                                     element))
                              (conj elements
                                    element)))))))
 
@@ -419,7 +415,7 @@
        (= java.lang.Long ;; if the element exists, we check it's a number
           (try (type (read-string value))
                (catch java.lang.RuntimeException _
-                   nil)))))) ;; and not a string or something..
+                 nil)))))) ;; and not a string or something..
   ([context
     element] ;; Default interface - starts with the first core
    (is-plottable? context
@@ -454,7 +450,7 @@
                                                            :grid-pane/column group
                                                            :grid-pane/row valence-electrons
                                                            :disable (not (contains? (set xrf-columns)
-                                                                                 element))
+                                                                                    element))
                                                            :on-action {;;:display-number display-number
                                                                        :element element
                                                                        :effect update-selected-element}
@@ -472,8 +468,8 @@
                                                               columns)
                                     :style  (if (contains? current-selections
                                                            non-element)
-                                             "-fx-background-color: yellow;"
-                                             "-fx-background-color: #d3d3d3;")
+                                              "-fx-background-color: yellow;"
+                                              "-fx-background-color: #d3d3d3;")
                                     :max-height 25
                                     :max-width Double/MAX_VALUE
                                     :grid-pane/column (* (int (mod row-after-table columns))

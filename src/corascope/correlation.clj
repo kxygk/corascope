@@ -338,15 +338,15 @@
                                0)
           last-to-shift (aget shifted-positions
                               (dec (alength shifted-positions)))
-          start-shifts (+ (- first-to-shift)
-                          first-overlayed)
+          start-shifts (- first-overlayed
+                          first-to-shift)
           end-shifts (- last-overlayed
                         first-to-shift)]
       [start-shifts
        end-shifts]))
 
 (defn shift-range-vector
-  "Helped function - not used in this namespace"
+  "Helper function - not used in this namespace"
   [overlay
    shifted]
   (shift-range (double-array (mapv first overlay))
