@@ -37,13 +37,13 @@
                                            element)
                                    (filterv #(-> %
                                                  first
-                                                 (> min-depth)))
+                                                 (>= min-depth)))
                                    (filterv #(-> %
                                                  first
-                                                 (< max-depth)))
+                                                 (<= max-depth)))
                                    (filterv #(-> %
                                                  first
-                                                 (< (fx/sub context
+                                                 (<= (fx/sub context
                                                             state/end-mm
                                                             overlapped-core))))
                                    (mapv #(-> %
@@ -56,7 +56,7 @@
                                                element) ;; these are mm from `:start-mm`
                                        (filterv #(-> %
                                                      first
-                                                     (> (- (fx/sub context
+                                                     (>= (- (fx/sub context
                                                                    state/start-mm-after-crop
                                                                    adjustment-core)
                                                            (fx/sub context
@@ -64,7 +64,7 @@
                                                                    adjustment-core)))))
                                        (filterv #(-> %
                                                      first
-                                                     (< (- max-depth
+                                                     (<= (- max-depth
                                                            min-depth)))))
         cropped-overlapped-points (->> (fx/sub context
                                                corascope.xrf/element-counts
@@ -72,13 +72,13 @@
                                                element)
                                        (filterv #(-> %
                                                      first
-                                                     (> min-depth)))
+                                                     (>= min-depth)))
                                        (filterv #(-> %
                                                      first
-                                                     (< max-depth)))
+                                                     (<= max-depth)))
                                        (filterv #(-> %
                                                      first
-                                                     (< (fx/sub context
+                                                     (<= (fx/sub context
                                                                 state/end-mm-after-crop
                                                                 overlapped-core))))
                                        (mapv #(-> %
