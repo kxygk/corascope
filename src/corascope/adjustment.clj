@@ -157,8 +157,70 @@
   [snapshot
    width
    mouse-x]
-  snapshot)
-
+  (let [overlap-area-fraction-selected (/ mouse-x
+                                          width)
+        core-to-adjust-index (fx/sub snapshot
+                                     state/adjustment-core)
+        overlapped-core-index (fx/sub snapshot
+                                      state/overlapped-core
+                                      core-to-adjust-index)
+        overlapped-start (fx/sub snapshot
+                                 state/start-mm
+                                 overlapped-core-index)
+        overlapped-end (fx/sub snapshot
+                               state/end-mm
+                               overlapped-core-index)
+        adjusted-start (fx/sub snapshot
+                               state/start-mm
+                               core-to-adjust-index)
+        adjusted-end (fx/sub snapshot
+                             state/end-mm
+                             core-to-adjust-index)
+        overlapped-overlap-start (- adjusted-start
+                                    overlapped-start)
+        overlapped-overlap-end (- (min overlapped-end
+                                       adjusted-end)
+                                  overlapped-start)
+        adjusted-overlap-start 0.0
+        adjusted-overlap-end (- (min overlapped-end
+                                     adjusted-end)
+                                adjusted-start)
+        width-mm (- overlapped-overlap-end
+                    overlapped-overlap-start)
+        mouse-mm-from-left (* width-mm
+                              (/ mouse-x
+                                 width))]
+    (-> snapshot
+        (fx/swap-context assoc-in [:cores
+                                   overlapped-core-index
+                                   :slider-right]
+                         (/ (- (fx/sub snapshot
+                                       state/length-mm
+                                       overlapped-core-index)
+                               (+ overlapped-overlap-start
+                                  mouse-mm-from-left))
+                            (fx/sub snapshot
+                                    state/length-mm
+                                    overlapped-core-index)))
+        (fx/swap-context assoc-in [:cores
+                                   overlapped-core-index
+                                   :fixed-side]
+                         nil)
+        (fx/swap-context assoc-in [:cores
+                                   core-to-adjust-index
+                                   :slider-left]
+                         (/ (+ 0.0
+                               mouse-mm-from-left
+                               (fx/sub snapshot ;; FUDGE FACTOR to make the
+                                       state/mm-per-pixel ;; cores butt-2-butt
+                                       core-to-adjust-index))
+                            (fx/sub snapshot
+                                    state/length-mm
+                                    core-to-adjust-index)))
+        (fx/swap-context assoc-in [:cores
+                                   core-to-adjust-index
+                                   :fixed-side]
+                         nil))))
 
 (defn- click-in-correlation-view
   [snapshot
