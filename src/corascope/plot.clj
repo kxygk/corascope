@@ -203,8 +203,10 @@
   ""
   [width
    height
-   left-points
-   right-points
+   all-left-points
+   all-right-points
+   left-cropped-points
+   right-cropped-points
    [min-x max-x]
    [min-y max-y]]
   (-> (grid-spec width
@@ -213,6 +215,8 @@
                   max-x]
                  [(nice-max-count min-y)
                   (nice-max-count max-y)])
-      (add-lines left-points "black")
-      (add-lines right-points "red")
+      (add-lines all-left-points "gray")
+      (add-lines all-right-points "lightsalmon")
+      (add-lines left-cropped-points "black")
+      (add-lines right-cropped-points "red")
       (viz/svg-plot2d-cartesian)))
