@@ -33,20 +33,20 @@
 (def fixed-element-selector-width 50)
 
 #_(def app-icons [(-> (io/resource "128.png")
-                    .toString
-                    javafx.scene.image.Image.)
-                (-> (io/resource "48.png")
-                    .toString
-                    javafx.scene.image.Image.)
-                (-> (io/resource "32.png")
-                    .toString
-                    javafx.scene.image.Image.)
-                (-> (io/resource "24.png")
-                    .toString
-                    javafx.scene.image.Image.)
-                (-> (io/resource "16.png")
-                    .toString
-                    javafx.scene.image.Image.)])
+                      .toString
+                      javafx.scene.image.Image.)
+                  (-> (io/resource "48.png")
+                      .toString
+                      javafx.scene.image.Image.)
+                  (-> (io/resource "32.png")
+                      .toString
+                      javafx.scene.image.Image.)
+                  (-> (io/resource "24.png")
+                      .toString
+                      javafx.scene.image.Image.)
+                  (-> (io/resource "16.png")
+                      .toString
+                      javafx.scene.image.Image.)])
 
 (defn workspace-settings-display
   "Top level settings for the workspace where all data will be stored in"
@@ -217,53 +217,53 @@
                  :alignment :center-left
                  :children (concat
                             [{:fx/type :text-field
-                             :disable (not= :left
+                              :disable (not= :left
+                                             (fx/sub context
+                                                     state/fixed-side
+                                                     core-number))
+                              :pref-width 90
+                              :style (if (= (fx/sub context
+                                                    state/start-mm
+                                                    core-number)
                                             (fx/sub context
-                                                    state/fixed-side
+                                                    state/start-mm-after-crop
                                                     core-number))
-                             :pref-width 90
-                             :style (if (= (fx/sub context
-                                                   state/start-mm
-                                                   core-number)
+                                       "-fx-text-fill: black;"
+                                       "-fx-text-fill: red;")
+                              :text-formatter {:fx/type :text-formatter
+                                               :value-converter :double
+                                               :value (fx/sub context
+                                                              state/start-mm-after-crop
+                                                              core-number)
+                                               :on-value-changed {:core-number core-number
+                                                                  :effect effects/update-core-start}}}
+                             {:fx/type :check-box ;; Pin core to left side
+                              :selected (= :left
                                            (fx/sub context
-                                                   state/start-mm-after-crop
+                                                   state/fixed-side
                                                    core-number))
-                                      "-fx-text-fill: black;"
-                                      "-fx-text-fill: red;")
-                             :text-formatter {:fx/type :text-formatter
-                                              :value-converter :double
-                                              :value (fx/sub context
-                                                             state/start-mm-after-crop
-                                                             core-number)
-                                              :on-value-changed {:core-number core-number
-                                                                 :effect effects/update-core-start}}}
-                            {:fx/type :check-box ;; Pin core to left side
-                             :selected (= :left
-                                          (fx/sub context
-                                                  state/fixed-side
-                                                  core-number))
-                             :on-selected-changed
-                             {:core-number core-number
-                              :effect (fn [snapshot
-                                           event]
-                                        (fx/swap-context snapshot
-                                                         assoc-in [:cores
-                                                                   (:core-number event)
-                                                                   :fixed-side]
-                                                         (if (:fx/event event)
-                                                           :left
-                                                           nil)))}}]
+                              :on-selected-changed
+                              {:core-number core-number
+                               :effect (fn [snapshot
+                                            event]
+                                         (fx/swap-context snapshot
+                                                          assoc-in [:cores
+                                                                    (:core-number event)
+                                                                    :fixed-side]
+                                                          (if (:fx/event event)
+                                                            :left
+                                                            nil)))}}]
                             (when (> (fx/sub context
-                                           state/core-row
-                                           core-number)
+                                             state/core-row
+                                             core-number)
                                      0)
                               [{:fx/type :toggle-button
-                               :text "Adjust"
-                               :pref-width 80
-                               :pref-height height
-                               :selected (= (fx/sub context
-                                                    state/adjustment-core)
-                                            core-number)
+                                :text "Adjust"
+                                :pref-width 80
+                                :pref-height height
+                                :selected (= (fx/sub context
+                                                     state/adjustment-core)
+                                             core-number)
                                 :on-selected-changed
                                 {:core-number core-number
                                  :effect (fn [snapshot
@@ -295,59 +295,59 @@
                                                                                    (set (mapv :element %)))))
                                                                           #{(first (state/xrf-all-columns))})))))))}}])
                             [{:fx/type :pane
-                             :h-box/hgrow :always}
-                            {:fx/type :button
-                             :text "Crop"
-                             :pref-width 80
-                             :pref-height height
-                             :context-menu {:fx/type :context-menu
-                                            :items [{:fx/type :menu-item
-                                                     :text "Auto-select areas with no XRF data"
-                                                     :on-action {:core-number core-number
-                                                                 :effect effects/set-sliders-to-crop-unscanned}}]}
-                             :on-action {:core-number core-number
-                                         :effect effects/crop-selected}}
-                            {:fx/type :pane
-                             :h-box/hgrow :always}
-                            {:fx/type :check-box ;; Pin core to right side
-                             :selected (= :right
-                                          (fx/sub context
-                                                  state/fixed-side
-                                                  core-number))
-                             :on-selected-changed
-                             {:core-number core-number
-                              :effect (fn [snapshot
-                                           event]
-                                        (fx/swap-context snapshot
-                                                         assoc-in [:cores
-                                                                   (:core-number event)
-                                                                   :fixed-side]
-                                                         (if (:fx/event event)
-                                                           :right
-                                                           nil)))}}
-                            {:fx/type :text-field
-                             :alignment :center-right
-                             :disable (not= :right
-                                            (fx/sub context
-                                                    state/fixed-side
-                                                    core-number))
-                             :pref-width 90
-                             :style (if (= (fx/sub context
-                                                   state/end-mm
-                                                   core-number)
+                              :h-box/hgrow :always}
+                             {:fx/type :button
+                              :text "Crop"
+                              :pref-width 80
+                              :pref-height height
+                              :context-menu {:fx/type :context-menu
+                                             :items [{:fx/type :menu-item
+                                                      :text "Auto-select areas with no XRF data"
+                                                      :on-action {:core-number core-number
+                                                                  :effect effects/set-sliders-to-crop-unscanned}}]}
+                              :on-action {:core-number core-number
+                                          :effect effects/crop-selected}}
+                             {:fx/type :pane
+                              :h-box/hgrow :always}
+                             {:fx/type :check-box ;; Pin core to right side
+                              :selected (= :right
                                            (fx/sub context
-                                                   state/end-mm-after-crop
+                                                   state/fixed-side
                                                    core-number))
-                                      "-fx-text-fill: black;"
-                                      "-fx-text-fill: red;")
-                             :text-formatter {:fx/type :text-formatter
-                                              :value-converter :double
-                                              :value (fx/sub context
-                                                             state/end-mm-after-crop
-                                                             core-number)
-                                              :on-value-changed {:core-number core-number
-                                                                 :effect effects/update-core-end}}}])
-                            }
+                              :on-selected-changed
+                              {:core-number core-number
+                               :effect (fn [snapshot
+                                            event]
+                                         (fx/swap-context snapshot
+                                                          assoc-in [:cores
+                                                                    (:core-number event)
+                                                                    :fixed-side]
+                                                          (if (:fx/event event)
+                                                            :right
+                                                            nil)))}}
+                             {:fx/type :text-field
+                              :alignment :center-right
+                              :disable (not= :right
+                                             (fx/sub context
+                                                     state/fixed-side
+                                                     core-number))
+                              :pref-width 90
+                              :style (if (= (fx/sub context
+                                                    state/end-mm
+                                                    core-number)
+                                            (fx/sub context
+                                                    state/end-mm-after-crop
+                                                    core-number))
+                                       "-fx-text-fill: black;"
+                                       "-fx-text-fill: red;")
+                              :text-formatter {:fx/type :text-formatter
+                                               :value-converter :double
+                                               :value (fx/sub context
+                                                              state/end-mm-after-crop
+                                                              core-number)
+                                               :on-value-changed {:core-number core-number
+                                                                  :effect effects/update-core-end}}}])
+                 }
                 {:fx/type sliders
                  :core-number core-number
                  :width width
@@ -375,7 +375,7 @@
                                  true (fx/swap-context assoc-in
                                                        [:zoom
                                                         :depth-mm]
-                                                      (+ (fx/sub snapshot
+                                                       (+ (fx/sub snapshot
                                                                   state/start-mm
                                                                   core-number)
                                                           (* (fx/sub snapshot
@@ -414,19 +414,19 @@
                   :core-number core-number
                   :width width}]
                 (mapv (fn [display-number]
-                       (case (fx/sub context
-                                     state/display-type
-                                     display-number)
-                         :overhead {:fx/type corascope.displays.overhead/view
-                                    :core-number core-number
-                                    :display-number display-number
-                                    :width width}
-                         :element-count {:fx/type corascope.displays.element-count/view
-                                         :core-number core-number
-                                         :display-number display-number
-                                         :width width}))
-                     (range (fx/sub context
-                                    state/num-displays))))}))
+                        (case (fx/sub context
+                                      state/display-type
+                                      display-number)
+                          :overhead {:fx/type corascope.displays.overhead/view
+                                     :core-number core-number
+                                     :display-number display-number
+                                     :width width}
+                          :element-count {:fx/type corascope.displays.element-count/view
+                                          :core-number core-number
+                                          :display-number display-number
+                                          :width width}))
+                      (range (fx/sub context
+                                     state/num-displays))))}))
 
 (defn layout-area
   [{:keys [fx/context]}]
@@ -519,7 +519,7 @@
 (defn overlap-adjustment-area
   [{:keys [fx/context]}]
   #_{:fx/type :text
-   :text "ehllo"}
+     :text "ehllo"}
   {:fx/type corascope.adjustment/view
    :width (- (fx/sub context
                      state/width)
@@ -759,8 +759,8 @@
   [{:keys [fx/context]}]
   {:fx/type :stage
    :icons [(-> (io/resource "128.png")
-                    .toString
-                    javafx.scene.image.Image.)]
+               .toString
+               javafx.scene.image.Image.)]
    :title "Corascope"
    :showing true
    :min-height 400
