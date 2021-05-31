@@ -7,7 +7,7 @@
 [[./logo.svg]]
 
 #+BEGIN_CENTER
-Free and opens source software for inspecting, cropping and stitching ITRAX XRF core scans
+Open source software for inspecting, cropping and stitching ITRAX XRF core scans
 #+END_CENTER
 - [[./core32.png]] [[https://github.com/geokon-gh/corascope/releases/download/v1.1/corascope.jar][*Download*]] A simple JAR excutable. No installation, just download and go. *Requires Java 11 (or higher)* 
 - [[./measurement32.png]] [[./quick-start.org][*Quick Start*]]  A quick visual walk through loading, cropping and merging a core for export
