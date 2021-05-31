@@ -9,6 +9,9 @@
    [criterium.core]))
 
 (defn plot-element-counts
+  "Note that this code is rather confusing b/c there are overall core depths
+  and then there are in-core measurement depths
+  and we need to convert btwn the two.."
   [{:keys [fx/context
            width
            height
@@ -18,37 +21,52 @@
            min-depth
            max-depth
            ]}]
-  (let [all-adjustment-points (->> (fx/sub context
+  (println "min/max depths " min-depth
+           " ::: " max-depth)
+  (let [adjustment-start-mm (fx/sub context
+                                    state/start-mm
+                                    adjustment-core)
+        overlapped-start-mm (fx/sub context
+                                    state/start-mm
+                                    overlapped-core)
+        adjustment-max-depth (- max-depth
+                                adjustment-start-mm)
+        adjustment-min-depth (- min-depth
+                                adjustment-start-mm)
+        overlapped-max-depth (- max-depth
+                                overlapped-start-mm)
+        overlapped-min-depth (- min-depth
+                                overlapped-start-mm)
+        all-adjustment-points (->> (fx/sub context
                                            corascope.xrf/element-counts
                                            adjustment-core
                                            element) ;; these are mm from `:start-mm`
                                    (filterv #(-> %
                                                  first
-                                                 (< (- max-depth
-                                                       min-depth)))))
+                                                 (>= adjustment-min-depth)))
+                                   (filterv #(-> %
+                                                 first
+                                                 (<= adjustment-max-depth))))
         all-overlapped-points (->> (fx/sub context
                                            corascope.xrf/element-counts
                                            overlapped-core
                                            element)
                                    (filterv #(-> %
                                                  first
-                                                 (>= min-depth)))
+                                                 (>= overlapped-min-depth)))
                                    (filterv #(-> %
                                                  first
-                                                 (<= max-depth)))
-                                   (filterv #(-> %
-                                                 first
-                                                 (<= (fx/sub context
-                                                             state/end-mm
-                                                             overlapped-core))))
+                                                 (<= overlapped-max-depth)))
+                                   ;; (filterv #(-> %
+                                   ;;               first
+                                   ;;               (<= (fx/sub context
+                                   ;;                           state/end-mm
+                                   ;;                           overlapped-core))))
                                    (mapv #(-> %
                                               (update-in [0]
                                                          -
-                                                         min-depth))))
-        cropped-adjustment-points (->> (fx/sub context
-                                               corascope.xrf/element-counts
-                                               adjustment-core
-                                               element) ;; these are mm from `:start-mm`
+                                                         overlapped-min-depth))))
+        cropped-adjustment-points (->> all-adjustment-points
                                        (filterv #(-> %
                                                      first
                                                      (>= (- (fx/sub context
@@ -56,30 +74,18 @@
                                                                     adjustment-core)
                                                             (fx/sub context
                                                                     state/start-mm
-                                                                    adjustment-core)))))
+                                                                    adjustment-core))))))
+        cropped-overlapped-points (->> all-overlapped-points
                                        (filterv #(-> %
                                                      first
-                                                     (<= (- max-depth
-                                                            min-depth)))))
-        cropped-overlapped-points (->> (fx/sub context
-                                               corascope.xrf/element-counts
-                                               overlapped-core
-                                               element)
-                                       (filterv #(-> %
-                                                     first
-                                                     (>= min-depth)))
-                                       (filterv #(-> %
-                                                     first
-                                                     (<= max-depth)))
-                                       (filterv #(-> %
-                                                     first
-                                                     (<= (fx/sub context
-                                                                 state/end-mm-after-crop
-                                                                 overlapped-core))))
-                                       (mapv #(-> %
-                                                  (update-in [0]
-                                                             -
-                                                             min-depth))))
+                                                     (<= (- (- overlapped-max-depth
+                                                               overlapped-min-depth)
+                                                             (- (fx/sub context
+                                                                    state/end-mm
+                                                                    overlapped-core)
+                                                                (fx/sub context
+                                                                        state/end-mm-after-crop
+                                                                        overlapped-core)))))))
         plot-svg (corascope.plot/plot-overlapping width
                                                   height
                                                   all-overlapped-points
